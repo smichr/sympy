@@ -396,6 +396,15 @@ class PrettyPrinter(Printer):
 
         return pform
 
+    def _print_Order(self, e):
+        pform = self._print(e.expr)
+        pform = prettyForm(*pform.parens())
+        if pretty_use_unicode():
+            pform = prettyForm(*pform.left(greek['omicron'][1]))
+        else:
+            pform = prettyForm(*pform.left('O'))
+        return pform
+
     def _print_gamma(self, e):
         if pretty_use_unicode():
             pform = self._print(e.args[0])
