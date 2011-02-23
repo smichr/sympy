@@ -157,6 +157,7 @@ Limit(x**2, x, 0)
 Limit(1/x, x, 0)
 Limit(sin(x)/x, x, 0)
 
+
 BIG O:
 
 O(1)
@@ -1255,66 +1256,6 @@ u"""\
     assert  pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
 
-def test_pretty_bigo():
-    expr = O(1)
-    ascii_str = \
-"""\
-O(1)\
-"""
-    ucode_str = \
-u"""\
-Ο(1)\
-"""
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
-
-    expr = O(1/x)
-    ascii_str = \
-"""\
- /1\\\n\
-O|-|\n\
- \\x/\
-"""
-    ucode_str = \
-u"""\
- ⎛1⎞\n\
-Ο⎜─⎟\n\
- ⎝x⎠\
-"""
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
-
-    expr = O(cos(y**2/x))
-    ascii_str = \
-"""\
- /   / 2\\\\\n\
- |   |y ||\n\
-O|cos|--||\n\
- \\   \\x //\
-"""
-    ucode_str = \
-u"""\
- ⎛   ⎛ 2⎞⎞\n\
- ⎜   ⎜y ⎟⎟\n\
-Ο⎜cos⎜──⎟⎟\n\
- ⎝   ⎝x ⎠⎠\
-"""
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
-
-    expr = O(x**2+y**2)
-    ascii_str = \
-"""\
- / 2    2\\\n\
-O\\x  + y /\
-"""
-    ucode_str = \
-u"""\
- ⎛ 2    2⎞\n\
-Ο⎝x  + y ⎠\
-"""
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
 
 def test_pretty_derivatives():
     # Simple
@@ -1946,6 +1887,68 @@ lim ──────\n\
 x->0  x   \
 """
     assert  pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+
+
+def test_pretty_bigo():
+    expr = O(1)
+    ascii_str = \
+"""\
+O(1)\
+"""
+    ucode_str = \
+u"""\
+Ο(1)\
+"""
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+
+    expr = O(1/x)
+    ascii_str = \
+"""\
+ /1\\\n\
+O|-|\n\
+ \\x/\
+"""
+    ucode_str = \
+u"""\
+ ⎛1⎞\n\
+Ο⎜─⎟\n\
+ ⎝x⎠\
+"""
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+
+    expr = O(cos(y**2/x))
+    ascii_str = \
+"""\
+ /   / 2\\\\\n\
+ |   |y ||\n\
+O|cos|--||\n\
+ \\   \\x //\
+"""
+    ucode_str = \
+u"""\
+ ⎛   ⎛ 2⎞⎞\n\
+ ⎜   ⎜y ⎟⎟\n\
+Ο⎜cos⎜──⎟⎟\n\
+ ⎝   ⎝x ⎠⎠\
+"""
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+
+    expr = O(x**2+y**2)
+    ascii_str = \
+"""\
+ / 2    2\\\n\
+O\\x  + y /\
+"""
+    ucode_str = \
+u"""\
+ ⎛ 2    2⎞\n\
+Ο⎝x  + y ⎠\
+"""
+    assert pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
 
 
