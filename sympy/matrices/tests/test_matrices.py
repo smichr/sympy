@@ -1,6 +1,6 @@
 from sympy import (symbols, Matrix, SMatrix, eye, I, Symbol, Rational, wronskian, cos,
     sin, exp, hessian, sqrt, zeros, ones, randMatrix, Poly, S, pi,
-    oo, trigsimp, Integer, block_diag, N)
+    oo, trigsimp, Integer, N)
 from sympy.matrices.matrices import (ShapeError, MatrixError,
     NonSquareMatrixException, matrix_multiply_elementwise, diag)
 from sympy.utilities.pytest import raises
@@ -1264,13 +1264,13 @@ def test_diagonal_symmetrical():
     m = Matrix(2,3,[0, 0, 0, 0, 0, 0])
     assert not m.is_symmetric()
 
-    x, y = symbols('x','y')
+    x, y = symbols('x y')
     m = Matrix(3,3,[1, x**2 + 2*x + 1, y, (x + 1)**2 , 2, 0, y, 0, 3])
     assert m.is_symmetric()
 
 
 def test_diagonalization():
-    x, y, z = symbols('x','y','z')
+    x, y, z = symbols('x y z')
     m = Matrix(3,2,[-3, 1, -3, 20, 3, 10])
     assert not m.is_diagonalizable()
     assert not m.is_symmetric()
@@ -1339,7 +1339,7 @@ def test_diagonalization():
     raises(MatrixError, '(D, P) = m.diagonalize()')
 
     # symbolic
-    a, b, c, d = symbols('a','b','c', 'd')
+    a, b, c, d = symbols('a b c d')
     m = Matrix(2,2,[a, c, c, b])
     assert m.is_symmetric()
     assert m.is_diagonalizable()
