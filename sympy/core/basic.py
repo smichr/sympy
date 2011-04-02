@@ -911,7 +911,8 @@ class Basic(AssumeMeths):
             poly = Poly(self, *gens, **args)
 
             if not poly.is_Poly:
-                return None
+                raise NotImplementedError('Could not convert %s to poly'
+                        % self)
             else:
                 return poly
         except PolynomialError:

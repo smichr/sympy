@@ -278,7 +278,7 @@ def heurisch(f, x, **kwargs):
     s = u_split[0] * Mul(*[ k for k, v in special.iteritems() if v ])
     polified = [ p.as_poly(*V) for p in [s, P, Q] ]
     if None in polified:
-        raise NotImplementedError
+        return None
     a, b, c = [ p.total_degree() for p in polified ]
 
     poly_denom = (s * v_split[0] * deflation(v_split[1])).as_expr()
