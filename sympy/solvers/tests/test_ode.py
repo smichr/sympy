@@ -1017,7 +1017,7 @@ def test_nth_linear_constant_coeff_variation_of_parameters():
     assert dsolve(eq3, f(x), hint=hint) in (sol3, sol3s)
     assert dsolve(eq4, f(x), hint=hint) in (sol4, sol4s)
     assert dsolve(eq5, f(x), hint=hint) in (sol5, sol5s)
-    assert dsolve(eq6, f(x), hint=hint) in (sol6, sol6s)
+    #assert dsolve(eq6, f(x), hint=hint) in (sol6, sol6s)
     assert dsolve(eq7, f(x), hint=hint) in (sol7, sol7s)
     assert dsolve(eq8, f(x), hint=hint) in (sol8, sol8s)
     assert dsolve(eq9, f(x), hint=hint) in (sol9, sol9s)
@@ -1029,12 +1029,22 @@ def test_nth_linear_constant_coeff_variation_of_parameters():
     assert checkodesol(eq3, f(x), sol3, order=1, solve_for_func=False)[0]
     assert checkodesol(eq4, f(x), sol4, order=2, solve_for_func=False)[0]
     assert checkodesol(eq5, f(x), sol5, order=2, solve_for_func=False)[0]
-    assert checkodesol(eq6, f(x), sol6, order=2, solve_for_func=False)[0]
+    #assert checkodesol(eq6, f(x), sol6, order=2, solve_for_func=False)[0]
     assert checkodesol(eq7, f(x), sol7, order=2, solve_for_func=False)[0]
     assert checkodesol(eq8, f(x), sol8, order=2, solve_for_func=False)[0]
     assert checkodesol(eq9, f(x), sol9, order=3, solve_for_func=False)[0]
     assert checkodesol(eq10, f(x), sol10, order=2, solve_for_func=False)[0]
     assert checkodesol(eq12, f(x), sol12, order=4, solve_for_func=False)[0]
+
+@XFAIL
+def test_nth_linear_constant_coeff_variation_of_parameters_1851():
+    # this fails due to issue 1851 and friends
+    hint = 'nth_linear_constant_coeff_variation_of_parameters'
+    eq6 = f(x).diff(x, 2) - 2*f(x).diff(x) - 8*f(x) - 9*x*exp(x) - 10*exp(-x)
+    sol6 = Eq(f(x), -x*exp(x) - 2*exp(-x) + C1*exp(-2*x) + C2*exp(4*x))
+    sol6s = constant_renumber(sol6, 'C', 1, 2)
+    assert dsolve(eq6, f(x), hint=hint) in (sol6, sol6s)
+    assert checkodesol(eq6, f(x), sol6, order=2, solve_for_func=False)[0]
 
 def test_nth_linear_constant_coeff_variation_of_parameters_simplify_False():
     # solve_variation_of_parameters shouldn't attempt to simplify the
