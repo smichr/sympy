@@ -314,7 +314,6 @@ def symbols(names, **args):
                 for i in xrange(start, int(end)):
                     symbol = cls("%s%i" % (name, i), **args)
                     result.append(symbol)
-<<<<<<< HEAD
 
                 seq = True
                 continue
@@ -339,20 +338,6 @@ def symbols(names, **args):
             elif names[-1]:
                 return result[0]
 
-=======
-
-                seq = True
-            else:
-                symbol = cls(name, **args)
-                result.append(symbol)
-
-        if not seq and len(result) <= 1:
-            if not result:
-                return None
-            elif names[-1]:
-                return result[0]
-
->>>>>>> Dropped old-style symbols()
         return tuple(result)
     else:
         for name in names:
@@ -397,11 +382,8 @@ def var(names, **args):
         for symbol in symbols:
             if isinstance(symbol, Basic):
                 frame.f_globals[symbol.name] = symbol
-<<<<<<< HEAD
             elif isinstance(symbol, FunctionClass):
                 frame.f_globals[symbol.__name__] = symbol
-=======
->>>>>>> Dropped old-style symbols()
             else:
                 traverse(symbol, frame)
 
@@ -414,11 +396,8 @@ def var(names, **args):
         if syms is not None:
             if isinstance(syms, Basic):
                 frame.f_globals[syms.name] = syms
-<<<<<<< HEAD
             elif isinstance(syms, FunctionClass):
                 frame.f_globals[syms.__name__] = syms
-=======
->>>>>>> Dropped old-style symbols()
             else:
                 traverse(syms, frame)
     finally:
