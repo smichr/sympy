@@ -241,8 +241,23 @@ try:
     from itertools import product
 except ImportError: # Python 2.5
     def product(*args, **kwds):
-        # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
-        # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
+        """product(*iterables) --> product object
+
+        Cartesian product of input iterables.  Equivalent to nested for-loops.
+
+        For example, product(A, B) returns the same as:  ((x,y) for x in A for y in B).
+        The leftmost iterators are in the outermost for-loop, so the output tuples
+        cycle in a manner similar to an odometer (with the rightmost element changing
+        on every iteration).
+
+        To compute the product of an iterable with itself, specify the number
+        of repetitions with the optional repeat keyword argument. For example,
+        product(A, repeat=4) means the same as product(A, A, A, A).
+
+        product('ab', range(3)) --> ('a',0) ('a',1) ('a',2) ('b',0) ('b',1) ('b',2)
+        product((0,1), (0,1), (0,1)) --> (0,0,0) (0,0,1) (0,1,0) (0,1,1) (1,0,0) ...
+
+        """
         pools = map(tuple, args) * kwds.get('repeat', 1)
         result = [[]]
         for pool in pools:
@@ -254,8 +269,13 @@ try:
     from itertools import permutations
 except ImportError: # Python 2.5
     def permutations(iterable, r=None):
-        # permutations('ABCD', 2) --> AB AC AD BA BC BD CA CB CD DA DB DC
-        # permutations(range(3)) --> 012 021 102 120 201 210
+        """permutations(iterable[, r]) --> permutations object
+
+        Return successive r-length permutations of elements in the iterable.
+
+        permutations(range(3), 2) --> (0,1), (0,2), (1,0), (1,2), (2,0), (2,1)
+
+        """
         pool = tuple(iterable)
         n = len(pool)
         r = n if r is None else r
@@ -282,8 +302,13 @@ try:
     from itertools import combinations, combinations_with_replacement
 except ImportError: # < python 2.6
     def combinations(iterable, r):
-        # combinations('ABCD', 2) --> AB AC AD BC BD CD
-        # combinations(range(4), 3) --> 012 013 023 123
+        """combinations(iterable, r) --> combinations object
+
+        Return successive r-length combinations of elements in the iterable.
+
+        combinations(range(4), 3) --> (0,1,2), (0,1,3), (0,2,3), (1,2,3)
+
+        """
         pool = tuple(iterable)
         n = len(pool)
         if r > n:
@@ -302,7 +327,13 @@ except ImportError: # < python 2.6
             yield tuple(pool[i] for i in indices)
 
     def combinations_with_replacement(iterable, r):
-        # combinations_with_replacement('ABC', 2) --> AA AB AC BB BC CC
+        """combinations_with_replacement(iterable, r) --> combinations_with_replacement object
+
+        Return successive r-length combinations of elements in the iterable
+        allowing individual elements to have successive repeats.
+        combinations_with_replacement('ABC', 2) --> AA AB AC BB BC CC
+
+        """
         pool = tuple(iterable)
         n = len(pool)
         if not n and r:
