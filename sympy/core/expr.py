@@ -1380,31 +1380,33 @@ class Expr(Basic, EvalfMixin):
            True
 
         """
-        negative_self = -self
-        self_has_minus = (self.extract_multiplicatively(-1) != None)
-        negative_self_has_minus = ((negative_self).extract_multiplicatively(-1) != None)
-        if self_has_minus != negative_self_has_minus:
-            return self_has_minus
-        else:
-            if self.is_Add:
-                # We choose the one with less arguments with minus signs
-                all_args = len(self.args)
-                negative_args = len([False for arg in self.args if arg.could_extract_minus_sign()])
-                positive_args = all_args - negative_args
-                if positive_args > negative_args:
-                    return False
-                elif positive_args < negative_args:
-                    return True
-            elif self.is_Mul:
-                # We choose the one with an odd number of minus signs
-                num, den = self.as_numer_denom()
-                args = Mul.make_args(num) + Mul.make_args(den)
-                arg_signs = [arg.could_extract_minus_sign() for arg in args]
-                negative_args = filter(None, arg_signs)
-                return len(negative_args) % 2 == 1
+        from sympy import fraction
+        if self.is_Add:
+            # We choose the one with less arguments with minus signs
+            all_args = len(self.args)
+            negative_args = len([False for arg in self.args if arg.could_extract_minus_sign()])
+            positive_args = all_args - negative_args
+            if positive_args > negative_args:
+                return False
+            elif positive_args < negative_args:
+                return True
+        n, d = fraction(self)
+        if d is not S.One:
+            # choose the one with more negatives in the denominator
+            num_in_d = len(filter(None, [arg.could_extract_minus_sign() for arg in Mul.make_args(d)]))
+            if num_in_d:
+                num_in_n = len(filter(None, [arg.could_extract_minus_sign() for arg in Mul.make_args(n)]))
+                return num_in_d >= num_in_n
+        if self.is_Mul:
+            # We choose the one with an odd number of minus signs
+            num, den = self.as_numer_denom()
+            args = Mul.make_args(num) + Mul.make_args(den)
+            arg_signs = [arg.could_extract_minus_sign() for arg in args]
+            negative_args = filter(None, arg_signs)
+            return len(negative_args) % 2 == 1
 
-            # As a last resort, we choose the one with greater value of .sort_key()
-            return self.sort_key() < negative_self.sort_key()
+        # As a last resort, we choose the one with greater value of .sort_key()
+        return self.sort_key() < (-self).sort_key()
 
     def _eval_is_polynomial(self, syms):
         if self.free_symbols.intersection(syms) == set([]):

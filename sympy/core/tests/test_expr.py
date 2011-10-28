@@ -830,11 +830,8 @@ def test_extractions():
     assert ((x+x*y)/y).could_extract_minus_sign() == False
     assert (x*(-x-x**3)).could_extract_minus_sign() == True # used to give inf recurs
     assert ((-x-y)/(x+y)).could_extract_minus_sign() == True # is_Mul odd case
-    # The results of each of these will vary on different machines, e.g.
-    # the first one might be False and the other (then) is true or vice versa,
-    # so both are included.
-    assert ((-x-y)/(x-y)).could_extract_minus_sign() == False or\
-           ((-x-y)/(y-x)).could_extract_minus_sign() == False # is_Mul even case
+    assert (1/(x-y)).could_extract_minus_sign() == False
+    assert (1/(y-x)).could_extract_minus_sign() == True
     assert ( x - y).could_extract_minus_sign() == False
     assert (-x + y).could_extract_minus_sign() == True
 
