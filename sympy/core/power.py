@@ -111,6 +111,12 @@ class Pow(Expr):
         if abs(e) < S.One and other.is_real:
             return Pow(b, e * other)
 
+    def _eval_is_irrational(self):
+        b, e = self.as_base_exp()
+        if e.is_Rational and e != 1 and (b.is_Number or
+                                         b.is_number and b.is_irrational):
+            return True
+
     def _eval_is_comparable(self):
         c1 = self.base.is_comparable
         if c1 is None: return

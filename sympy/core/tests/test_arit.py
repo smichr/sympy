@@ -1091,6 +1091,20 @@ def test_Add_is_irrational():
 
     assert (i+1).is_irrational  == True
     assert (i+1).is_rational    == False
+    # the following is False but such introspection is perhaps
+    # beyond the simple method and requires sqrtdenesting to
+    # show that the expression is 3. But simplification should
+    # not be part of the method so this should stay None (unless
+    # there is some simple test to show that it's not rational
+    assert (sqrt(2) + sqrt(-6*sqrt(2) + 11)).is_irrational is None
+
+@XFAIL
+def test_Add_is_irrational2():
+    assert (sqrt(2) + sqrt(3)).is_irrational is True
+
+def test_Pow_is_irrational():
+    assert sqrt(2).is_irrational is True
+    assert sqrt(2 + sqrt(3)).is_irrational is True
 
 def test_issue432():
     class MightyNumeric(tuple):
