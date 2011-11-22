@@ -530,6 +530,7 @@ class Rational(Number):
     is_real = True
     is_integer = False
     is_rational = True
+    is_irrational = False
 
     __slots__ = ['p', 'q']
 
@@ -1513,6 +1514,7 @@ class Infinity(RationalConstant):
     is_infinitesimal = False
     is_integer  = None
     is_rational = None
+    is_irrational = None
     is_odd = None
 
     @staticmethod
@@ -1587,6 +1589,7 @@ class NegativeInfinity(RationalConstant):
     is_infinitesimal = False
     is_integer  = None
     is_rational = None
+    is_irrational = None
 
     @staticmethod
     def __abs__():
@@ -1658,6 +1661,7 @@ class NaN(RationalConstant):
     is_zero     = None
     is_prime    = None
     is_positive = None
+    is_irrational = None
 
     __slots__ = []
 

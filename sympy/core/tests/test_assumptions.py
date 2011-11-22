@@ -475,3 +475,56 @@ def test_hash_vs_eq():
 
     assert a == b
     assert ha== hb
+
+
+def test_is_irrational():
+    from sympy.core.numbers import I, pi, E
+    from sympy.functions.elementary.exponential import log
+    from sympy.functions.elementary.miscellaneous import sqrt
+
+    assert (pi*I).is_irrational == False
+    assert (I*pi).is_irrational == False
+
+    assert (E*pi).is_irrational == True
+    assert (pi*E).is_irrational == True
+
+    assert (E + pi).is_irrational == True
+    assert (pi + E).is_irrational == True
+
+    assert (sqrt(8)/sqrt(2)).is_irrational == False
+
+def test_is_irrational_pow():
+    from sympy.core.power import Pow
+    from sympy.core.numbers import I, pi, E
+    from sympy.functions.elementary.exponential import log
+    from sympy.functions.elementary.miscellaneous import sqrt, root
+    from sympy.abc import x
+
+    assert (pi**2).is_irrational == True
+
+    assert (pi**2 + E).is_irrational == True
+    assert (E + pi**2).is_irrational == True
+    assert (E*pi**2).is_irrational == True
+    assert (pi**2*E).is_irrational == True
+
+    assert (sqrt(2)*root(3,3)).is_irrational == True
+    assert (sqrt(2)*root(3,-3)).is_irrational == True
+
+    assert root(3,3).is_irrational == True
+
+    assert Pow(3, 2).is_irrational == False
+    assert (Rational(3, 5)**2).is_irrational == False
+    assert (Rational(3, 5)**Rational(3, 5)).is_irrational == True
+
+    assert (S(2)**I).is_irrational == False
+    z = Symbol("z", positive=False, negative=False,real=True)
+    assert (2**z).is_irrational == False
+    assert Pow(2,0,evaluate=False).is_irrational == False
+    assert Pow(x,0,evaluate=False).is_irrational == None
+
+    x = Symbol("x", real=True)
+    assert Pow(x,0,evaluate=False).is_irrational == None
+
+    x = Symbol("x", rational=True)
+    assert Pow(x,0,evaluate=False).is_irrational == False
+

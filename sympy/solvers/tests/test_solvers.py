@@ -474,10 +474,9 @@ def test_checking():
 def test_issue_1572_1364_1368():
     assert solve((sqrt(x**2 - 1) - 2)) in ([sqrt(5), -sqrt(5)],
                                            [-sqrt(5), sqrt(5)])
-    assert solve((2**exp(y**2/x) + 2)/(x**2 + 15), y) == (
-        [-sqrt(x)*sqrt(log((log(2) + I*pi)/log(2))),
-          sqrt(x)*sqrt(log((log(2) + I*pi)/log(2)))]
-          )
+    assert solve((2**exp(y**2/x) + 2)/(x**2 + 15), y) == \
+        [-sqrt(x)*sqrt(-log(log(2)) + log(log(2) + I*pi)),
+          sqrt(x)*sqrt(-log(log(2)) + log(log(2) + I*pi))]
 
     C1, C2 = symbols('C1 C2')
     f = Function('f')
@@ -725,6 +724,7 @@ def test__invert():
     assert _invert(2) == (2, 0)
     assert _invert(exp(1/x) - 3, x) == (1/log(3), x)
     assert _invert(exp(1/x + a/x) - 3, x) == ((a + 1)/log(3), x)
+    assert _invert(a, x) == (a, 0)
 
 def test_issue_1364():
     a = Symbol('a')

@@ -235,6 +235,29 @@ class Pow(Expr):
             if self.exp.is_nonnegative or self.base.is_nonzero:
                 return True
 
+    def _eval_is_irrational(self):
+        b, e = self.as_base_exp()
+        if b.is_irrational == True:
+             if e.is_zero is True:
+                return False
+             elif e.is_zero is None:
+                return None
+             elif e.is_imaginary:  # is_complex==True even for integers S(2)
+                return False
+             else:
+                 return True
+        elif b.is_rational:
+            if e.is_zero is True:
+                return False
+            if (e.is_integer==False) and (e.is_imaginary == False): # is_complex==True even for integers S(2)
+                return True
+            elif b.is_integer==True:
+                if e.is_rational:
+                    if e.is_integer:
+                        return False
+                    return True
+        return None
+
     def _eval_subs(self, old, new):
         if self == old:
             return new
@@ -909,7 +932,6 @@ class Pow(Expr):
         See docstring of Expr.as_content_primitive for more examples.
         """
 
-        from sympy.polys.polytools import _keep_coeff
         b, e = self.as_base_exp()
         b = _keep_coeff(*b.as_content_primitive())
         ce, pe = e.as_content_primitive()
@@ -942,11 +964,13 @@ class Pow(Expr):
             if m is S.One or me == e: # probably always true
                 # return the following, not return c, m*Pow(t, e)
                 # which would change Pow into Mul; we let sympy
-                # decide what to do by using the unevaluated Mul
+                # decide what to do by using the unevaluated Mul, e.g
+                # should it stay as sqrt(2 + 2*sqrt(5)) or become
+                # sqrt(2)*sqrt(1 + sqrt(5))
                 return c, Pow(_keep_coeff(m, t), e)
         return S.One, Pow(b, e)
 
 from add import Add
 from numbers import Integer
-from mul import Mul
+from mul import Mul, _keep_coeff
 from symbol import Symbol, Dummy
