@@ -2744,14 +2744,22 @@ class MatrixBase(object):
         # roots doesn't like Floats, so replace them with Rationals
         # unless the nsimplify flag indicates that this has already
         # been done, e.g. in eigenvects
+        float = False
         if flags.pop('rational', True):
-            float = False
             if any(v.has(Float) for v in self):
                 float=True
                 self = self._new(self.rows, self.cols, [nsimplify(v, rational=True) for v in self])
 
         flags.pop('simplify', None) # pop unsupported flag
-        return self.berkowitz_eigenvals(**flags)
+        vlist = self.berkowitz_eigenvals(**flags)
+
+        if float:
+            vlist_ = vlist
+            vlist = {}
+            for r, k in vlist_.items():
+                r = r.evalf()
+                vlist[r] = k
+        return vlist
 
     def eigenvects(self, **flags):
         """Return list of triples (eigenval, multiplicity, basis).
