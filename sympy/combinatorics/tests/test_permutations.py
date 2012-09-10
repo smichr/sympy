@@ -84,14 +84,16 @@ def test_Permutation():
     b = q-p
     assert (a+b).is_Identity
 
+    assert 0^p == 2
+    assert 0^p^q == 0^(p*q)
     pq = p.conjugate(q)
-    assert pq == Permutation([5, 3, 0, 4, 6, 2, 1])
-    assert pq == rmul(~q, p, q)
-    assert pq == p**q
+    assert pq == Permutation([5, 6, 0, 4, 1, 2, 3])
+    assert pq == ~q*p*q
+    assert pq == p^q
     qp = q.conjugate(p)
-    assert qp == Permutation([6, 3, 2, 0, 1, 4, 5])
-    assert qp == rmul(~p, q, p)
-    assert qp == q**p
+    assert qp == Permutation([4, 3, 6, 2, 1, 5, 0])
+    assert qp == ~p*q*p
+    assert qp == q^p
     raises(ValueError, lambda: p.conjugate(Permutation([])))
 
     assert p.commutator(q) == Permutation([1, 4, 5, 6, 3, 0, 2])

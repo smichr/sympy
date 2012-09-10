@@ -365,12 +365,13 @@ class Permutation(Basic):
     A permutation, alternatively known as an 'arrangement number' or 'ordering'
     is an arrangement of the elements of an ordered list into a one-to-one
     mapping with itself. The permutation of a given arrangement is given by
-    indicating the positions of the elements after re-arrrangment [2]_. For
+    indicating the positions of the elements after re-arrangement [2]_. For
     example, if one started with elements [x, y, a, b] (in that order) and
     they were reordered as [x, y, b, a] then the permutation would be
     [0, 1, 3, 2]. Notice that (in SymPy) the first element is always referred
     to as 0 and the permutation uses the indices of the elements in the
     original ordering, not the elements (a, b, etc...) themselves.
+
 
     >>> from sympy.combinatorics import Permutation
     >>> Permutation.print_cyclic = False
@@ -378,43 +379,49 @@ class Permutation(Basic):
     Permutations Notation
     =====================
 
-    Permutations are commonly represented in disjoint cycle, array forms,
-    static arrow diagrams and 2-row matrix forms. SymPy allows them to be
-    entered in cyclic or array form.
+    Permutations are commonly represented in disjoint cycle or array forms.
 
-    Array Notation and 2-row Matrix Form
-    ------------------------------------
+    Array Notation and 2-line form
+    ------------------------------
 
-    In the 2-row matrix form, the elements and their final positions are shown
+    In the 2-line form, the elements and their final positions are shown
     as a matrix with 2 rows:
 
-    [0 1 2 3]
-    [1 2 0 3]
+    [0    1    2     ... n-1]
+    [p(0) p(1) p(2)  ... p(n-1)]
 
-    The 2nd row is the permutation and that is what is referred to as the
-    "array form" of the permutation. This is entered in brackets as the
-    argument to the Permutation class:
+    Since the first line is always range(n), where n is the size of p,
+    it is sufficient to represent the permutation by the second line,
+    referred to as the "array form" of the permutation.
+    This is entered in brackets as the argument to the Permutation class:
 
-    >>> Permutation([0, 2, 1])
+    >>> p = Permutation([0, 2, 1]); p
     Permutation([0, 2, 1])
-    >>> p = _
 
-    Static Arrow Diagram
-    --------------------
+    Given i in range(p.size), the permutation maps i to i^p
 
-    Sometimes permutations are given as "static arrow diagrams" showing which
-    position each elements moves to:
+    >>> [i^p for i in range(3)]
+    [0, 2, 1]
 
-    0 --> 3
-    1 --> 2
-    2 --> 0
-    3 --> 1
+    The composite of two permutations p*q means apply first p, then q
+    i^(p*q) = (i^p)^q which is i^p^q according to Python precedence rules
 
-    The final ordering of the elements -- the permutation -- is 2, 3, 1, 0;
-    this is conveniently entered as the inverse of the "destination vector":
+    >>> q = Permutation([2, 1, 0])
+    >>> [i^p^q for i in range(3)]
+    [2, 0, 1]
+    >>> [i^(p*q) for i in range(3)]
+    [2, 0, 1]
 
-    >>> list(~Permutation([3, 2, 0, 1]))
-    [2, 3, 1, 0]
+    One can use also the notation p(i) = i^p, but then the composition
+    rule is (p*q)(i) = q(p(i)), not p(q(i))
+
+    >>> [(p*q)(i) for i in range(3)]
+    [2, 0, 1]
+    >>> [q(p(i)) for i in range(3)]
+    [2, 0, 1]
+    >>> [p(q(i)) for i in range(3)]
+    [1, 2, 0]
+
 
     Disjoint Cycle Notation
     -----------------------
@@ -1197,19 +1204,9 @@ class Permutation(Basic):
         >>> from sympy.combinatorics.permutations import Permutation
         >>> Permutation.print_cyclic = False
         >>> p = Permutation([2,0,3,1])
-        >>> q = Permutation([1,0,2,3])
-        >>> r = Permutation([0,2,3,1])
         >>> p**4
         Permutation([0, 1, 2, 3])
-        >>> p**q == p.conjugate(q)
-        True
-        >>> q**p == q.conjugate(p)
-        True
-        >>> (p**q)**r == p**(r*q)
-        True
         """
-        if type(n) == Perm:
-            return self.conjugate(n)
         n = int(n)
         if n == 0:
             return Perm._af_new(range(self.size))
@@ -1883,9 +1880,9 @@ class Permutation(Basic):
                 k = k * 2
         return inversions
 
-    def conjugate(self, x):
+    def conjugate(self, q):
         """
-        Return the conjugate permutation ``x*self*~x``
+        Return the conjugate permutation ``q~*self*q``
 
         Examples
         ========
@@ -1893,25 +1890,22 @@ class Permutation(Basic):
         >>> from sympy.combinatorics.permutations import Permutation
         >>> Permutation.print_cyclic = False
         >>> p = Permutation([2, 0, 1, 3])
-        >>> x = Permutation([0, 2, 3, 1])
-        >>> p.conjugate(x)
-        Permutation([1, 3, 2, 0])
-        >>> x*p*~x
-        Permutation([1, 3, 2, 0])
-        >>> p**x
-        Permutation([1, 3, 2, 0])
+        >>> q = Permutation([0, 2, 3, 1])
+        >>> p.conjugate(q)
+        Permutation([3, 1, 0, 2])
+        >>> ~q*p*q
+        Permutation([3, 1, 0, 2])
+        >>> p^q
+        Permutation([3, 1, 0, 2])
 
-        Notes
-        =====
+        Alternative notation
+        ====================
 
-        x*p*~x is not necessarily equal to ~x*p*x:
-
-        >>> ~x*p*x == x*p*~x
-        False
+        p^q = p.conjugate(q)
         """
 
         a = self.array_form
-        b = x.array_form
+        b = q.array_form
         n = len(a)
         if len(b) != n:
             raise ValueError("The number of elements in the permutations "
@@ -1919,7 +1913,62 @@ class Permutation(Basic):
         invb = [None]*n
         for i in range(n):
             invb[b[i]] = i
-        return Perm._af_new([invb[a[i]] for i in b])
+        return Perm._af_new([b[a[i]] for i in invb])
+
+    def __xor__(self, q):
+        """
+        Return the conjugate permutation  ``q~*self*q``
+
+        For p, q, r permutations, and x in range(p.size) one has
+        p^q^r = p^(q*r)
+        x^p^q = x^(p*q)
+
+        Examples
+        ========
+
+        >>> from sympy.combinatorics import Permutation
+        >>> Permutation.print_cyclic = True
+        >>> p = Permutation(1, 2, 9)
+        >>> q = Permutation(6, 9, 8)
+        >>> r = Permutation(9)(4,6,8)
+        >>> q^p^r
+        Permutation(9)(1, 4, 8)
+        >>> (q^p)^r
+        Permutation(9)(1, 4, 8)
+        >>> q^(p*r)
+        Permutation(9)(1, 4, 8)
+        >>> 2^p
+        9
+        >>> 2^p^q
+        8
+        >>> 2^(p*q)
+        8
+
+        Notes
+        =====
+
+        In Python the precedence rule is p^q^r = (p^q)^r which differs
+        in general from p^(q^r)
+
+        """
+        return self.conjugate(q)
+
+    def __rxor__(self, x):
+        """
+        Return self(x) when x in an int
+
+        Examples
+        ========
+        >>> from sympy.combinatorics import Permutation
+        >>> p = Permutation(1, 2, 9)
+        >>> 2^p
+        9
+        """
+        if int(x) == x:
+            return self(x)
+        else:
+            raise NotImplementedError
+
 
     def commutator(self, x):
         """
