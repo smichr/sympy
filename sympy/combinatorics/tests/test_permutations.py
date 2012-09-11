@@ -73,23 +73,21 @@ def test_Permutation():
     assert a/a == I
     assert a/b == a*~b
 
-    assert p + q == Permutation([5, 6, 3, 1, 2, 4, 0])
-    assert q + p == p + q
-    raises(ValueError, lambda: p + Permutation(range(10)))
+    ans = Permutation(0, 5, 3, 1, 6)(2, 4)
+    assert (p + q.rank).rank == ans.rank
+    assert (p + q.rank)._rank == ans.rank
+    assert (q + p.rank).rank == ans.rank
+    raises(TypeError, lambda: p + Permutation(range(10)))
 
-    assert p - q == Permutation([6, 3, 5, 1, 2, 4, 0])
-    assert q - p == Permutation([1, 4, 2, 6, 5, 3, 0])
-    raises(ValueError, lambda: p - Permutation(range(10)))
+    assert (p - q.rank).rank == Permutation(0, 6, 3, 1, 2, 5, 4).rank
+    assert p.rank - q.rank < 0 # for coverage: make sure mod is used
+    assert (q - p.rank).rank == Permutation(1, 4, 6, 2)(3, 5).rank
 
     assert p*q == Permutation(_af_rmuln(*[list(w) for w in (q, p)]))
     assert p*Permutation([]) == p
     assert Permutation([])*p == p
     assert p*Permutation([[0, 1]]) == Permutation([2, 5, 0, 6, 3, 1, 4])
     assert Permutation([[0, 1]])*p == Permutation([5, 2, 1, 6, 3, 0, 4])
-
-    a = p - q
-    b = q - p
-    assert (a + b).is_Identity
 
     pq = p^q
     assert pq == Permutation([5, 6, 0, 4, 1, 2, 3])
@@ -212,15 +210,15 @@ def test_josephus():
     assert Permutation.josephus(1, 5, 1).is_Identity
 
 def test_ranking():
-    assert Permutation.unrank_lex(5, 10).rank() == 10
+    assert Permutation.unrank_lex(5, 10).rank == 10
     p = Permutation.unrank_lex(15, 225)
-    assert p.rank() == 225
+    assert p.rank == 225
     p1 = p.next_lex()
-    assert p1.rank() == 226
-    assert Permutation.unrank_lex(15, 225).rank() == 225
+    assert p1.rank == 226
+    assert Permutation.unrank_lex(15, 225).rank == 225
     assert Permutation.unrank_lex(10, 0).is_Identity
     p = Permutation.unrank_lex(4, 23)
-    assert p.rank() == 23
+    assert p.rank == 23
     assert p.array_form == [3, 2, 1, 0]
     assert p.next_lex() == None
 
@@ -249,8 +247,8 @@ def test_ranking():
 
     p = Permutation([2, 5, 1, 6, 3, 0, 4])
     q = Permutation([[6], [5], [0, 1, 2, 3, 4]])
-    assert p.rank() == 1964
-    assert q.rank() == 870
+    assert p.rank == 1964
+    assert q.rank == 870
     assert Permutation([]).rank_nonlex() == 0
     prank = p.rank_nonlex()
     assert prank == 1600
