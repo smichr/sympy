@@ -1067,7 +1067,10 @@ class Permutation(Basic):
             raise ValueError(
             'only a permutation or 1 may be divided by a permutation')
 
-    def __div__(self, other):
+    def __truediv__(self, other): # Python 3
+        return other.__rdiv__(self)
+
+    def __div__(self, other): # Python 2
         return other.__rdiv__(self)
 
     @staticmethod
