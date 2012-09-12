@@ -1966,7 +1966,10 @@ class Permutation(Basic):
         return inversions
 
     def commutator(self, x):
-        """Return the commutator permutation ``x*self*~x*~self``
+        """Return the commutator of self and x: ``x*self*~x*~self``
+
+        If f and g are part of a group, G, then the commutator of f and g
+        is the group identity iff f and g commute, i.e. fg == gf.
 
         Examples
         ========
@@ -1979,6 +1982,22 @@ class Permutation(Basic):
         Permutation([1, 3, 2, 0])
         >>> x*p*~x*~p
         Permutation([1, 3, 2, 0])
+
+        >>> I = Permutation(3)
+        >>> p = [I + i for i in range(6)]
+        >>> for i in range(len(p)):
+        ...     for j in range(len(p)):
+        ...         c = p[i].commutator(p[j])
+        ...         if p[i]*p[j] == p[j]*p[i]:
+        ...             assert c == I
+        ...         else:
+        ...             assert c != I
+        ...
+
+        References
+        ==========
+
+        http://en.wikipedia.org/wiki/Commutator
         """
 
         a = self.array_form
