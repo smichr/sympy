@@ -839,7 +839,7 @@ class Permutation(Basic):
             # but do allow the permutation size to be increased
             aform.extend(range(len(aform), size))
         size = len(aform)
-        obj = Basic.__new__(cls, aform)
+        obj = Basic.__new__(cls, tuple(aform))
         obj._array_form = aform
         obj._size = size
         return obj
