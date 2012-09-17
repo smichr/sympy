@@ -1159,9 +1159,8 @@ class PermutationGroup(Basic):
         If ``g`` is an element of ``G`` then it can be written as the product
         of permutations drawn from the Schreier-Sims coset decomposition,
         ``u``, of ``G``. The permutations returned in ``f`` are those for which
-        the product gives ``g``: ``g = f[n]*...f[1]*f[0]``. The number of
-        factors returned will always be the same as the length of ``u``, which
-        might mean that repeated factors of identity permutations may appear.
+        the product gives ``g``: ``g = f[b_(r-1)]*...f[b_1]*f[b_0]``
+        where ``b_i = G.base[i]`` and ``r = len(G.base)``.
 
         Examples
         ========
@@ -1259,13 +1258,10 @@ class PermutationGroup(Basic):
         I = range(self.degree)
         if g == I:
             return [I]*(len(u))
-        # look for another quick exit
-        if any(p == g for ui in u for p in ui):
-            return [I]*(len(u) - 1) + [g]
         # search for factors
         f = []
         g_now = g
-        for i in range(len(u)):
+        for i in self.base:
             for h in u[i]:
                 if h[i] == g_now[i]:
                     f.append(h)
@@ -1274,7 +1270,7 @@ class PermutationGroup(Basic):
                     break
             else:
                 return []
-        return f if _af_rmuln(*f) == g else []
+        return f if g_now == I else []
 
     def coset_rank(self, g):
         """rank using Schreier-Sims representation
@@ -1341,7 +1337,7 @@ class PermutationGroup(Basic):
                     break
             else:
                 return None
-        if _af_rmuln(*a) == g:
+        if g1 == range(self.degree):
             return rank
         return None
 
@@ -3670,7 +3666,7 @@ class PermutationGroup(Basic):
     def transitivity_degree(self):
         """Compute the degree of transitivity of the group.
 
-        A permutation group ``G`` acting on ``\Omega = \{0, 2, ..., n-1\}`` is
+        A permutation group ``G`` acting on ``\Omega = \{0, 1, ..., n-1\}`` is
         ``k``-fold transitive, if, for any k points
         ``(a_1, a_2, ..., a_k)\in\Omega`` and any k points
         ``(b_1, b_2, ..., b_k)\in\Omega`` there exists ``g\in G`` such that
@@ -3708,7 +3704,7 @@ class PermutationGroup(Basic):
             return self._transitivity_degree
 
     def is_group(self):
-        """Return True if the group meets three crtieria: identity is present,
+        """Return True if the group meets three criteria: identity is present,
         the inverse of every element is also an element, and the product of
         any two elements is also an element. If any of the tests fail, False
         is returned.
