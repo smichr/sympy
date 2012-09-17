@@ -1156,11 +1156,10 @@ class PermutationGroup(Basic):
     def coset_factor(self, g):
         """Return ``G``'s (self's) coset factorization, ``f``, of ``g``
 
-        If ``g`` is an element of ``G`` then it can be written as the product
-        of permutations drawn from the Schreier-Sims coset decomposition,
-        ``u``, of ``G``. The permutations returned in ``f`` are those for which
-        the product gives ``g``: ``g = f[b_(r-1)]*...f[b_1]*f[b_0]``
-        where ``b_i = G.base[i]`` and ``r = len(G.base)``.
+        If ``g`` is an element of ``G`` then it can be factored in unique
+        way as ``(h_0,..., h_(r-1))`` where `h_i` is an element of
+        ``G.stabilizer_cosets()[G.base[i]]`` and ``r = len(G.base)``,
+        and ``g = h_(r-1)*..*h_0``.
 
         Examples
         ========
@@ -1172,6 +1171,8 @@ class PermutationGroup(Basic):
         >>> a = Permutation(0, 1, 3, 7, 6, 4)(2, 5)
         >>> b = Permutation(0, 1, 3, 2)(4, 5, 7, 6)
         >>> G = PermutationGroup([a, b])
+        >>> G.base
+        [0, 1, 2]
         >>> u = G.stabilizer_cosets()
 
         The coset decomposition of G has a u of length 3:
@@ -1198,6 +1199,9 @@ class PermutationGroup(Basic):
             Permutation(7)
             Permutation(7)(2, 4)(3, 5)
 
+        All elements of G can be factored as ``(h_0, h_1, h_2)``
+        where ``h_0`` belongs to ``u0``, etc.
+        The order of the group is ``len(u0)*len(u1)*len(u2)``
         Define g:
 
         >>> g = Permutation(7)(1, 2, 4)(3, 6, 5)
@@ -1207,9 +1211,7 @@ class PermutationGroup(Basic):
         >>> G.contains(g)
         True
 
-        Thus, it can be written as a product of factors (up to
-        3) drawn from u. See below that a factor from u1 and u2
-        and the Identity permutation have been used:
+        Thus, it can be written as a product of factors ``(h_0, h_1, h_2)``
 
         >>> f = [Permutation(fi) for fi in G.coset_factor(g)]
         >>> for fi in f:
@@ -1224,10 +1226,13 @@ class PermutationGroup(Basic):
         >>> f[2]*f[1]*f[0] == g
         True
 
-        If g is already in the coset decomposition of G then it (and
-        Identity permutations) will be returned:
+        If g is already in the coset decomposition of G and is not the
+        identity then ``f[f.index(g.array_form)] == g.array_form``
 
         >>> g = Permutation(u[2][1])
+        >>> f = G.coset_factor(g)
+        >>> f[f.index(g.array_form)] == g.array_form
+        True
         >>> for fi in G.coset_factor(g):
         ...     print Permutation(fi)
         ...
@@ -1257,7 +1262,7 @@ class PermutationGroup(Basic):
         # check for quick exit
         I = range(self.degree)
         if g == I:
-            return [I]*(len(u))
+            return [I]*(len(self.base))
         # search for factors
         f = []
         g_now = g
