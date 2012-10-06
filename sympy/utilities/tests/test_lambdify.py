@@ -215,6 +215,7 @@ def test_matrix():
     A = Matrix([[x, x*y], [sin(z)+4, x**z]])
     sol = Matrix([[1, 2], [sin(3)+4, 1]])
     f = lambdify((x,y,z), A, modules="sympy")
+    print f
     assert f(1,2,3) == sol
     f = lambdify((x,y,z), (A, [A]), modules="sympy")
     assert f(1,2,3) == (sol,[sol])

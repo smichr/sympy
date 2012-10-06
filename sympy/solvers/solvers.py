@@ -2061,7 +2061,7 @@ def nsolve(*args, **kwargs):
         print 'J(x):'
         print J
     # create functions
-    f = lambdify(fargs, f.T, modules)
+    f = lambdify(fargs, f, modules)
     J = lambdify(fargs, J, modules)
     # solve the system numerically
     x = findroot(f, x0, J=J, **kwargs)

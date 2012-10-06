@@ -751,7 +751,8 @@ class MutableDenseMatrix(DenseMatrix):
         """
         self._mat = [value]*len(self)
 
-MutableMatrix = Matrix = MutableDenseMatrix
+Matrix = MutableDenseMatrix
+Matrix.__name__ = "Matrix"
 
 ###########
 # Numpy Utility Functions:
