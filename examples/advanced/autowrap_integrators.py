@@ -3,38 +3,35 @@
 Numerical integration with autowrap
 -----------------------------------
 
-This example demonstrates how you can use the autowrap module in Sympy to
-create fast, numerical integration routines callable from python.  See in the
-code for detailed explanations of the various steps.  An autowrapped sympy
-expression can be significantly faster than what you would get by applying a
-sequence of the ufuncs shipped with numpy. [0]
+This example demonstrates how you can use the autowrap module in SymPy
+to create fast, numerical integration routines callable from python. See
+in the code for detailed explanations of the various steps. An
+autowrapped sympy expression can be significantly faster than what you
+would get by applying a sequence of the ufuncs shipped with numpy. [0]
 
 We will find the coefficients needed to approximate a quantum mechanical
-Hydrogen wave function in terms of harmonic oscillator solutions.  For the
-sake of demonstration, this will be done by setting up a simple numerical
-integration scheme as a Sympy expression, and obtain a binary implementation
-with autowrap.
+Hydrogen wave function in terms of harmonic oscillator solutions. For
+the sake of demonstration, this will be done by setting up a simple
+numerical integration scheme as a SymPy expression, and obtain a binary
+implementation with autowrap.
 
-You need to have numpy installed to run this example, as well as a working
-fortran compiler.  If you have pylab installed, you will be rewarded with a
-nice plot in the end.
+You need to have numpy installed to run this example, as well as a
+working fortran compiler. If you have pylab installed, you will be
+rewarded with a nice plot in the end.
 
+[0]:
+http://ojensen.wordpress.com/2010/08/10/fast-ufunc-ish-hydrogen-solutions/
 
-[0]: http://ojensen.wordpress.com/2010/08/10/fast-ufunc-ish-hydrogen-solutions/
 ----
 """
 
 import sys
+from sympy.external import import_module
 
-try:
-    import numpy as np
-except ImportError:
+np = import_module('numpy')
+if not np:
     sys.exit("Cannot import numpy. Exiting.")
-try:
-    import pylab
-except ImportError:
-    pylab = None
-    print "Couldn't import pylab"
+pylab = import_module('pylab', warn_not_installed=True)
 
 from sympy.utilities.lambdify import implemented_function
 from sympy.utilities.autowrap import autowrap, ufuncify
@@ -122,7 +119,7 @@ def main():
         # setup basis wave functions
         #
         # To get inline expressions in the low level code, we attach the
-        # wave function expressions to a regular Sympy function using the
+        # wave function expressions to a regular SymPy function using the
         # implemented_function utility.  This is an extra step needed to avoid
         # erronous summations in the wave function expressions.
         #

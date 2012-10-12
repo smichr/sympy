@@ -27,7 +27,7 @@ def get_string(dump_fn, routines, prefix="file", header=False, empty=False):
     return source
 
 def test_cython_wrapper_scalar_function():
-    x,y,z = symbols('xyz')
+    x,y,z = symbols('x,y,z')
     expr = (x+y)*z
     routine = Routine("test", expr)
     code_gen = CythonCodeWrapper(CCodeGen())
@@ -42,7 +42,7 @@ def test_cython_wrapper_scalar_function():
 
 def test_cython_wrapper_outarg():
     from sympy import Equality
-    x,y,z = symbols('xyz')
+    x,y,z = symbols('x,y,z')
     code_gen = CythonCodeWrapper(CCodeGen())
 
     routine = Routine("test", Equality(z, x + y))
@@ -59,7 +59,7 @@ def test_cython_wrapper_outarg():
 
 def test_cython_wrapper_inoutarg():
     from sympy import Equality
-    x,y,z = symbols('xyz')
+    x,y,z = symbols('x,y,z')
     code_gen = CythonCodeWrapper(CCodeGen())
     routine = Routine("test", Equality(z, x + y + z))
     source = get_string(code_gen.dump_pyx, [routine])
@@ -93,13 +93,13 @@ def test_autowrap_dummy():
 def test_autowrap_args():
     x, y, z = symbols('x y z')
 
-    raises(CodeGenArgumentListError, "autowrap(Eq(z, x + y), backend='dummy', args=[x])")
+    raises(CodeGenArgumentListError, lambda: autowrap(Eq(z, x + y), backend='dummy', args=[x]))
     f = autowrap(Eq(z, x + y), backend='dummy', args=[y, x])
     assert f() == str(x + y)
     assert f.args == "y, x"
     assert f.returns == "z"
 
-    raises(CodeGenArgumentListError, "autowrap(Eq(z, x + y + z), backend='dummy', args=[x, y])")
+    raises(CodeGenArgumentListError, lambda: autowrap(Eq(z, x + y + z), backend='dummy', args=[x, y]))
     f = autowrap(Eq(z, x + y + z), backend='dummy', args=[y, x, z])
     assert f() == str(x + y + z)
     assert f.args == "y, x, z"

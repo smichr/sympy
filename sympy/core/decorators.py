@@ -5,7 +5,23 @@ The purpose of this module is to expose decorators without any other
 dependencies, so that they can be easily imported anywhere in sympy/core.
 """
 
+from functools import wraps
 from sympify import SympifyError, sympify
+
+def deprecated(**decorator_kwargs):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used."""
+
+    def deprecated_decorator(func):
+        @wraps(func)
+        def new_func(*args, **kwargs):
+            from sympy.utilities.exceptions import SymPyDeprecationWarning
+            decorator_kwargs.setdefault('feature', func.__name__)
+            SymPyDeprecationWarning(**decorator_kwargs).warn()
+            return func(*args, **kwargs)
+        return new_func
+    return deprecated_decorator
 
 def _sympifyit(arg, retval=None):
     """decorator to smartly _sympify function arguments
@@ -40,10 +56,12 @@ def __sympifyit(func, arg, retval=None):
     assert func.func_code.co_varnames[1] == arg
 
     if retval is None:
+        @wraps(func)
         def __sympifyit_wrapper(a, b):
             return func(a, sympify(b, strict=True))
 
     else:
+        @wraps(func)
         def __sympifyit_wrapper(a, b):
             try:
                 return func(a, sympify(b, strict=True))
@@ -77,6 +95,7 @@ def call_highest_priority(method_name):
         ...
     """
     def priority_decorator(func):
+        @wraps(func)
         def binary_op_wrapper(self, other):
             if hasattr(other, '_op_priority'):
                 if other._op_priority > self._op_priority:
@@ -89,4 +108,3 @@ def call_highest_priority(method_name):
             return func(self, other)
         return binary_op_wrapper
     return priority_decorator
-

@@ -12,13 +12,13 @@ Fortran77" by Clive G. Page:
 
 http://www.star.le.ac.uk/~cgp/prof77.html
 
-Fortran is a case-insensitive language. This might cause trouble because sympy
-is case sensitive. The implementation below does not care and leaves the
-responsibility for generating properly cased Fortran code to the user.
+Fortran is a case-insensitive language. This might cause trouble because
+SymPy is case sensitive. The implementation below does not care and leaves
+the responsibility for generating properly cased Fortran code to the user.
 """
 
 
-from sympy.core import S, C
+from sympy.core import S, C, Add, Float
 from sympy.printing.codeprinter import CodePrinter
 from sympy.printing.precedence import precedence
 from sympy.functions import sin, cos, tan, asin, acos, atan, atan2, sinh, \
@@ -157,16 +157,16 @@ class FCodePrinter(CodePrinter):
         pure_imaginary = []
         mixed = []
         for arg in expr.args:
-            if arg.is_real and arg.is_number:
+            if arg.is_number and arg.is_real:
                 pure_real.append(arg)
-            elif arg.is_imaginary and arg.is_number:
+            elif arg.is_number and arg.is_imaginary:
                 pure_imaginary.append(arg)
             else:
                 mixed.append(arg)
         if len(pure_imaginary) > 0:
             if len(mixed) > 0:
                 PREC = precedence(expr)
-                term = C.Add(*mixed)
+                term = Add(*mixed)
                 t = self._print(term)
                 if t.startswith('-'):
                     sign = "-"
@@ -177,14 +177,14 @@ class FCodePrinter(CodePrinter):
                     t = "(%s)" % t
 
                 return "cmplx(%s,%s) %s %s" % (
-                    self._print(C.Add(*pure_real)),
-                    self._print(-S.ImaginaryUnit*C.Add(*pure_imaginary)),
+                    self._print(Add(*pure_real)),
+                    self._print(-S.ImaginaryUnit*Add(*pure_imaginary)),
                     sign, t,
                 )
             else:
                 return "cmplx(%s,%s)" % (
-                    self._print(C.Add(*pure_real)),
-                    self._print(-S.ImaginaryUnit*C.Add(*pure_imaginary)),
+                    self._print(Add(*pure_real)),
+                    self._print(-S.ImaginaryUnit*Add(*pure_imaginary)),
                 )
         else:
             return CodePrinter._print_Add(self, expr)
@@ -204,7 +204,7 @@ class FCodePrinter(CodePrinter):
                 self._not_supported.add(expr)
         return "%s(%s)" % (name, self.stringify(expr.args, ", "))
 
-    _print_Factorial = _print_Function
+    _print_factorial = _print_Function
 
     def _print_ImaginaryUnit(self, expr):
         # purpose: print complex numbers nicely in Fortran.
@@ -215,7 +215,7 @@ class FCodePrinter(CodePrinter):
 
     def _print_Mul(self, expr):
         # purpose: print complex numbers nicely in Fortran.
-        if expr.is_imaginary and expr.is_number:
+        if expr.is_number and expr.is_imaginary:
             return "cmplx(0,%s)" % (
                 self._print(-S.ImaginaryUnit*expr)
             )
@@ -227,7 +227,7 @@ class FCodePrinter(CodePrinter):
 
     def _print_Pow(self, expr):
         PREC = precedence(expr)
-        if expr.exp is S.NegativeOne:
+        if expr.exp == -1:
             return '1.0/%s'%(self.parenthesize(expr.base, PREC))
         elif expr.exp == 0.5:
             if expr.base.is_integer:
@@ -245,8 +245,8 @@ class FCodePrinter(CodePrinter):
         p, q = int(expr.p), int(expr.q)
         return "%d.0d0/%d.0d0" % (p, q)
 
-    def _print_Real(self, expr):
-        printed = CodePrinter._print_Real(self, expr)
+    def _print_Float(self, expr):
+        printed = CodePrinter._print_Float(self, expr)
         e = printed.find('e')
         if e > -1:
             return "%sd%s" % (printed[:e], printed[e+1:])
@@ -330,29 +330,25 @@ class FCodePrinter(CodePrinter):
     def indent_code(self, code):
         """Accepts a string of code or a list of code lines"""
         if isinstance(code, basestring):
-            code_lines = self.indent_code(code.splitlines())
-            return '\n'.join(code_lines)
+            code_lines = self.indent_code(code.splitlines(True))
+            return ''.join(code_lines)
 
         free = self._settings['source_format'] == 'free'
-        code = [ line.lstrip() for line in code ]
+        code = [ line.lstrip(' \t') for line in code ]
 
         inc_keyword = ('do ', 'if(', 'if ', 'do\n', 'else')
-        dec_keyword = ('end ', 'enddo', 'end\n', 'else')
+        dec_keyword = ('end do', 'enddo', 'end if', 'endif', 'else')
 
-        increase = [ int(reduce(lambda x, y: x or line.startswith(y),
-                                inc_keyword, False)) \
-                     for line in code ]
-        decrease = [ int(reduce(lambda x, y: x or line.startswith(y),
-                                dec_keyword, False)) \
-                     for line in code ]
-        continuation = [ line.endswith('&') for line in code ]
+        increase = [ int(any(map(line.startswith, inc_keyword))) for line in code ]
+        decrease = [ int(any(map(line.startswith, dec_keyword))) for line in code ]
+        continuation = [ int(any(map(line.endswith, ['&', '&\n']))) for line in code ]
 
         level = 0
         cont_padding = 0
         tabwidth = 3
         new_code = []
         for i, line in enumerate(code):
-            if not line:
+            if line == '' or line == '\n':
                 new_code.append(line)
                 continue
             level -= decrease[i]
@@ -381,25 +377,34 @@ class FCodePrinter(CodePrinter):
 def fcode(expr, **settings):
     """Converts an expr to a string of Fortran 77 code
 
-       Arguments:
-         expr  --  a sympy expression to be converted
+       Parameters
+       ==========
 
-       Optional arguments:
-         assign_to  --  When given, the argument is used as the name of the
-                        variable to which the Fortran expression is assigned.
-                        (This is helpful in case of line-wrapping.)
-         precision  --  the precision for numbers such as pi [default=15]
-         user_functions  --  A dictionary where keys are FunctionClass instances
-                             and values are there string representations.
-         human  --  If True, the result is a single string that may contain
-                    some parameter statements for the number symbols. If
-                    False, the same information is returned in a more
-                    programmer-friendly data structure.
-         source_format  --  The source format can be either 'fixed' or 'free'.
-                            [default='fixed']
+       expr : sympy.core.Expr
+           a sympy expression to be converted
+       assign_to : optional
+           When given, the argument is used as the name of the
+           variable to which the Fortran expression is assigned.
+           (This is helpful in case of line-wrapping.)
+       precision : optional
+           the precision for numbers such as pi [default=15]
+       user_functions : optional
+           A dictionary where keys are FunctionClass instances and values
+           are there string representations.
+       human : optional
+           If True, the result is a single string that may contain some
+           parameter statements for the number symbols. If False, the same
+           information is returned in a more programmer-friendly data
+           structure.
+       source_format : optional
+           The source format can be either 'fixed' or 'free'.
+           [default='fixed']
+
+       Examples
+       ========
 
        >>> from sympy import fcode, symbols, Rational, pi, sin
-       >>> x, tau = symbols(["x", "tau"])
+       >>> x, tau = symbols('x,tau')
        >>> fcode((2*tau)**Rational(7,2))
        '      8*sqrt(2.0d0)*tau**(7.0d0/2.0d0)'
        >>> fcode(sin(x), assign_to="s")
@@ -420,4 +425,3 @@ def print_fcode(expr, **settings):
        See fcode for the meaning of the optional arguments.
     """
     print fcode(expr, **settings)
-

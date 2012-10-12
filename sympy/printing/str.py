@@ -2,7 +2,8 @@
 A Printer for generating readable representation of most sympy classes.
 """
 
-from sympy.core import S, Rational, Pow, Basic
+from sympy.core import S, Rational, Pow, Basic, Mul
+from sympy.core.function import _coeff_isneg
 from printer import Printer
 from sympy.printing.precedence import precedence, PRECEDENCE
 
@@ -10,6 +11,8 @@ import sympy.mpmath.libmp as mlib
 from sympy.mpmath.libmp import prec_to_dps
 
 from sympy.polys.polyerrors import PolynomialError
+
+from sympy.utilities import default_sort_key
 
 class StrPrinter(Printer):
     printmethod = "_sympystr"
@@ -27,18 +30,26 @@ class StrPrinter(Printer):
     def stringify(self, args, sep, level=0):
         return sep.join([self.parenthesize(item, level) for item in args])
 
-    def _print_Add(self, expr):
-        args = list(expr.args)
+    def emptyPrinter(self, expr):
+        if isinstance(expr, str):
+            return expr
+        elif isinstance(expr, Basic):
+            if hasattr(expr, "args"):
+                return repr(expr)
+            else:
+                raise
+        else:
+            return str(expr)
 
-        # Now we need to sort the factors in Add, which are in "rest". Any
-        # ordering is fine, but some ordering looks better and some looks bad.
-        # This particular solution is slow, but it ensures a sane ordering. It
-        # can of course be improved:
+    def _print_Add(self, expr, order=None):
+        if self.order == 'none':
+            terms = list(expr.args)
+        else:
+            terms = self._as_ordered_terms(expr, order=order)
 
-        args.sort(Basic._compare_pretty)
         PREC = precedence(expr)
         l = []
-        for term in args:
+        for term in terms:
             t = self._print(term)
             if t.startswith('-'):
                 sign = "-"
@@ -54,12 +65,25 @@ class StrPrinter(Printer):
             sign = ""
         return sign + ' '.join(l)
 
-    def _print_Assume(self, expr):
-        return 'Assume(%s, %r)' % (expr.expr, expr.key)
+    def _print_And(self, expr):
+        return '%s(%s)' % (expr.func, ', '.join(sorted(self._print(a) for a in
+            expr.args)))
+
+    def _print_Or(self, expr):
+        return '%s(%s)' % (expr.func, ', '.join(sorted(self._print(a) for a in
+            expr.args)))
+
+    def _print_AppliedPredicate(self, expr):
+        return '%s(%s)' % (expr.func, expr.arg)
 
     def _print_Basic(self, expr):
         l = [self._print(o) for o in expr.args]
         return expr.__class__.__name__ + "(%s)"%", ".join(l)
+
+    def _print_BlockMatrix(self, B):
+        if B._mat.shape == (1, 1):
+            self._print(B._mat[0,0])
+        return self._print(B._mat)
 
     def _print_Catalan(self, expr):
         return 'Catalan'
@@ -68,18 +92,30 @@ class StrPrinter(Printer):
         return 'zoo'
 
     def _print_Derivative(self, expr):
-        return 'D(%s)'%", ".join(map(self._print, expr.args))
+        return 'Derivative(%s)'%", ".join(map(self._print, expr.args))
 
-    def _print_dict(self, expr):
-        keys = expr.keys()
-        keys.sort( Basic.compare_pretty )
-
+    def _print_dict(self, d):
+        keys = sorted(d.keys(), key=default_sort_key)
         items = []
+
         for key in keys:
-            item = "%s: %s" % (self._print(key), self._print(expr[key]))
+            item = "%s: %s" % (self._print(key), self._print(d[key]))
             items.append(item)
 
         return "{%s}"%", ".join(items)
+
+    def _print_Dict(self, expr):
+        return self._print_dict(expr)
+
+    def _print_RandomDomain(self, d):
+        try:
+            return 'Domain: '+self._print(d.as_boolean())
+        except:
+            try:
+                return ('Domain: ' + self._print(d.symbols) + ' in ' +
+                        self._print(d.set))
+            except:
+                return 'Domain on ' + self._print(d.symbols)
 
     def _print_Dummy(self, expr):
         return '_' + expr.name
@@ -93,8 +129,16 @@ class StrPrinter(Printer):
     def _print_ExprCondPair(self, expr):
         return '(%s, %s)' % (expr.expr, expr.cond)
 
-    def _print_Factorial(self, expr):
+    def _print_factorial(self, expr):
         return "%s!" % self.parenthesize(expr.args[0], PRECEDENCE["Pow"])
+
+    def _print_FiniteSet(self, s):
+        s = sorted(s, key=default_sort_key)
+        if len(s) > 10:
+            printset = s[:3] + ['...'] + s[-3:]
+        else:
+            printset = s
+        return '{' + ', '.join(self._print(el) for el in printset) + '}'
 
     def _print_Function(self, expr):
         return expr.func.__name__ + "(%s)"%self.stringify(expr.args, ", ")
@@ -111,9 +155,6 @@ class StrPrinter(Printer):
 
     def _print_Infinity(self, expr):
         return 'oo'
-
-    def _print_Integer(self, expr):
-        return self._print(expr.p)
 
     def _print_Integral(self, expr):
         def _xab_tostr(xab):
@@ -138,13 +179,24 @@ class StrPrinter(Printer):
         return "%s%s, %s%s" % \
                (left, self._print(i.start), self._print(i.end), right)
 
+    def _print_Inverse(self, I):
+        return "%s^-1" % self.parenthesize(I.arg, PRECEDENCE["Pow"])
+
+    def _print_Lambda(self, obj):
+        args, expr = obj.args
+        if len(args) == 1:
+            return "Lambda(%s, %s)" % (args.args[0], expr)
+        else:
+            arg_string = ", ".join(self._print(arg) for arg in args)
+            return "Lambda((%s), %s" % (arg_string, expr)
+
     def _print_LatticeOp(self, expr):
-        args = sorted(expr.args, cmp=expr._compare_pretty)
+        args = sorted(expr.args, key=default_sort_key)
         return expr.func.__name__ + "(%s)"%", ".join(self._print(arg) for arg in args)
 
     def _print_Limit(self, expr):
         e, z, z0, dir = expr.args
-        if dir == "+":
+        if str(dir) == "+":
             return "Limit(%s, %s, %s)" % (e, z, z0)
         else:
             return "Limit(%s, %s, %s, dir='%s')" % (e, z, z0, dir)
@@ -152,30 +204,47 @@ class StrPrinter(Printer):
     def _print_list(self, expr):
         return "[%s]"%self.stringify(expr, ", ")
 
-    def _print_Matrix(self, expr):
+    def _print_MatrixBase(self, expr):
         return expr._format_str(lambda elem: self._print(elem))
+    _print_SparseMatrix = \
+    _print_MutableSparseMatrix = \
+    _print_ImmutableSparseMatrix = \
+    _print_Matrix = \
+    _print_DenseMatrix = \
+    _print_MutableDenseMatrix = \
+    _print_ImmutableMatrix = \
+    _print_ImmutableDenseMatrix = \
+    _print_MatrixBase
 
     def _print_DeferredVector(self, expr):
         return expr.name
 
     def _print_Mul(self, expr):
-        coeff, terms = expr.as_coeff_terms()
-        if coeff.is_negative:
-            coeff = -coeff
-            if coeff is not S.One:
-                terms = (coeff,) + terms
+
+        prec = precedence(expr)
+
+        if _coeff_isneg(expr):
+            expr = -expr
             sign = "-"
         else:
-            terms = (coeff,) + terms
             sign = ""
 
         a = [] # items in the numerator
         b = [] # items that are in the denominator (if any)
 
-        # Gather terms for numerator/denominator
-        for item in terms:
-            if item.is_Pow and item.exp.is_Rational and item.exp.is_negative:
-                b.append(Pow(item.base, -item.exp))
+        if self.order not in ('old', 'none'):
+            args = expr.as_ordered_factors()
+        else:
+            # use make_args in case expr was something like -x -> x
+            args = Mul.make_args(expr)
+
+        # Gather args for numerator/denominator
+        for item in args:
+            if item.is_commutative and item.is_Pow and item.exp.is_Rational and item.exp.is_negative:
+                if item.exp != -1:
+                    b.append(Pow(item.base, -item.exp, evaluate=False))
+                else:
+                    b.append(Pow(item.base, -item.exp))
             elif item.is_Rational and item is not S.Infinity:
                 if item.p != 1:
                     a.append(Rational(item.p))
@@ -184,21 +253,25 @@ class StrPrinter(Printer):
             else:
                 a.append(item)
 
-        if len(a)==0:
-            a = [S.One]
+        a = a or [S.One]
 
-        a_str = map(lambda x:self.parenthesize(x, precedence(expr)), a)
-        b_str = map(lambda x:self.parenthesize(x, precedence(expr)), b)
+        a_str = map(lambda x:self.parenthesize(x, prec), a)
+        b_str = map(lambda x:self.parenthesize(x, prec), b)
 
-        if len(b)==0:
+        if len(b) == 0:
             return sign + '*'.join(a_str)
-        elif len(b)==1:
-            if len(a)==1 and not (a[0].is_Atom or a[0].is_Add):
+        elif len(b) == 1:
+            if len(a) == 1 and not (a[0].is_Atom or a[0].is_Add):
                 return sign + "%s/"%a_str[0] + '*'.join(b_str)
             else:
                 return sign + '*'.join(a_str) + "/%s"%b_str[0]
         else:
             return sign + '*'.join(a_str) + "/(%s)"%'*'.join(b_str)
+
+    def _print_MatMul(self, expr):
+        return '*'.join([self.parenthesize(arg, precedence(expr))
+            for arg in expr.args])
+
 
     def _print_NaN(self, expr):
         return 'nan'
@@ -206,17 +279,11 @@ class StrPrinter(Printer):
     def _print_NegativeInfinity(self, expr):
         return '-oo'
 
-    def _print_NegativeOne(self, expr):
-        return "-1"
-
     def _print_Normal(self, expr):
         return "Normal(%s, %s)"%(expr.mu, expr.sigma)
 
-    def _print_One(self, expr):
-        return "1"
-
     def _print_Order(self, expr):
-        if len(expr.symbols) <= 1:
+        if len(expr.variables) <= 1:
             return 'O(%s)'%self._print(expr.expr)
         else:
             return 'O(%s)'%self.stringify(expr.args, ', ', 0)
@@ -288,19 +355,51 @@ class StrPrinter(Printer):
 
         return format % (' '.join(terms), ', '.join(gens))
 
+    def _print_ProductSet(self, p):
+        return ' x '.join(self._print(set) for set in p.sets)
+
+
     def _print_AlgebraicNumber(self, expr):
         if expr.is_aliased:
-            return self._print(expr.as_poly().as_basic())
+            return self._print(expr.as_poly().as_expr())
         else:
-            return self._print(expr.as_basic())
+            return self._print(expr.as_expr())
 
-    def _print_Pow(self, expr):
+    def _print_Pow(self, expr, rational=False):
         PREC = precedence(expr)
-        if expr.exp is S.NegativeOne:
-            return '1/%s'%(self.parenthesize(expr.base, PREC))
-        else:
-            return '%s**%s'%(self.parenthesize(expr.base, PREC),
-                             self.parenthesize(expr.exp, PREC))
+
+        if expr.exp is S.Half and not rational:
+            return "sqrt(%s)" % self._print(expr.base)
+
+        if expr.is_commutative:
+            if -expr.exp is S.Half and not rational:
+                # Note: Don't test "expr.exp == -S.Half" here, because that will
+                # match -0.5, which we don't want.
+                return "1/sqrt(%s)" % self._print(expr.base)
+            if expr.exp == -1:
+                return '1/%s' % self.parenthesize(expr.base, PREC)
+
+        e = self.parenthesize(expr.exp, PREC)
+        if self.printmethod == '_sympyrepr' and expr.exp.is_Rational and expr.exp.q != 1:
+            # the parenthesized exp should be '(Rational(a, b))' so strip parens,
+            # but just check to be sure.
+            if e.startswith('(Rational'):
+                return '%s**%s' % (self.parenthesize(expr.base, PREC), e[1:-1])
+        return '%s**%s' % (self.parenthesize(expr.base, PREC), e)
+
+    def _print_MatPow(self, expr):
+        PREC = precedence(expr)
+        return '%s**%s'%(self.parenthesize(expr.base, PREC),
+                         self.parenthesize(expr.exp, PREC))
+
+    def _print_Integer(self, expr):
+        return str(expr.p)
+
+    def _print_int(self, expr):
+        return str(expr)
+
+    def _print_mpz(self, expr):
+        return str(expr)
 
     def _print_Rational(self, expr):
         return '%s/%s' % (expr.p, expr.q)
@@ -308,7 +407,10 @@ class StrPrinter(Printer):
     def _print_Fraction(self, expr):
         return '%s/%s' % (expr.numerator, expr.denominator)
 
-    def _print_Real(self, expr):
+    def _print_mpq(self, expr):
+        return '%s/%s' % (expr.numer(), expr.denom())
+
+    def _print_Float(self, expr):
         prec = expr._prec
         if prec < 5:
             dps = 0
@@ -320,7 +422,12 @@ class StrPrinter(Printer):
             strip = True
         elif self._settings["full_prec"] == "auto":
             strip = self._print_level > 1
-        return mlib.to_str(expr._mpf_, dps, strip_zeros=strip)
+        rv = mlib.to_str(expr._mpf_, dps, strip_zeros=strip)
+        if rv.startswith('-.0'):
+            rv = '-0.' + rv[3:]
+        elif rv.startswith('.0'):
+            rv = '0.' + rv[2:]
+        return rv
 
     def _print_Relational(self, expr):
         return '%s %s %s'%(self.parenthesize(expr.lhs, precedence(expr)),
@@ -328,46 +435,55 @@ class StrPrinter(Printer):
                            self.parenthesize(expr.rhs, precedence(expr)))
 
     def _print_RootOf(self, expr):
-        poly = self._print(expr.poly)
-        return "RootOf(%s, index=%d)" % \
-            (poly[1+poly.index("("):-1], expr.index)
-
-    def _print_RootsOf(self, expr):
-        poly = self._print(expr.poly)
-        return "RootsOf(" + poly[1+poly.index("("):]
+        return "RootOf(%s, %d)" % (self._print_Add(expr.expr, order='lex'), expr.index)
 
     def _print_RootSum(self, expr):
-        func = self._print(expr.function)
-        poly = self._print(expr.roots.poly)
-        return "RootSum(%s, %s)" % \
-            (func, poly[1+poly.index("("):-1])
+        args = [self._print_Add(expr.expr, order='lex')]
+
+        if expr.fun is not S.IdentityFunction:
+            args.append(self._print(expr.fun))
+
+        return "RootSum(%s)" % ", ".join(args)
+
+    def _print_GroebnerBasis(self, basis):
+        cls = basis.__class__.__name__
+
+        exprs = [ self._print_Add(arg, order=basis.order) for arg in basis.exprs ]
+        exprs = "[%s]" % ", ".join(exprs)
+
+        gens = [ self._print(gen) for gen in basis.gens ]
+        domain = "domain='%s'" % self._print(basis.domain)
+        order = "order='%s'" % self._print(basis.order)
+
+        args = [exprs] + gens + [domain, order]
+
+        return "%s(%s)" % (cls, ", ".join(args))
 
     def _print_Sample(self, expr):
         return "Sample([%s])"%self.stringify(expr, ", ", 0)
 
-    def __print_set(self, expr):
-        items = list(expr)
-        items.sort( Basic.compare_pretty )
+    def _print_set(self, s):
+        items = sorted(s, key=default_sort_key)
 
         args = ', '.join(self._print(item) for item in items)
         if args:
             args = '[%s]' % args
-        return '%s(%s)' % (type(expr).__name__, args)
+        return '%s(%s)' % (type(s).__name__, args)
 
-    _print_set       = __print_set
-    _print_frozenset = __print_set
+    _print_frozenset = _print_set
 
-    def _print_SMatrix(self, expr):
-        return self._print(expr.toMatrix())
+    def _print_SparseMatrix(self, expr):
+        from sympy.matrices import Matrix
+        return self._print(Matrix(expr))
 
     def _print_Sum(self, expr):
-        limits = str.join(', ', \
-            tuple([ '(%s)' % self.stringify(l, ', ') for l in expr.limits ]))
-
-        return 'Sum(%s, %s)' % (self._print(expr.function), limits)
-
-    def _print_Sum2(self, expr):
-        return "Sum2(%r, (%r, %r, %r))" % (expr.f, expr.i, expr.a, expr.b)
+        def _xab_tostr(xab):
+            if len(xab) == 1:
+                return self._print(xab[0])
+            else:
+                return self._print((xab[0],) + tuple(xab[1:]))
+        L = ', '.join([_xab_tostr(l) for l in expr.limits])
+        return 'Sum(%s, %s)' % (self._print(expr.function), L)
 
     def _print_Symbol(self, expr):
         return expr.name
@@ -384,8 +500,17 @@ class StrPrinter(Printer):
         else:
             return "(%s)"%self.stringify(expr, ", ")
 
+    def _print_Tuple(self, expr):
+        return self._print_tuple(expr)
+
+    def _print_Transpose(self, T):
+        return "%s'" % self.parenthesize(T.arg, PRECEDENCE["Pow"])
+
     def _print_Uniform(self, expr):
         return "Uniform(%s, %s)"%(expr.a, expr.b)
+
+    def _print_Union(self, expr):
+        return ' U '.join(self._print(set) for set in expr.args)
 
     def _print_Unit(self, expr):
         return expr.abbrev
@@ -399,9 +524,70 @@ class StrPrinter(Printer):
     def _print_Zero(self, expr):
         return "0"
 
+    def _print_DMP(self, p):
+        from sympy.core.sympify import SympifyError
+        try:
+            if p.ring is not None:
+                # TODO incorporate order
+                return self._print(p.ring.to_sympy(p))
+        except SympifyError:
+            pass
+
+        cls = p.__class__.__name__
+        rep = self._print(p.rep)
+        dom = self._print(p.dom)
+        ring = self._print(p.ring)
+
+        return "%s(%s, %s, %s)" % (cls, rep, dom, ring)
+
+    def _print_DMF(self, expr):
+        return self._print_DMP(expr)
+
+    def _print_Object(self, object):
+        return 'Object("%s")' % object.name
+
+    def _print_IdentityMorphism(self, morphism):
+        return 'IdentityMorphism(%s)' % morphism.domain
+
+    def _print_NamedMorphism(self, morphism):
+        return 'NamedMorphism(%s, %s, "%s")' % \
+               (morphism.domain, morphism.codomain, morphism.name)
+
+    def _print_Category(self, category):
+        return 'Category("%s")' % category.name
+
+    def _print_BaseScalarField(self, field):
+        return field._coord_sys._names[field._index]
+
+    def _print_BaseVectorField(self, field):
+        return 'e_%s'%field._coord_sys._names[field._index]
+
+    def _print_Differential(self, diff):
+        field = diff._form_field
+        if hasattr(field, '_coord_sys'):
+            return 'd%s'%field._coord_sys._names[field._index]
+        else:
+            return 'd(%s)'%self._print(field)
+
+    def _print_Tr(self, expr):
+        #TODO : Handle indices
+        return "%s(%s)" % ("Tr", self._print(expr.args[0]))
+
 
 def sstr(expr, **settings):
-    """return expr in str form"""
+    """Returns the expression as a string.
+
+    For large expressions where speed is a concern, use the setting
+    order='none'.
+
+    Examples
+    ========
+
+    >>> from sympy import symbols, Eq, sstr
+    >>> a, b = symbols('a b')
+    >>> sstr(Eq(a + b, 0))
+    'a + b == 0'
+    """
 
     p = StrPrinter(settings)
     s = p.doprint(expr)
@@ -428,4 +614,3 @@ def sstrrepr(expr, **settings):
     s = p.doprint(expr)
 
     return s
-

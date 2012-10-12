@@ -1,11 +1,17 @@
-from sympy.core import S, C
+from sympy.core import C, Add
 from sympy.printing.str import StrPrinter
 from sympy.tensor import get_indices, get_contraction_structure
 
 class AssignmentError(Exception):
+    """
+    Raised if an assignment variable for a loop is missing.
+    """
     pass
 
 class CodePrinter(StrPrinter):
+    """
+    The base class for code-printing subclasses.
+    """
 
     def _doprint_a_piece(self, expr, assign_to=None):
         # Here we print an expression that may contain Indexed objects, they
@@ -25,7 +31,7 @@ class CodePrinter(StrPrinter):
 
         # terms with no summations first
         if None in d:
-            text = CodePrinter.doprint(self, C.Add(*d[None]))
+            text = CodePrinter.doprint(self, Add(*d[None]))
         else:
             # If all terms have summations we must initialize array to Zero
             text = CodePrinter.doprint(self, 0)
@@ -87,7 +93,8 @@ class CodePrinter(StrPrinter):
         if linds and not rinds:
             rinds = linds
         if rinds != linds:
-            raise ValueError("lhs indices must match non-dummy rhs indices")
+            raise ValueError("lhs indices must match non-dummy"
+                    " rhs indices in %s" % expr)
 
         return self._sort_optimized(rinds, assign_to)
 
@@ -155,7 +162,7 @@ class CodePrinter(StrPrinter):
     _print_RootsOf = _print_not_supported
     _print_RootSum = _print_not_supported
     _print_Sample = _print_not_supported
-    _print_SMatrix = _print_not_supported
+    _print_SparseMatrix = _print_not_supported
     _print_tuple = _print_not_supported
     _print_Uniform = _print_not_supported
     _print_Unit = _print_not_supported
