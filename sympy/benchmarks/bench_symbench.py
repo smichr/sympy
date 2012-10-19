@@ -73,8 +73,8 @@ def bench_R8():
         n = sympify(n)
         x = f.atoms(Symbol).pop()
         Deltax = (b-a)/n
-        c=a
-        est=0
+        c = a
+        est = 0
         for i in range(n):
             c += Deltax
             est += f.subs(x, c)

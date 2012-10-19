@@ -241,7 +241,7 @@ def test_lambdify_matrix():
 
 def test_lambdify_matrix_multi_input():
     x, y, z = symbols('x,y,z')
-    M=sympy.Matrix([[x**2, x*y, x*z],
+    M = sympy.Matrix([[x**2, x*y, x*z],
                     [y*x, y**2, y*z],
                     [z*x, z*y, z**2]])
     f = lambdify((x, y, z), M, "numpy")
@@ -255,8 +255,8 @@ def test_lambdify_matrix_multi_input():
 
 
 def test_lambdify_matrix_vec_input():
-    X=sympy.DeferredVector('X')
-    M=Matrix([[X[0]**2, X[0]*X[1], X[0]*X[2]],
+    X = sympy.DeferredVector('X')
+    M = Matrix([[X[0]**2, X[0]*X[1], X[0]*X[2]],
               [X[1]*X[0], X[1]**2, X[1]*X[2]],
               [X[2]*X[0], X[2]*X[1], X[2]**2]])
     f = lambdify(X, M, "numpy")
