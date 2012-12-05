@@ -1323,7 +1323,8 @@ class Basic(object):
 
         Wild symbols match anything, WildFunction matches any function.
         If ``exclude`` is True, the Wild symbols will exclude any free
-        symbol that appears with it in any term of the pattern.
+        symbol or number symbol that appears with it in any term of the
+        pattern if they do not already have assumptions on them.
 
         Return ``None`` when expression (self) does not match
         with pattern. Otherwise return a dictionary such that::
@@ -1333,7 +1334,7 @@ class Basic(object):
         Examples
         ========
 
-        >>> from sympy import symbols, Wild
+        >>> from sympy import symbols, Wild, pi
         >>> from sympy.abc import x, y
         >>> p = Wild("p")
         >>> q = Wild("q")
@@ -1348,6 +1349,24 @@ class Basic(object):
         {p_: 4, q_: x, r_: 2}
         >>> (p*q**r).xreplace(e.match(p*q**r))
         4*x**2
+
+        If there are no exclusions on a Wild, it can "peel off" matching
+        factors of a term:
+
+        >>> (3*pi*x**2 + y/x).match(p*x + q)
+        {p_: 3*pi*x, q_: y/x}
+
+        With exclusions in place, the ``p*x`` term can only match if ``p``
+        does not contain ``x`` so in the following there is nothing for
+        ``p`` to match:
+
+        >>> (3*pi*x**2 + y/x).match(p*x + q, exclude=True)
+        {p_: 0, q_: 3*pi*x**2 + y/x}
+
+        But in this expression, it can match the ``y`` in the last term:
+
+        >>> (3*pi*x**2 + x*y).match(p*x + q, exclude=True)
+        {p_: y, q_: 3*pi*x**2}
 
         The ``old`` flag will give the old-style pattern matching where
         expressions and patterns are essentially solved to give the
@@ -1366,15 +1385,14 @@ class Basic(object):
 
         # handle default exclusions
         if exclude:
-            wild = pattern.atoms(C.Wild)
-            save = [(w, w.exclude) for w in wild]
+            vanilla = set([w for w in pattern.atoms(C.Wild) if not w.exclude])
             d = defaultdict(set)
             for m in pattern.atoms(C.Mul):
-                allfree = m.free_symbols
-                free = allfree - wild
-                for wi in allfree - free:
-                    d[wi].update(free)
-            for w in d:
+                atoms = set([a for a in m.atoms() if not a.is_Number])
+                sym = atoms - vanilla
+                for wi in atoms & vanilla:
+                    d[wi].update(sym)
+            for w in vanilla:
                 w.exclude = tuple(d[w])
 
         # if we still have the same relationship between the types of
@@ -1386,8 +1404,8 @@ class Basic(object):
 
         # restore original exclusions
         if exclude:
-            for w, e in save:
-                w.exclude = e
+            for w in vanilla:
+                w.exclude = ()
 
         return rv
 

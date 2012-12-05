@@ -619,8 +619,10 @@ def test_issue_3539():
 
 
 def test_default_exclusion():
-    a, b = symbols('a b', cls=Wild)
+    a, b, c = symbols('a b c', cls=Wild)
     x = Symbol('x')
     y = Symbol('y')
     assert (4*x*y + 3).match(a*x + b, exclude=True) == {a: 4*y, b: 3}
     assert x.match(a) == {a: x}  # check that exclusions were restored
+    assert (4*x**2 + 3*x + y*x).match(a*x**2 + b*x + c, exclude=True) == \
+        {a: 4, c: 3*x, b: y}
