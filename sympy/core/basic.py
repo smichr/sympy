@@ -1,5 +1,7 @@
 """Base class for all the objects in SymPy"""
+from collections import defaultdict
 from copy import copy
+
 from sympy.core.assumptions import ManagedProperties
 from sympy.core.cache import cacheit
 from sympy.core.core import BasicType, C
@@ -1315,11 +1317,13 @@ class Basic(object):
                 return None
         return d
 
-    def match(self, pattern):
+    def match(self, pattern, exclude=False):
         """
         Pattern matching.
 
-        Wild symbols match all.
+        Wild symbols match anything, WildFunction matches any function.
+        If ``exclude`` is True, the Wild symbols will exclude any free
+        symbol that appears with it in any term of the pattern.
 
         Return ``None`` when expression (self) does not match
         with pattern. Otherwise return a dictionary such that::
@@ -1350,11 +1354,33 @@ class Basic(object):
         pattern = sympify(pattern)
         s = signsimp(self)
         p = signsimp(pattern)
+
+        # handle default exclusions
+        if exclude:
+            wild = pattern.atoms(C.Wild)
+            save = [(w, w.exclude) for w in wild]
+            d = defaultdict(set)
+            for m in pattern.atoms(C.Mul):
+                allfree = m.free_symbols
+                free = allfree - wild
+                for wi in allfree - free:
+                    d[wi].update(free)
+            for w in d:
+                w.exclude = tuple(d[w])
+
         # if we still have the same relationship between the types of
         # input, then use the sign simplified forms
         if (pattern.func == self.func) and (s.func == p.func):
-            return p.matches(s)
-        return pattern.matches(self)
+            rv = p.matches(s)
+        else:
+            rv = pattern.matches(self)
+
+        # restore original exclusions
+        if exclude:
+            for w, e in save:
+                w.exclude = e
+
+        return rv
 
     def count_ops(self, visual=None):
         """wrapper for count_ops that returns the operation count."""
