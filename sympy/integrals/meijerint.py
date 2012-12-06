@@ -362,13 +362,13 @@ def _find_splitting_points(expr, x):
     set([-3, 0])
     """
     from sympy import Tuple
-    p, q = map(lambda n: Wild(n, exclude=[x]), 'pq')
+    p, q = 0, 1
 
     def compute_innermost(expr, res):
         if isinstance(expr, Tuple):
             return
-        m = expr.match(p*x + q)
-        if m and m[p] != 0:
+        m = expr.as_linear_coeff_const(x)
+        if m and m[q]:
             res.add(-m[q]/m[p])
             return
         if expr.is_Atom:
