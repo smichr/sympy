@@ -1566,6 +1566,11 @@ def solve_linear(lhs, rhs=0, symbols=[], exclude=[]):
         symbols = free.intersection(symbols)
     symbols = symbols.difference(exclude)
 
+    if d.has(*symbols):
+        if n in symbols:
+            return n*d, S.Zero
+        return n, d
+
     # derivatives are easy to do but tricky to analyze to see if they are going
     # to disallow a linear solution, so for simplicity we just evaluate the
     # ones that have the symbols of interest
