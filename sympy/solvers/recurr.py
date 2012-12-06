@@ -675,7 +675,6 @@ def rsolve(f, y, init=None):
         f = f.lhs - f.rhs
 
     n = y.args[0]
-    k = Wild('k', exclude=(n,))
 
     h_part = defaultdict(lambda: S.Zero)
     i_part = S.Zero
@@ -685,10 +684,10 @@ def rsolve(f, y, init=None):
         for h in Mul.make_args(g):
             if h.is_Function:
                 if h.func == y.func:
-                    result = h.args[0].match(n + k)
+                    result = h.args[0].as_linear_coeff_const(n)
 
-                    if result is not None:
-                        kspec = int(result[k])
+                    if result and result[0] is S.One:
+                        kspec = int(result[1])
                     else:
                         raise ValueError(
                             "'%s(%s+k)' expected, got '%s'" % (y.func, n, h))
