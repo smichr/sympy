@@ -1039,7 +1039,7 @@ class Integral(Expr):
                 a = Wild('a', exclude=[x])
                 b = Wild('b', exclude=[x])
 
-                M = g.base.match(a*x + b)
+                M = g.base.as_linear_coeff_const(x)
 
                 if M is not None:
                     if g.exp == -1:
@@ -1047,7 +1047,7 @@ class Integral(Expr):
                     else:
                         h = g.base**(g.exp + 1) / (g.exp + 1)
 
-                    parts.append(coeff * h / M[a])
+                    parts.append(coeff * h / M[0])
                     continue
 
             #        poly(x)
