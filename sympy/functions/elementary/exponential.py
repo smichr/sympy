@@ -676,15 +676,10 @@ class log(Function):
         if self.args[0] == x:
             return logx
         arg = self.args[0]
-        k, l = Wild("k"), Wild("l")
-        r = arg.match(k*x**l)
-        if r is not None:
-            #k = r.get(r, S.One)
-            #l = r.get(l, S.Zero)
-            k, l = r[k], r[l]
-            if l != 0 and not l.has(x) and not k.has(x):
-                r = log(k) + l*logx  # XXX true regardless of assumptions?
-                return r
+        k, l = arg.as_coeff_exponent(x)
+        if l != 0:
+            r = log(k) + l*logx  # XXX true regardless of assumptions?
+            return r
 
         # TODO new and probably slow
         s = self.args[0].nseries(x, n=n, logx=logx)
