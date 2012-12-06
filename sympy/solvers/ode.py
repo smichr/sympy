@@ -740,7 +740,6 @@ def classify_ode(eq, func=None, dict=False, prep=True):
     e = Wild('e', exclude=[df])
     k = Wild('k', exclude=[df])
     n = Wild('n', exclude=[f(x)])
-    c1 = Wild('c1', exclude=[x])
     a2 = Wild('a2', exclude=[x, f(x), df])
     b2 = Wild('b2', exclude=[x, f(x), df])
     c2 = Wild('c2', exclude=[x, f(x), df])
@@ -753,9 +752,9 @@ def classify_ode(eq, func=None, dict=False, prep=True):
     if eq.is_Add:
         deriv_coef = eq.coeff(f(x).diff(x, order))
         if deriv_coef != 1:
-            r = deriv_coef.match(a*f(x)**c1)
-            if r and r[c1]:
-                den = f(x)**r[c1]
+            hit = deriv_coef.as_coeff_exponent(f(x))
+            if hit[1]:
+                den = f(x)**hit[1]
                 reduced_eq = Add(*[arg/den for arg in eq.args])
     if not reduced_eq:
         reduced_eq = eq
@@ -865,8 +864,7 @@ def classify_ode(eq, func=None, dict=False, prep=True):
         # See Goldstein and Braun, "Advanced Methods for the Solution of
         # Differential Equations", pg. 98
 
-        s = d*f(x).diff(x, 2) + e*df**2 + k*df
-        r = reduced_eq.match(s)
+        r = reduced_eq.match(d*f(x).diff(x, 2) + e*df**2 + k*df)
         if r and r[d] != 0:
             y = Dummy('y')
             g = simplify(r[e]/r[d]).subs(f(x), y)
@@ -3021,7 +3019,7 @@ def _undetermined_coefficients_match(expr, x):
             return all(_test_term(i, x) for i in expr.args)
         elif expr.is_Function:
             if expr.func in (sin, cos, exp):
-                if expr.args[0].match(a*x + b):
+                if expr.args[0].as_linear_coeff_const(x):
                     return True
                 else:
                     return False
@@ -3031,7 +3029,7 @@ def _undetermined_coefficients_match(expr, x):
                 expr.exp >= 0:
             return True
         elif expr.is_Pow and expr.base.is_number:
-            if expr.exp.match(a*x + b):
+            if expr.exp.as_linear_coeff_const(x):
                 return True
             else:
                 return False
@@ -3050,45 +3048,24 @@ def _undetermined_coefficients_match(expr, x):
         dependent).  So if we collect these, we should have the terms of
         our trial function.
         """
-        def _remove_coefficient(expr, x):
-            """
-            Returns the expression without a coefficient.
-
-            Similar to expr.as_independent(x)[1], except it only works
-            multiplicatively.
-            """
-            # I was using the below match, but it doesn't always put all of the
-            # coefficient in c.  c.f. 2**x*6*exp(x)*log(2)
-            # The below code is probably cleaner anyway.
-#            c = Wild('c', exclude=[x])
-#            t = Wild('t')
-#            r = expr.match(c*t)
-            term = S.One
-            if expr.is_Mul:
-                for i in expr.args:
-                    if i.has(x):
-                        term *= i
-            elif expr.has(x):
-                term = expr
-            return term
-
         expr = expand_mul(expr)
         if expr.is_Add:
             for term in expr.args:
-                if _remove_coefficient(term, x) in exprs:
+                dep = term.as_independent(x, as_Add=False)[1]
+                if dep in exprs:
                     pass
                 else:
-                    exprs.add(_remove_coefficient(term, x))
+                    exprs.add(dep)
                     exprs = exprs.union(_get_trial_set(term, x, exprs))
         else:
-            term = _remove_coefficient(expr, x)
+            term = expr.as_independent(x, as_Add=False)[1]
             tmpset = exprs.union(set([term]))
             oldset = set([])
             while tmpset != oldset:
                 # If you get stuck in this loop, then _test_term is probably broken
                 oldset = tmpset.copy()
                 expr = expr.diff(x)
-                term = _remove_coefficient(expr, x)
+                term = expr.as_independent(x, as_Add=False)[1]
                 if term.is_Add:
                     tmpset = tmpset.union(_get_trial_set(term, x, tmpset))
                 else:

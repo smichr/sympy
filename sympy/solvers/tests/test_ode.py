@@ -382,7 +382,7 @@ def test_separable2():
     # We have to test strings with _Integral because y is a dummy variable.
     sol6str = ("Integral((_y - 2)/_y**3, (_y, f(x))) "
                "== C1 + Integral(x**(-2), x)")
-    sol7 = Eq(-log(-1 + f(x)**2)/2, C1 - log(2 + x))
+    sol7 = Eq(log(f(x)**2 - 1)/2, C1 + log(x + 2))
     sol8 = Eq(asinh(f(x)), C1 + log(x) - log(x*log(x)))
     # integrate cannot handle the integral on the lhs (cos/tan)
     sol9str = ("Integral(cos(_y)/tan(_y), (_y, f(x)))"
