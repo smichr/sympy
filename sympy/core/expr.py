@@ -1235,6 +1235,43 @@ class Expr(Basic, EvalfMixin):
 
             return S.Zero
 
+
+    def as_linear_coeff_const(f, x):
+        from sympy.solvers.solvers import solve_linear
+        from sympy.core.symbol import Dummy
+        d = Dummy() if not x.is_Symbol else None
+        if d is not None:
+            s = d
+            f = f.subs(x, d)
+        else:
+            s = x
+        rv = solve_linear(f, symbols=[s])
+        if rv[0].is_Symbol:
+            # a*x + b = 0 -> x = -b/a
+            n, d = rv[1].as_numer_denom()
+            return d, -n
+
+
+    def as_coeff_poly(f, x, n=1):
+        from sympy.core.symbol import Dummy
+        d = Dummy() if not x.is_Symbol else None
+        if d is not None:
+            s = d
+            f = f.subs(x, d)
+        else:
+            s = x
+        co, ab = f.as_independent(f, s)
+        if not co.as_linear_coeff_const(s):
+            c = [f.coeff(s, i) for i in range(1, n + 1)]
+        z = f - co
+        for i in range(1, n + 1):
+            z -= s**i*c[i - 1]
+        if not z:
+            c.insert(0, co)
+            if not any(ci.has(x) for ci in c):
+                return c
+
+
     def as_expr(self, *gens):
         """
         Convert a polynomial to a SymPy expression.
