@@ -368,7 +368,7 @@ def _find_splitting_points(expr, x):
         if isinstance(expr, Tuple):
             return
         m = expr.as_linear_coeff_const(x)
-        if m and m[q]:
+        if m and m[p]:
             res.add(-m[q]/m[p])
             return
         if expr.is_Atom:
