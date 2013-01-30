@@ -4131,6 +4131,9 @@ def besselsimp(expr):
 
 def tr10(add):
     """
+    >>> from sympy import sin, cos
+    >>> from sympy.simplify.simplify import tr10
+
     >>> tr10(cos(4)*cos(3) + sin(4)*cos(1)*sin(2) + sin(4)*sin(1)*cos(2))
     cos(1)
     >>> tr10(cos(1)*cos(3) + sin(1)*cos(1)*sin(2) + sin(1)**2*cos(2))
@@ -4138,47 +4141,42 @@ def tr10(add):
     """
     from sympy.utilities.iterables import combinations, cartes
     from sympy.rules.strat_pure import exhaust
-    from sympy.unify.usympy import unify
+    from sympy.unify import unify, rewriterule
+    from sympy.rules.branch import multiplex, exhaust, yieldify, chain
+    from sympy.rules import rebuild
     if not add.is_Add:
         return add.xreplace(Transform(
             lambda x: tr10(x),
             lambda x: x.is_Add))
     a, b, c, d = [Dummy() for i in range(4)]
-    def rule(e, pat, r):
-        if not e.is_Add:
-            return e
-        if len(e.args) == 2:
-            pat -= d
-            r -= d
-        free = pat.free_symbols
-        try:
-            u = unify(e, pat, variables=free)
-            return r.subs(u.next())
-        except StopIteration:
-            return e
-    rv = add
-    cc = exhaust(lambda x: rule(x,
-        a*cos(b)*cos(c)-a*sin(b)*sin(c)+d,
-        a*cos(a+b)+d))
-    rv = cc(rv)
-    cc = exhaust(lambda x: rule(x,
-        a*sin(b)*cos(c)-a*cos(b)*sin(c)+d,
-        a*sin(a-b)+d))
-    rv = cc(rv)
-    cc = exhaust(lambda x: rule(x,
-        a*cos(b)*cos(c)+a*sin(b)*sin(c)+d,
-        a*cos(a-b)+d))
-    rv = cc(rv)
-    cc = exhaust(lambda x: rule(x,
-        a*sin(b)*cos(c)+a*cos(b)*sin(c)+d,
-        a*sin(a+b)+d))
-    rv = cc(rv)
-    cc = exhaust(lambda x: rule(x,
-        a*cosh(b)*cosh(c)+a*sinh(b)*sinh(c)+d,
-        a*cosh(a+b)+d))
-    rv = cc(rv)
-    cc = exhaust(lambda x: rule(x,
-        a*sinh(b)*cosh(c)+a*cosh(b)*sinh(c)+d,
-        a*sinh(a+b)+d))
-    rv = cc(rv)
-    return rv
+
+    data = [
+        (cos(b)*cos(c) - sin(b)*sin(c), cos(b+c)),
+        (sin(b)*cos(c) - cos(b)*sin(c), sin(b-c)),
+        (cos(b)*cos(c) + sin(b)*sin(c), cos(b-c)),
+        (sin(b)*cos(c) + cos(b)*sin(c), sin(b+c)),
+        (cosh(b)*cosh(c) + sinh(b)*sinh(c), cosh(b+c)),
+        (sinh(b)*cosh(c) + cosh(b)*sinh(c), sinh(b+c)),
+    ]
+
+    z = Dummy('z')
+    def additive_eq(src, tgt):
+        """ (X -> Y) -> (X + z -> Y + z) """
+        return (src + z, tgt + z)
+
+    def mult_eq(src, trt):
+        return (a*src).expand(), (a*tgt).expand()
+
+    data = data + [mult_eq(src, tgt) for src, tgt in data]
+    data = data + [additive_eq(src, tgt) for src, tgt in data]
+
+    # Turn tuples into actual functions
+    rules = [rewriterule(src, tgt, variables=[a,b,c,d,z]) for src, tgt in data]
+
+    # Apply one of the rules (multiplex)
+    # then rebuild the expression so that, e.g. 1+3 -> 4  (yieldify(rebuild))
+    # Repeat this pattern until no change (exhaust)
+    rule = exhaust(chain(multiplex(*rules), yieldify(rebuild)))
+
+    # Just return the first result
+    return next(rule(add))
