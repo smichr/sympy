@@ -162,6 +162,7 @@ DESTIME2006/DES_contribs/Fu/simplification.pdf
 """
 
 from collections import defaultdict
+from functools import partial
 
 from sympy.simplify.simplify import simplify, powsimp, ratsimp, combsimp
 from sympy.core.sympify import sympify
@@ -177,7 +178,7 @@ from sympy.core.exprtools import Factors
 from sympy.core.rules import Transform
 from sympy.core.basic import S
 from sympy.core.numbers import Integer
-from sympy.rules import minimize, chain, debug
+from sympy.rules import minimize, chain, debug, treesearch
 from sympy.rules.strat_pure import identity
 
 
@@ -892,30 +893,25 @@ def L(rv):
 TR0,TR1,TR2,TR3,TR4,TR5,TR6,TR7,TR8,TR9,TR10,TR11,TR12,TR13 = map(debug,
         (TR0,TR1,TR2,TR3,TR4,TR5,TR6,TR7,TR8,TR9,TR10,TR11,TR12,TR13))
 
+d = {list: chain, tuple: partial(minimize, objective=L)}
+strat = partial(treesearch, stratdict=d)
+
 _CTR1 = [TR5, TR0], [TR6, TR0], [identity]
 
-_CTR2 = [TR11, TR5, TR0], [TR11, TR6, TR0], [TR11, TR0]
+_CTR2 = [TR11, ([TR5, TR0], [TR6, TR0], [TR0])]
 
-_CTR3 = [TR8, TR0], [TR8, TR10i, TR0], [identity]
+_CTR3 = [TR8, ([TR0], [TR10i, TR0])], [identity]
 
 _CTR4 = [TR4, TR0], [identity]
 
-
-def CTRstrat(lists):
-    return minimize(*[chain(*list) for list in lists], objective=L)
-
-CTR1, CTR2, CTR3, CTR4 = map(CTRstrat, (_CTR1, _CTR2, _CTR3, _CTR4))
+CTR1, CTR2, CTR3, CTR4 = map(strat, (_CTR1, _CTR2, _CTR3, _CTR4))
 
 _RL1 = [TR4, TR3, TR4, TR12, TR4, TR13, TR4, TR0]
 
 _RL2 = [TR4, TR3, TR10, TR4, TR3, TR11, TR5, TR7, TR11, TR4, CTR3, TR0, CTR1,
         TR9, CTR2, TR4, TR9, TR0, TR9, CTR4]
 
-
-def RLstrat(rls):
-    return chain(*rls)
-
-RL1, RL2 = map(RLstrat, (_RL1, _RL2))
+RL1, RL2 = map(strat, (_RL1, _RL2))
 
 
 def fu(rv):
