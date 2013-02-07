@@ -480,7 +480,7 @@ def TR9(rv):
             A = a
             a, b = a.normal(b)
             gcd = A.div(a)[0]
-            if not gcd.factors:
+            if gcd.is_one:
                 return  # there was no gcd
             o1 = ok(a.as_expr())
             if not o1:
@@ -667,8 +667,8 @@ def TR10i(rv):
             a, b = [Factors(i) for i in rv.args]
             A = a
             a, b = a.normal(b)
-            g = A.div(a)[0]
-            if not g.factors:
+            gcd = A.div(a)[0]
+            if gcd.is_one:
                 return  # there was no gcd
             o1 = ok(a.as_expr())
             if not o1:
@@ -676,7 +676,7 @@ def TR10i(rv):
             o2 = ok(b.as_expr())
             if not o2:
                 return
-            return g.as_expr(), o1, o2
+            return gcd.as_expr(), o1, o2
 
         if len(rv.args) != 2:
             args = list(ordered(rv.args))
