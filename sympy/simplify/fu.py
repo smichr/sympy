@@ -176,6 +176,7 @@ from sympy.core.symbol import Wild
 from sympy.core.exprtools import Factors
 from sympy.core.rules import Transform
 from sympy.core.basic import S
+from sympy.core.numbers import Integer
 
 
 def TR0(rv):
@@ -871,7 +872,7 @@ def TR13(rv):
 
 
 def L(rv):
-    """Return count of tigonometric functions in expression.
+    """Return count of trigonometric functions in expression.
 
     Examples
     ========
@@ -882,7 +883,7 @@ def L(rv):
     >>> L(cos(x)+sin(x))
     2
     """
-    return rv.count(C.TrigonometricFunction)
+    return S(rv.count(C.TrigonometricFunction))
 
 
 def CTR1(rv):
