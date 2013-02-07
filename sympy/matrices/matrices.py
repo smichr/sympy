@@ -78,9 +78,6 @@ class MatrixBase(object):
     is_Identity = None
     _class_priority = 3
 
-    def _sympy_(self):
-        raise SympifyError('Matrix cannot be sympified')
-
     @classmethod
     def _handle_creation_inputs(cls, *args, **kwargs):
         """Return the number of rows, cols and flat matrix elements.
@@ -457,15 +454,15 @@ class MatrixBase(object):
             #return product
             A = self
             B = other
-            if A.shape[1] != B.shape[0]:
+            if A.cols != B.rows:
                 raise ShapeError("Matrices size mismatch.")
+            if A.cols == 0:
+                return classof(A, B)._new(A.rows, B.cols, lambda i, j: 0)
             blst = B.T.tolist()
             alst = A.tolist()
             return classof(A, B)._new(A.rows, B.cols, lambda i, j:
-                                      reduce(lambda k, l: k + l,
-                                             map(lambda n, m: n*m,
-                                                alst[i],
-                                                blst[j]), 0))
+                reduce(lambda k, l: k + l,
+                    [a_ik * b_kj for a_ik, b_kj in zip(alst[i], blst[j])]))
         else:
             return self._new(self.rows, self.cols,
                 map(lambda i: i*other, self._mat))
@@ -2738,7 +2735,7 @@ class MatrixBase(object):
         flags.pop('rational', None)
 
         for r, k in vlist:
-            tmp = self - eye(self.rows)*r
+            tmp = self.as_mutable() - eye(self.rows)*r
             basis = tmp.nullspace()
             # whether tmp.is_symbolic() is True or False, it is possible that
             # the basis will come back as [] in which case simplification is
@@ -3494,9 +3491,9 @@ class MatrixBase(object):
 
 def classof(A, B):
     """
-    Determines strategy for combining Immutable and Mutable matrices
+    Get the type of the result when combining matrices of different types.
 
-    Currently the strategy is that Mutability is contagious
+    Currently the strategy is that immutability is contagious.
 
     Examples
     ========
@@ -3506,7 +3503,7 @@ def classof(A, B):
     >>> M = Matrix([[1, 2], [3, 4]]) # a Mutable Matrix
     >>> IM = ImmutableMatrix([[1, 2], [3, 4]])
     >>> classof(M, IM)
-    <class 'sympy.matrices.dense.MutableDenseMatrix'>
+    <class 'sympy.matrices.immutable.ImmutableMatrix'>
     """
     try:
         if A._class_priority > B._class_priority:

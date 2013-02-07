@@ -23,6 +23,7 @@ def test_swap_back():
         {fx: gx + 5, y: -gx - 3}
     assert solve(fx + gx*x - 2, [fx, gx]) == {fx: 2, gx: 0}
     assert solve(fx + gx**2*x - y, [fx, gx]) == [{fx: y - gx**2*x}]
+    assert solve([f(1) - 2, x + 2]) == [{x: -2, f(1): 2}]
 
 
 def guess_solve_strategy(eq, symbol):
@@ -118,8 +119,8 @@ def test_solve_args():
         (exp(x) - x, exp(y) - y)) == [{x: -LambertW(-1), y: -LambertW(-1)}]
     # --  when symbols given
     solve([y, exp(x) + x], x, y) == [(-LambertW(1), 0)]
-    #symbol is not a symbol or function
-    raises(TypeError, lambda: solve(x**2 - pi, pi))
+    #symbol is a number
+    assert solve(x**2 - pi, pi) == [x**2]
     # no equations
     assert solve([], [x]) == []
     # overdetermined system
@@ -385,6 +386,9 @@ def test_solve_linear():
     assert solve_linear(cos(x)**2 + sin(x)**2 + 2 + y, symbols=[x]) == (0, 1)
     assert solve_linear(Eq(x, 3)) == (x, 3)
     assert solve_linear(1/(1/x - 2)) == (0, 0)
+    assert solve_linear((x + 1)*exp(-x), symbols=[x]) == (x + 1, exp(x))
+    assert solve_linear((x + 1)*exp(x), symbols=[x]) == ((x + 1)*exp(x), 1)
+    assert solve_linear(x*exp(-x**2), symbols=[x]) == (0, 0)
     raises(ValueError, lambda: solve_linear(Eq(x, 3), 3))
 
 
@@ -1003,7 +1007,7 @@ def test_float_handling():
 
 
 def test_check_assumptions():
-    x = symbols('x', positive=1)
+    x = symbols('x', positive=True)
     assert solve(x**2 - 1) == [1]
 
 
@@ -1050,10 +1054,22 @@ def test_exclude():
             Vout: (V1**2 - V1*Vplus - Vplus**2)/(V1 - 2*Vplus),
             R: Vplus/(C*s*(V1 - 2*Vplus))}]
 
-
 def test_high_order_roots():
     s = x**5 + 4*x**3 + 3*x**2 + S(7)/4
     assert set(solve(s)) == set(Poly(s*4, domain='ZZ').all_roots())
+
+def test_minsolve_linear_system():
+    def count(dic):
+        return len([x for x in dic.itervalues() if x == 0])
+    assert count(solve([x + y + z, y + z + a + t], minimal=True, quick=True)) == 3
+    assert count(solve([x + y + z, y + z + a + t], minimal=True, quick=False)) == 3
+    assert count(solve([x + y + z, y + z + a], minimal=True, quick=True)) == 1
+    assert count(solve([x + y + z, y + z + a], minimal=True, quick=False)) == 2
+
+def test_real_roots():
+    # cf. issue 3551
+    x = Symbol('x', real=True)
+    assert len(solve(x**5 + x**3 + 1)) == 1
 
 
 def test_issue3429():
@@ -1068,3 +1084,12 @@ def test_overdetermined():
     assert solve(eqs, x) == [(S.Half,)]
     assert solve(eqs, x, manual=True) == [(S.Half,)]
     assert solve(eqs, x, manual=True, check=False) == [(S.Half/2,), (S.Half,)]
+
+def test_issue_3506():
+    x = symbols('x')
+    assert solve(4**(x/2) - 2**(x/3)) == [0]
+    # while the first one passed, this one failed
+    x = symbols('x', real=True)
+    assert solve(5**(x/2) - 2**(x/3)) == [0]
+    b = sqrt(6)*sqrt(log(2))/sqrt(log(5))
+    assert solve(5**(x/2) - 2**(3/x)) == [-b, b]

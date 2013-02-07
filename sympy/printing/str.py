@@ -109,6 +109,7 @@ class StrPrinter(Printer):
     def _print_Dict(self, expr):
         return self._print_dict(expr)
 
+
     def _print_RandomDomain(self, d):
         try:
             return 'Domain: ' + self._print(d.as_boolean())
@@ -130,6 +131,9 @@ class StrPrinter(Printer):
 
     def _print_ExprCondPair(self, expr):
         return '(%s, %s)' % (expr.expr, expr.cond)
+
+    def _print_subfactorial(self, expr):
+        return "!%s" % self.parenthesize(expr.args[0], PRECEDENCE["Pow"])
 
     def _print_factorial(self, expr):
         return "%s!" % self.parenthesize(expr.args[0], PRECEDENCE["Pow"])
@@ -539,6 +543,13 @@ class StrPrinter(Printer):
     def _print_Symbol(self, expr):
         return expr.name
     _print_MatrixSymbol = _print_Symbol
+    _print_RandomSymbol = _print_Symbol
+
+    def _print_Identity(self, expr):
+        return "I"
+
+    def _print_ZeroMatrix(self, expr):
+        return "0"
 
     def _print_Predicate(self, expr):
         return "Q.%s" % expr.name

@@ -546,6 +546,7 @@ def test_issue_3320_3322():
     assert (-I*x).subs(I*x, x) == -x
     assert (-3*I*y**4).subs(3*I*y**2, x) == -x*y**2
 
+
 def test_issue_3460():
     assert (-12*x + y).subs(-x, 1) == 12 + y
     # though this involves cse it generated a failure in Mul._eval_subs
@@ -553,3 +554,10 @@ def test_issue_3460():
     e = -log(-12*sqrt(2) + 17)/24 - log(-2*sqrt(2) + 3)/12 + sqrt(2)/3
     assert cse(e) == (
         [(x0, -sqrt(2))], [-x0/3 - log(2*x0 + 3)/12 - log(12*x0 + 17)/24])
+
+def test_issue_2162():
+    e = I*x
+    assert exp(e).subs(exp(x), y) == y**I
+    assert (2**e).subs(2**x, y) == y**I
+    eq = (-2)**e
+    assert eq.subs((-2)**x, y) == eq

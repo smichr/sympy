@@ -1059,9 +1059,9 @@ class Poly(Expr):
         n, k = len(f.gens), len(gens)
 
         if f.gens[:k] == gens:
-            _gens, front = f.gens[n - k:], True
+            _gens, front = f.gens[k:], True
         elif f.gens[-k:] == gens:
-            _gens, front = f.gens[:n - k], False
+            _gens, front = f.gens[:-k], False
         else:
             raise NotImplementedError(
                 "can only eject front or back generators")
@@ -5976,9 +5976,6 @@ class GroebnerBasis(Basic):
         J.C. Faugere, P. Gianni, D. Lazard, T. Mora (1994). Efficient
         Computation of Zero-dimensional Groebner Bases by Change of
         Ordering
-
-        J.C. Faugere's lecture notes:
-        http://www-salsa.lip6.fr/~jcf/Papers/2010_MPRI5e.pdf
 
         """
         opt = self._options

@@ -5,7 +5,7 @@ from sympy import (Abs, Catalan, cos, Derivative, E, EulerGamma, exp,
     Interval, Lambda, Limit, Matrix, nan, O, oo, pi, Rational, Float, Rel,
     S, sin, SparseMatrix, sqrt, summation, Sum, Symbol, symbols, Wild,
     WildFunction, zeta, zoo, Dummy, Dict, Tuple, FiniteSet, factor,
-    MatrixSymbol)
+    MatrixSymbol, subfactorial)
 from sympy.core import Expr
 from sympy.physics.units import second, joule
 from sympy.polys import Poly, RootOf, RootSum, groebner
@@ -107,6 +107,9 @@ def test_factorial():
     assert str(factorial(factorial2(n))) == '(n!!)!'
     assert str(factorial2(factorial(n))) == '(n!)!!'
     assert str(factorial2(factorial2(n))) == '(n!!)!!'
+    assert str(subfactorial(3)) == "2"
+    assert str(subfactorial(n)) == "!n"
+    assert str(subfactorial(2*n)) == "!(2*n)"
 
 
 def test_Function():
@@ -407,7 +410,8 @@ def test_Float():
         Float('1.234567890123456789', prec=1 + 18)) == '1.234567890123456789'
     assert str(pi.evalf(1 + 2)) == '3.14'
     assert str(pi.evalf(1 + 14)) == '3.14159265358979'
-    assert str(pi.evalf(1 + 64)) == '3.1415926535897932384626433832795028841971693993751058209749445923'
+    assert str(pi.evalf(1 + 64)) == ('3.141592653589793238462643383279'
+                                     '5028841971693993751058209749445923')
     assert str(pi.round(-1)) == '0.'
     assert str((pi**400 - (pi**400).round(1)).n(2)) == '-0.e+88'
 
@@ -637,7 +641,8 @@ def test_Tr():
 def test_issue3288():
     assert str(factor(-3.0*z + 3)) == '-3.0*(1.0*z - 1.0)'
 
+
 def test_MatMul_MatAdd():
     from sympy import MatrixSymbol
     assert str(2*(MatrixSymbol("X", 2, 2) + MatrixSymbol("Y", 2, 2))) == \
-            "2*(X + Y)"
+        "2*(X + Y)"

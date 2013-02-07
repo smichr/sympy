@@ -1,6 +1,8 @@
 from sympy import (Symbol, symbols, factorial, factorial2, binomial,
-    rf, ff, gamma, polygamma, EulerGamma, O, pi, nan, oo, simplify)
-from sympy.utilities.pytest import XFAIL
+                   rf, ff, gamma, polygamma, EulerGamma, O, pi, nan,
+                   oo, simplify, expand_func)
+from sympy.functions.combinatorial.factorials import subfactorial
+from sympy.utilities.pytest import XFAIL, raises
 
 
 def test_rf_eval_apply():
@@ -119,10 +121,13 @@ def test_binomial():
     assert binomial(-10, 7) == -11440
     assert binomial(n, -1) == 0
     assert binomial(n, 0) == 1
-    assert binomial(n, 1) == n
-    assert binomial(n, 2) == n*(n - 1)/2
-    assert binomial(n, n - 2) == n*(n - 1)/2
-    assert binomial(n, n - 1) == n
+    assert expand_func(binomial(n, 1)) == n
+    assert expand_func(binomial(n, 2)) == n*(n - 1)/2
+    assert expand_func(binomial(n, n - 2)) == n*(n - 1)/2
+    assert expand_func(binomial(n, n - 1)) == n
+    assert binomial(n, 3).func == binomial
+    assert binomial(n, 3).expand(func=True) ==  n**3/6 - n**2/2 + n/3
+    assert expand_func(binomial(n, 3)) ==  n*(n - 2)*(n - 1)/6
     assert binomial(n, n) == 1
     assert binomial(n, n + 1) == 0
     assert binomial(n, u) == 0
@@ -164,3 +169,10 @@ def test_factorial_simplify_fail():
     from sympy.abc import x
     assert simplify(x*polygamma(0, x + 1) - x*polygamma(0, x + 2) +
     polygamma(0, x + 1) - polygamma(0, x + 2) + 1) == 0
+
+
+def test_subfactorial():
+    assert all(subfactorial(i) == ans for i, ans in enumerate(
+        [1, 0, 1, 2, 9, 44, 265, 1854, 14833, 133496]))
+    raises(ValueError, lambda: subfactorial(0.1))
+    raises(ValueError, lambda: subfactorial(-2))

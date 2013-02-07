@@ -414,34 +414,24 @@ def test_failing_integrals():
 
 
 def test_integrate_DiracDelta():
-    assert integrate(DiracDelta(x), x) == Heaviside(x)
-    assert integrate(DiracDelta(x) * f(x), x) == f(0) * Heaviside(x)
+    # This is here to check that deltaintegrate is being called, but also
+    # to test definite integrals. More tests are in test_deltafunctions.py
     assert integrate(DiracDelta(x) * f(x), (x, -oo, oo)) == f(0)
-    assert integrate(DiracDelta(-x) * f(x), (x, -oo, oo)) == f(0)
-    assert integrate(DiracDelta(-(x - 1)) * f(x), (x, -oo, oo)) == f(1)
     assert integrate(DiracDelta(x) * f(x), (x, 0, oo)) == f(0)/2
-    assert integrate(DiracDelta(x**2 + x - 2), x) - \
-        (Heaviside(-1 + x)/3 + Heaviside(2 + x)/3) == 0
-    assert integrate(cos(x)*(DiracDelta(x) + DiracDelta(x**2 - 1))*sin(x)*(x - pi), x) - \
-        (-pi*(cos(1)*Heaviside(-1 + x)*sin(1)/2 - cos(1)*Heaviside(1 + x)*sin(1)/2) +
-         cos(1)*Heaviside(1 + x)*sin(1)/2 + cos(1)*Heaviside(-1 + x)*sin(1)/2) == 0
-    assert integrate(x_2*DiracDelta(x - x_2)*DiracDelta(x_2 - x_1), (x_2, -oo, oo)) == \
-        x*DiracDelta(x - x_1)
-    assert integrate(
-        x*y**2*z*DiracDelta(y - x)*DiracDelta(y - z)*DiracDelta(x - z),
-        (y, -oo, oo)) == x**3*z*DiracDelta(x - z)**2
-    assert integrate((x + 1)*DiracDelta(2*x), (x, -oo, oo)) == S(1)/2
-    assert integrate((x + 1)*DiracDelta(2*x/3 + 4/S(9)), (x, -oo, oo)) == \
-        S(1)/2
-
-    a, b, c = symbols('a b c', commutative=False)
-    assert integrate(DiracDelta(x - y)*f(x - b)*f(x - a), (x, -oo, oo)) == \
-        f(y - b)*f(y - a)
-    assert integrate(f(x - a)*DiracDelta(x - y)*f(x - c)*f(x - b),
-                     (x, -oo, oo)) == f(y - a)*f(y - c)*f(y - b)
-
-    assert integrate(DiracDelta(x - z)*f(x - b)*f(x - a)*DiracDelta(x - y),
-                     (x, -oo, oo)) == DiracDelta(y - z)*f(y - b)*f(y - a)
+    assert integrate(DiracDelta(x)**2, (x, -oo, oo)) == DiracDelta(0)
+    # issue 1423
+    assert integrate(integrate((4 - 4*x + x*y - 4*y) * \
+        DiracDelta(x)*DiracDelta(y - 1), (x, 0, 1)), (y, 0, 1)) == 0
+    # issue 2630
+    p = exp(-(x**2 + y**2))/pi
+    assert integrate(p*DiracDelta(x - 10*y), (x, -oo, oo), (y, -oo, oo)) == \
+        integrate(p*DiracDelta(x - 10*y), (y, -oo, oo), (x, -oo, oo)) == \
+        integrate(p*DiracDelta(10*x - y), (x, -oo, oo), (y, -oo, oo)) == \
+        integrate(p*DiracDelta(10*x - y), (y, -oo, oo), (x, -oo, oo)) == \
+        1/sqrt(101*pi)
+    # issue 3328
+    assert integrate(integrate(integrate(
+        DiracDelta(x - y - z), (z, 0, oo)), (y, 0, 1)), (x, 0, 1)) == 1
 
 
 def test_subs1():
@@ -783,6 +773,7 @@ def test_issue_1793a():
         (A*c*t - A*(-h2)*log(t)*exp(z))*exp(-z),
     ]
 
+
 def test_issue_1793b():
     # Issues relating to issue 1497 are making the actual result of this hard
     # to test.  The answer should be something like
@@ -822,9 +813,11 @@ def test_limit_bug():
         -((-log(pi*z) + log(pi**2*z**2)/2 + Ci(pi**2*z))/z) + \
         log(z**2)/(2*z) + EulerGamma/z + 2*log(pi)/z
 
+
 def test_issue_1604():
     g = Function('g')
     assert integrate(exp(x)*g(x), x).has(Integral)
+
 
 def test_issue_1888():
     f = Function('f')
@@ -832,9 +825,11 @@ def test_issue_1888():
 
 # The following tests work using meijerint.
 
+
 def test_issue459():
     from sympy import Si
     assert integrate(cos(x*y), (x, -pi/2, pi/2), (y, 0, pi)) == 2*Si(pi**2/2)
+
 
 def test_issue841():
     from sympy import expand_mul
@@ -845,21 +840,26 @@ def test_issue841():
     assert expand_mul(integrate(exp(-a*x**2 + 2*d*x), (x, -oo, oo))) == \
         sqrt(pi)*exp(d**2/a)/sqrt(a)
 
+
 def test_issue1304():
     assert integrate(1/(x**2 + y**2)**S('3/2'), x) == \
         1/(y**2*sqrt(1 + y**2/x**2))
 
+
 def test_issue_1323():
     assert integrate(1/sqrt(16 + 4*x**2), x) == asinh(x/2) / 2
+
 
 def test_issue1394():
     from sympy import simplify
     assert simplify(integrate(x*sqrt(1 + 2*x), x)) == \
         sqrt(2*x + 1)*(6*x**2 + x - 1)/15
 
+
 def test_issue1638():
     assert integrate(sin(x)/x, (x, -oo, oo)) == pi
     assert integrate(sin(x)/x, (x, 0, oo)) == pi/2
+
 
 def test_issue1893():
     from sympy import simplify, expand_func, polygamma, gamma
@@ -890,19 +890,23 @@ def test_issue_3154():
     assert integrate((sqrt(1 - x) + sqrt(1 + x))**2/x, x, meijerg=True) == \
         Integral((sqrt(-x + 1) + sqrt(x + 1))**2/x, x)
 
+
 def test_issue1054():
-    assert integrate(1/(1+x+y+z), (x, 0, 1), (y, 0, 1), (z, 0, 1)) in \
+    assert integrate(1/(1 + x + y + z), (x, 0, 1), (y, 0, 1), (z, 0, 1)) in \
         [6*log(2) + 8*log(4) - 27*log(3)/2, 22*log(2) - 27*log(3)/2,
          -12*log(3) - 3*log(6)/2 + 47*log(2)/2]
+
 
 def test_issue_1227():
     R, b, h = symbols('R b h')
     # It doesn't matter if we can do the integral.  Just make sure the result
     # doesn't contain nan.  This is really a test against _eval_interval.
-    assert not integrate(((h*(x-R+b))/b)*sqrt(R**2-x**2), (x, R-b, R)).has(nan)
+    assert not integrate(((h*(x - R + b))/b)*sqrt(R**2 - x**2), (x, R - b, R)).has(nan)
+
 
 def test_powers():
     assert integrate(2**x + 3**x, x) == 2**x/log(2) + 3**x/log(3)
+
 
 def test_risch_option():
     # risch=True only allowed on indefinite integrals

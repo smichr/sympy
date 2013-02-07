@@ -16,7 +16,8 @@ from sympy.core.compatibility import (iterable, is_sequence, ordered,
     default_sort_key, reduce)
 from sympy.utilities.exceptions import SymPyDeprecationWarning
 from sympy.core.sympify import sympify
-from sympy.core import C, S, Add, Symbol, Wild, Equality, Dummy, Basic, Expr
+from sympy.core import (C, S, Add, Symbol, Wild, Equality, Dummy, Basic,
+    Expr, Mul)
 from sympy.core.function import (expand_mul, expand_multinomial, expand_log,
                           Derivative, AppliedUndef, UndefinedFunction, nfloat,
                           count_ops)
@@ -27,7 +28,7 @@ from sympy.core.basic import preorder_traversal
 
 from sympy.functions import (log, exp, LambertW, cos, sin, tan, cot, cosh,
                              sinh, tanh, coth, acos, asin, atan, acot, acosh,
-                             asinh, atanh, acoth, Abs)
+                             asinh, atanh, acoth, Abs, sign)
 from sympy.functions.elementary.miscellaneous import real_root
 from sympy.simplify import (simplify, collect, powsimp, posify, powdenest,
                             nsimplify)
@@ -104,30 +105,36 @@ def checksol(f, symbol, sol=None, **flags):
     Examples
     ========
 
-       >>> from sympy import symbols
-       >>> from sympy.solvers import checksol
-       >>> x, y = symbols('x,y')
-       >>> checksol(x**4-1, x, 1)
-       True
-       >>> checksol(x**4-1, x, 0)
-       False
-       >>> checksol(x**2 + y**2 - 5**2, {x:3, y: 4})
-       True
+    >>> from sympy import symbols
+    >>> from sympy.solvers import checksol
+    >>> x, y = symbols('x,y')
+    >>> checksol(x**4 - 1, x, 1)
+    True
+    >>> checksol(x**4 - 1, x, 0)
+    False
+    >>> checksol(x**2 + y**2 - 5**2, {x: 3, y: 4})
+    True
 
-       None is returned if checksol() could not conclude.
+    To check if an expression is zero using checksol, pass it
+    as ``f`` and send an empty dictionary for ``symbol``:
 
-       flags:
-           'numerical=True (default)'
-               do a fast numerical check if ``f`` has only one symbol.
-           'minimal=True (default is False)'
-               a very fast, minimal testing.
-           'warn=True (default is False)'
-               print a warning if checksol() could not conclude.
-           'simplify=True (default)'
-               simplify solution before substituting into function and
-               simplify the function before trying specific simplifications
-           'force=True (default is False)'
-               make positive all symbols without assumptions regarding sign.
+    >>> checksol(x**2 + x - x*(x + 1), {})
+    True
+
+    None is returned if checksol() could not conclude.
+
+    flags:
+        'numerical=True (default)'
+           do a fast numerical check if ``f`` has only one symbol.
+        'minimal=True (default is False)'
+           a very fast, minimal testing.
+        'warn=True (default is False)'
+           print a warning if checksol() could not conclude.
+        'simplify=True (default)'
+           simplify solution before substituting into function and
+           simplify the function before trying specific simplifications
+        'force=True (default is False)'
+           make positive all symbols without assumptions regarding sign.
 
     """
 
@@ -160,7 +167,7 @@ def checksol(f, symbol, sol=None, **flags):
     if not f:
         return True
 
-    if not f.has(*sol.keys()):
+    if sol and not f.has(*sol.keys()):
         # if f(y) == 0, x=3 does not set f(y) to zero...nor does it not
         return None
 
@@ -305,19 +312,6 @@ def check_assumptions(expr, **assumptions):
     for key, expected in assumptions.iteritems():
         if expected is None:
             continue
-        if expected in [0, 1]:
-            expected = bool(expected)
-        if not isinstance(expected, bool):
-            raise ValueError(_filldendent('''
-                A boolean is expected for %s but got %s.''' % (key, expected)))
-        if hasattr(Q, key):
-            test = ask(getattr(Q, key)(expr))
-            if test is expected:
-                continue
-            elif test is not None:
-                return False
-        # ask() can't conclude. Try using old assumption system.
-        # XXX: remove once transition to new assumption system is finished.
         test = getattr(expr, 'is_' + key, None)
         if test is expected:
             continue
@@ -346,8 +340,8 @@ def solve(f, *symbols, **flags):
         - a Relational expression or boolean
         - iterable of one or more of the above
 
-    * symbols (Symbol, Function or Derivative) specified as
-        - none given (all free symbols will be used)
+    * symbols (object(s) to solve for) specified as
+        - none given (other non-numeric objects will be used)
         - single symbol
         - denested list of symbols
           e.g. solve(f, x, y)
@@ -395,6 +389,13 @@ def solve(f, *symbols, **flags):
             other functions that contain that pattern; this is only
             needed if the pattern is inside of some invertible function
             like cos, exp, ....
+        'minimal=True (default is False)'
+            instructs solve to try to find a particular solution to a linear
+            system with as many zeros as possible; this is very expensive
+        'quick=True (default is False)'
+            when using minimal=True, use a fast heuristic instead to find a
+            solution with many zeros (instead of using the very slow method
+            guaranteed to find the largest number of zeros possible)
 
     Examples
     ========
@@ -460,10 +461,12 @@ def solve(f, *symbols, **flags):
             >>> solve(z**2*x - z**2*y**2)
             [{x: y**2}]
 
-    * when a Function or Derivative is given as a symbol, it is
-      isolated algebraically and an implicit solution may be obtained;
-      to obtain the solution for a function within a derivative, use
-      dsolve.
+    * when an object other than a Symbol is given as a symbol, it is
+      isolated algebraically and an implicit solution may be obtained.
+      This is mostly provided as a convenience to save one from replacing
+      the object with a Symbol and solving for that Symbol. It will only
+      work if the specified object can be replaced with a Symbol using the
+      subs method.
 
           >>> solve(f(x) - x, f(x))
           [x]
@@ -474,12 +477,48 @@ def solve(f, *symbols, **flags):
           >>> set(solve(x + exp(x)**2, exp(x)))
           set([-sqrt(-x), sqrt(-x)])
 
+          >>> from sympy import Indexed, IndexedBase, Tuple, sqrt
+          >>> A = IndexedBase('A')
+          >>> eqs = Tuple(A[1] + A[2] - 3, A[1] - A[2] + 1)
+          >>> solve(eqs, eqs.atoms(Indexed))
+          {A[1]: 1, A[2]: 2}
+
         * To solve for a *symbol* implicitly, use 'implicit=True':
 
             >>> solve(x + exp(x), x)
             [-LambertW(1)]
             >>> solve(x + exp(x), x, implicit=True)
             [-exp(x)]
+
+        * It is possible to solve for anything that can be targeted with
+          subs:
+
+            >>> solve(x + 2 + sqrt(3), x + 2)
+            [-sqrt(3)]
+            >>> solve((x + 2 + sqrt(3), x + 4 + y), y, x + 2)
+            {y: -2 + sqrt(3), x + 2: -sqrt(3)}
+
+        * Nothing heroic is done in this implicit solving so you may end up
+          with a symbol still in the solution:
+
+            >>> eqs = (x*y + 3*y + sqrt(3), x + 4 + y)
+            >>> solve(eqs, y, x + 2)
+            {y: sqrt(3)/(-x - 3), x + 2: (-2*x - 6 + sqrt(3))/(x + 3)}
+            >>> solve(eqs, y*x, x)
+            {x: -y - 4, x*y: -3*y - sqrt(3)}
+
+        * if you attempt to solve for a number remember that the number
+          you have obtained does not necessarily mean that the value is
+          equivalent to the expression obtained:
+
+            >>> solve(sqrt(2) - 1, 1)
+            [sqrt(2)]
+            >>> solve(x - y + 1, 1)  # /!\ -1 is targeted, too
+            [x/(y - 1)]
+            >>> [_.subs(z, -1) for _ in solve((x - y + 1).subs(-1, z), 1)]
+            [-x + y]
+
+        * To solve for a function within a derivative, use dsolve.
 
     * single expression and more than 1 symbol
 
@@ -637,10 +676,23 @@ def solve(f, *symbols, **flags):
     # preprocess symbol(s)
     ###########################################################################
     if not symbols:
-        # get symbols from equations or supply dummy symbols so solve(3)
-        # behaves like solve(3, x).
-        symbols = reduce(set.union, [fi.free_symbols or set([Dummy()])
+        # get symbols from equations
+        symbols = reduce(set.union, [fi.free_symbols
                                      for fi in f], set())
+        if len(symbols) < len(f):
+            for fi in f:
+                pot = preorder_traversal(fi)
+                for p in pot:
+                    if not (p.is_number or p.is_Add or p.is_Mul) or \
+                            isinstance(p, AppliedUndef):
+                        flags['dict'] = True  # better show symbols
+                        symbols.add(p)
+                        pot.skip()  # don't go any deeper
+        symbols = list(symbols)
+        # supply dummy symbols so solve(3) behaves like solve(3, x)
+        for i in range(len(f) - len(symbols)):
+            symbols.append(Dummy())
+
         ordered_symbols = False
     elif len(symbols) == 1 and iterable(symbols[0]):
         symbols = symbols[0]
@@ -659,27 +711,15 @@ def solve(f, *symbols, **flags):
         # be unambiguous
         symbols = sorted(symbols, key=default_sort_key)
 
-    # we can solve for Function and Derivative instances by replacing them
-    # with Dummy symbols or functions
+    # we can solve for non-symbol entities by replacing them with Dummy symbols
     symbols_new = []
     symbol_swapped = False
-    funcs = []
     for i, s in enumerate(symbols):
         if s.is_Symbol:
             s_new = s
-        elif s.is_Function:
-            symbol_swapped = True
-            s_new = Dummy('F%d' % i)
-            funcs.append(s)
-        elif s.is_Derivative:
-            symbol_swapped = True
-            s_new = Dummy('D%d' % i)
-        elif s.is_Pow:
-            symbol_swapped = True
-            s_new = Dummy('P%d' % i)
         else:
-            msg = 'expected Symbol, Function, Power or Derivative but got %s'
-            raise TypeError(msg % type(s))
+            symbol_swapped = True
+            s_new = Dummy('X%d' % i)
         symbols_new.append(s_new)
 
     if symbol_swapped:
@@ -695,7 +735,7 @@ def solve(f, *symbols, **flags):
 
     # get rid of equations that have no symbols of interest; we don't
     # try to solve them because the user didn't ask and they might be
-    # hard to solve; this means that solutions may be give in terms
+    # hard to solve; this means that solutions may be given in terms
     # of the eliminated equations e.g. solve((x-y, y-3), x) -> {x: y}
     newf = []
     for fi in f:
@@ -782,7 +822,7 @@ def solve(f, *symbols, **flags):
     #
     # postprocessing
     ###########################################################################
-    # Restore masked off derivatives
+    # Restore masked-off objects
     if non_inverts:
 
         def _do_dict(solution):
@@ -809,7 +849,7 @@ def solve(f, *symbols, **flags):
             raise NotImplementedError(filldedent('''
                             no handling of %s was implemented''' % solution))
 
-    # Restore original Functions and Derivatives if a dictionary is returned.
+    # Restore original "symbols" if a dictionary is returned.
     # This is not necessary for
     #   - the single univariate equation case
     #     since the symbol will have been removed from the solution;
@@ -819,6 +859,7 @@ def solve(f, *symbols, **flags):
     # ** unless there were Derivatives with the symbols, but those were handled
     #    above.
     if symbol_swapped:
+        symbols = [swap_sym[k] for k in symbols]
         if type(solution) is dict:
             solution = dict([(swap_sym[k], v.subs(swap_sym))
                              for k, v in solution.iteritems()])
@@ -826,6 +867,7 @@ def solve(f, *symbols, **flags):
             for i, sol in enumerate(solution):
                 solution[i] = dict([(swap_sym[k], v.subs(swap_sym))
                               for k, v in sol.iteritems()])
+
     # undo the dictionary solutions returned when the system was only partially
     # solved with poly-system if all symbols are present
     if (
@@ -1269,7 +1311,10 @@ def _solve_system(exprs, symbols, **flags):
                         matrix[i, m] = -coeff
 
             # returns a dictionary ({symbols: values}) or None
-            result = solve_linear_system(matrix, *symbols, **flags)
+            if flags.pop('minimal', False):
+                result = minsolve_linear_system(matrix, *symbols, **flags)
+            else:
+                result = solve_linear_system(matrix, *symbols, **flags)
             if result:
                 # it doesn't need to be checked but we need to see
                 # that it didn't set any denominators to 0
@@ -1517,6 +1562,7 @@ def solve_linear(lhs, rhs=0, symbols=[], exclude=[]):
                              ''' % (bad, eg)))
         symbols = free.intersection(symbols)
     symbols = symbols.difference(exclude)
+    dfree = d.free_symbols
 
     # derivatives are easy to do but tricky to analyze to see if they are going
     # to disallow a linear solution, so for simplicity we just evaluate the
@@ -1548,13 +1594,95 @@ def solve_linear(lhs, rhs=0, symbols=[], exclude=[]):
                                 i.function.is_number]
                         # do a slight bit of simplification
                         vi = expand_mul(vi.subs(irep))
-                        return xi, vi
+                        if not d.has(xi) or not (d/xi).has(xi):
+                            return xi, vi
 
         if all_zero:
             return S.Zero, S.One
     if n.is_Symbol:  # there was no valid solution
         n = d = S.Zero
     return n, d  # should we cancel now?
+
+
+def minsolve_linear_system(system, *symbols, **flags):
+    r"""
+    Find a particular solution to a linear system.
+
+    In particular, try to find a solution with the minimal possible number
+    of non-zero variables. This is a very computationally hard prolem.
+    If ``quick=True``, a heuristic is used. Otherwise a naive algorithm with
+    exponential complexity is used.
+    """
+    quick = flags.get('quick', False)
+    # Check if there are any non-zero solutions at all
+    s0 = solve_linear_system(system, *symbols, **flags)
+    if not s0 or all(v == 0 for v in s0.itervalues()):
+        return s0
+    if quick:
+        # We just solve the system and try to heuristically find a nice
+        # solution.
+        s = solve_linear_system(system, *symbols)
+        def update(determined, solution):
+            delete = []
+            for k, v in solution.iteritems():
+                solution[k] = v.subs(determined)
+                if not solution[k].free_symbols:
+                    delete.append(k)
+                    determined[k] = solution[k]
+            for k in delete:
+                del solution[k]
+        determined = {}
+        update(determined, s)
+        while s:
+            # NOTE sort by default_sort_key to get deterministic result
+            k = max((k for k in s.itervalues()),
+                    key=lambda x: (len(x.free_symbols), default_sort_key(x)))
+            x = max(k.free_symbols, key=default_sort_key)
+            if len(k.free_symbols) != 1:
+                determined[x] = S(0)
+            else:
+                val = solve(k)[0]
+                if val == 0 and all(v.subs(x, val) == 0 for v in s.itervalues()):
+                    determined[x] = S(1)
+                else:
+                    determined[x] = val
+            update(determined, s)
+        return determined
+    else:
+        # We try to select n variables which we want to be non-zero.
+        # All others will be assumed zero. We try to solve the modified system.
+        # If there is a non-trivial solution, just set the free variables to
+        # one. If we do this for increasing n, trying all combinations of
+        # variables, we will find an optimal solution.
+        # We speed up slightly by starting at one less than the number of
+        # variables the quick method manages.
+        from sympy.core.compatibility import combinations
+        from sympy.utilities.misc import debug
+        N = len(symbols)
+        bestsol = minsolve_linear_system(system, *symbols, **{'quick': True})
+        n0 = len([x for x in bestsol.itervalues() if x != 0])
+        for n in range(n0 - 1, 1, -1):
+            debug('minsolve: %s' % n)
+            thissol = None
+            for nonzeros in combinations(range(N), n):
+                subm = Matrix([system.col(i).T for i in nonzeros] + [system.col(-1).T]).T
+                s = solve_linear_system(subm, *[symbols[i] for i in nonzeros])
+                if s and not all(v == 0 for v in s.itervalues()):
+                    subs = [(symbols[v], S(1)) for v in nonzeros]
+                    for k, v in s.iteritems():
+                        s[k] = v.subs(subs)
+                    for sym in symbols:
+                        if sym not in s:
+                            if list(symbols).index(sym) in nonzeros:
+                                s[sym] = S(1)
+                            else:
+                                s[sym] = S(0)
+                    thissol = s
+                    break
+            if thissol is None:
+                break
+            bestsol = thissol
+        return bestsol
 
 
 def solve_linear_system(system, *symbols, **flags):
@@ -2179,11 +2307,24 @@ def _invert(eq, *symbols, **kwargs):
             a, b = lhs.as_two_terms()
             ai, ad = a.as_independent(*symbols)
             bi, bd = b.as_independent(*symbols)
-            if any(_ispow(i) for i in (ad, bd)) and \
-                    ad.as_base_exp()[0] == bd.as_base_exp()[0]:
-                # a = -b
-                lhs = powsimp(powdenest(ad/bd))
-                rhs = -bi/ai
+            if any(_ispow(i) for i in (ad, bd)):
+                a_base, a_exp = ad.as_base_exp()
+                b_base, b_exp = bd.as_base_exp()
+                if a_base == b_base:
+                    # a = -b
+                    lhs = powsimp(powdenest(ad/bd))
+                    rhs = -bi/ai
+                else:
+                    bases = (b_base, a_base)
+                    expos = (b_exp, a_exp)
+                    if (all(i.is_real for i in bases + expos) and
+                            all(i.is_positive for i in bases) and
+                            any(i.has(*symbols) for i in expos) and
+                            not any(i.has(*symbols) for i in bases) and
+                            sign(ai*bi).is_negative):
+                        # ai*a_base**a_exp = -bi*b_base**b_exp
+                        lhs = a_exp*log(a_base) - b_exp*log(b_base)
+                        rhs = -log(ai/-bi)
 
         elif lhs.is_Mul and any(_ispow(a) for a in lhs.args):
             lhs = powsimp(powdenest(lhs))
@@ -2307,20 +2448,25 @@ def unrad(eq, *syms, **flags):
 
     poly = eq.as_poly()
 
-    rads = set([g for g in poly.gens if _take(g) and
-                g.is_Pow and g.exp.as_coeff_mul()[0].q != 1])
+    # if all the bases are the same or all the radicals are in one
+    # term, `lcm` will be the lcm of the radical's exponent
+    # denominators
+    lcm = 1
+    rads = set()
+    bases = set()
+    for g in poly.gens:
+        if not _take(g) or not g.is_Pow:
+            continue
+        ecoeff = g.exp.as_coeff_mul()[0]  # a Rational
+        if ecoeff.q != 1:
+            rads.add(g)
+            lcm = ilcm(lcm, ecoeff.q)
+            bases.add(g.base)
 
     if not rads:
         return
 
     depth = sqrt_depth(eq)
-
-    # if all the bases are the same or all the radicals are in one
-    # term, this is the lcm of the radical's exponent denominators
-    lcm = reduce(ilcm, [r.exp.q for r in rads])
-
-    # find the bases of the radicals
-    bases = set([r.as_base_exp()[0] for r in rads])
 
     # get terms together that have common generators
     drad = dict(zip(rads, range(len(rads))))

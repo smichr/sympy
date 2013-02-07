@@ -41,77 +41,53 @@ from sympy.polys import gcd, cancel, PolynomialError, Poly, reduced, RootSum, Do
 
 from sympy.utilities.iterables import numbered_symbols
 
-# TODO: Should this go in the regular namespace?
-# If so, index should default to False, I think.
-def integer_powers(exprs, index=True):
+def integer_powers(exprs):
     """
     Rewrites a list of expressions as integer multiples of each other.
 
     For example, if you have [x, x/2, x**2 + 1, 2*x/3], then you can rewrite
-    this as [(x/6) * 6, (x/6) * 3, (x**2 + 1) * 1, (x/6) * 4].  This is useful
-    in the Risch integration algorithm, where we must write exp(x) + exp(x/2) as
-    (exp(x/2))**2 + exp(x/2), but we cannot write it as exp(x) + sqrt(exp(x))
-    (this is because only the transcendental case is implemented and we
-    therefore cannot integrate algebraic extensions).  The integer multiples
-    returned by this function for each term are the smallest possible (their
-    content equals 1).
+    this as [(x/6) * 6, (x/6) * 3, (x**2 + 1) * 1, (x/6) * 4]. This is useful
+    in the Risch integration algorithm, where we must write exp(x) + exp(x/2)
+    as (exp(x/2))**2 + exp(x/2), but not as exp(x) + sqrt(exp(x)) (this is
+    because only the transcendental case is implemented and we therefore cannot
+    integrate algebraic extensions). The integer multiples returned by this
+    function for each term are the smallest possible (their content equals 1).
 
     Returns a list of tuples where the first element is the base term and the
-    second element is a list of `(index, factor)` terms, where `index` is the
-    index of the other terms that can be rewritten in terms of the base term,
-    and `factor` is the (rational number) multiplicative factor that must
-    multiply the base term to obtain the original item indexed by `index`.
-
-    If index=False, then the original expression will appear, instead of its
-    index in the original list.
+    second element is a list of `(item, factor)` terms, where `factor` is the
+    integer multiplicative factor that must multiply the base term to obtain
+    the original item.
 
     The easiest way to understand this is to look at an example:
 
     >>> from sympy.abc import x
     >>> from sympy.integrals.risch import integer_powers
-    >>> integer_powers([x, x/2, x**2 + 1, 2*x/3], index=True)
-    [(x/6, [(0, 6), (1, 3), (3, 4)]), (x**2 + 1, [(2, 1)])]
-    >>> integer_powers([x, x/2, x**2 + 1, 2*x/3], index=False)
+    >>> integer_powers([x, x/2, x**2 + 1, 2*x/3])
     [(x/6, [(x, 6), (x/2, 3), (2*x/3, 4)]), (x**2 + 1, [(x**2 + 1, 1)])]
 
     We can see how this relates to the example at the beginning of the
-    docstring.  It chose x/6 as the first base term.  Then, the element 0 (x)
-    can be written as (x/2) * 2, so we get (0, 2), and so on.  Now only element
-    2 (x**2 + 1) remains, and there are no other terms that can be written as a
-    rational multiple of that, so we get that it can be written as
-    (x**2 + 1) * 1.
+    docstring.  It chose x/6 as the first base term.  Then, x can be written as
+    (x/2) * 2, so we get (0, 2), and so on. Now only element (x**2 + 1)
+    remains, and there are no other terms that can be written as a rational
+    multiple of that, so we get that it can be written as (x**2 + 1) * 1.
 
-    The function only accepts rational number multiples because only those are
-    useful for arguments of exponentials, but it could easily be extended to
-    support any kind of coefficient.
     """
     # Here is the strategy:
 
     # First, go through each term and determine if it can be rewritten as a
-    # rational multiple of any of the terms gathered so far.  Because we only
-    # care about rational number coefficients to rational functions (that is all
-    # Risch cares about), cancel(a/b).is_Rational is sufficient for this. If it
-    # is a multiple, we add its multiple to the dictionary.
+    # rational multiple of any of the terms gathered so far.
+    # cancel(a/b).is_Rational is sufficient for this.  If it is a multiple, we
+    # add its multiple to the dictionary.
 
     terms = {}
-    for i, term in enumerate(exprs):
-        added = False
+    for term in exprs:
         for j in terms:
             a = cancel(term/j)
             if a.is_Rational:
-                if index:
-                    terms[j].append((i, a))
-                else:
-                    terms[j].append((term, a))
-                added = True
+                terms[j].append((term, a))
                 break
-
-        if not added:
-            # It wasn't in there
-            if index:
-                terms[term] = [(i, S(1))]
-            else:
-                terms[term] = [(term, S(1))]
+        else:
+            terms[term] = [(term, S(1))]
 
     # After we have done this, we have all the like terms together, so we just
     # need to find a common denominator so that we can get the base term and
@@ -126,7 +102,8 @@ def integer_powers(exprs, index=True):
         newmults = [(i, j*common_denom) for i, j in terms[term]]
         newterms[newterm] = newmults
 
-    return sorted(list(newterms.iteritems()))
+    return sorted(newterms.iteritems(), key=lambda item: item[0].sort_key())
+
 
 class DifferentialExtension(object):
     """
@@ -211,7 +188,7 @@ class DifferentialExtension(object):
         # XXX: If you need to debug this function, set the break point here
 
         if extension:
-            if not extension.has_key('D'):
+            if 'D' not in extension:
                 raise ValueError("At least the key D must be included with "
                     "the extension flag to DifferentialExtension.")
             for attr in extension:
@@ -470,9 +447,9 @@ class DifferentialExtension(object):
                     # Example: exp(x + x**2) over QQ(x, exp(x), exp(x**2))
                     self.newf = self.newf.xreplace({exp(arg): exp(const)*Mul(*[
                         u**power for u, power in ans])})
-                    self.newf = self.newf.xreplace(dict([(exp(p*expargs[i]),
-                        exp(const*p)*Mul(*[u**power for u, power in ans]))
-                        for i, p in others]))
+                    self.newf = self.newf.xreplace(dict([(exp(p*exparg),
+                        exp(const*p) * Mul(*[u**power for u, power in ans]))
+                        for exparg, p in others]))
                     # TODO: Add something to backsubs to put exp(const*p)
                     # back together.
 
@@ -499,8 +476,8 @@ class DifferentialExtension(object):
 
                     if const or len(ans) > 1:
                         rad = Mul(*[term**(power/n) for term, power in ans])
-                        self.newf = self.newf.xreplace(dict((exp(p*expargs[i]),
-                            exp(const*p)*rad) for i, p in others))
+                        self.newf = self.newf.xreplace(dict((exp(p*exparg),
+                            exp(const*p)*rad) for exparg, p in others))
                         self.newf = self.newf.xreplace(dict(zip(reversed(self.T),
                             reversed([f(self.x) for f in self.Tfuncs]))))
                         restart = True
@@ -528,8 +505,8 @@ class DifferentialExtension(object):
                 else:
                     i = Symbol('i', dummy=True)
                 self.Tfuncs = self.Tfuncs + [Lambda(i, exp(arg.subs(self.x, i)))]
-                self.newf = self.newf.xreplace(dict((exp(expargs[i]), self.t**p) for i,
-                                                    p in others))
+                self.newf = self.newf.xreplace(
+                        dict((exp(exparg), self.t**p) for exparg, p in others))
                 new_extension = True
 
         if restart:
@@ -666,18 +643,23 @@ class DifferentialExtension(object):
         self.case = self.cases[self.level]
         return None
 
+
 class DecrementLevel(object):
     """
     A context manager for decrementing the level of a DifferentialExtension.
     """
     __slots__ = ('DE',)
+
     def __init__(self, DE):
         self.DE = DE
         return
+
     def __enter__(self):
         self.DE.decrement_level()
+
     def __exit__(self, exc_type, exc_value, traceback):
         self.DE.increment_level()
+
 
 class NonElementaryIntegralException(Exception):
     """
@@ -690,6 +672,7 @@ class NonElementaryIntegralException(Exception):
     # TODO: Pass through information about why the integral was nonelementary,
     # and store that in the resulting NonElementaryIntegral somehow.
     pass
+
 
 def gcdex_diophantine(a, b, c):
     """
@@ -704,7 +687,7 @@ def gcdex_diophantine(a, b, c):
     # XXX: Bettter name?
 
     s, g = a.half_gcdex(b)
-    q = c.exquo(g) # Inexact division means c is not in (a, b)
+    q = c.exquo(g)  # Inexact division means c is not in (a, b)
     s = q*s
 
     if not s.is_zero and b.degree() >= b.degree():
@@ -713,6 +696,7 @@ def gcdex_diophantine(a, b, c):
     t = (c - s*a).exquo(b)
 
     return (s, t)
+
 
 def frac_in(f, t, **kwargs):
     """
@@ -734,6 +718,7 @@ def frac_in(f, t, **kwargs):
     if fa is None or fd is None:
         raise ValueError("Could not turn %s into a fraction in %s." % (f, t))
     return (fa, fd)
+
 
 def as_poly_1t(p, t, z):
     """
@@ -766,7 +751,7 @@ def as_poly_1t(p, t, z):
         # a bug.
         raise PolynomialError("%s is not an element of K[%s, 1/%s]." % (p, t, t))
     d = pd.degree(t)
-    one_t_part = pa.slice(0, d + 1) # requires polys11
+    one_t_part = pa.slice(0, d + 1)
     r = pd.degree() - pa.degree()
     t_part = pa - one_t_part
     try:
@@ -776,11 +761,11 @@ def as_poly_1t(p, t, z):
         raise NotImplementedError(e)
     # Compute the negative degree parts.  Also requires polys11.
     one_t_part = Poly.from_list(reversed(one_t_part.rep.rep), *one_t_part.gens,
-        **{'domain':one_t_part.domain})
+        **{'domain': one_t_part.domain})
     if r > 0:
         one_t_part *= Poly(t**r, t)
 
-    one_t_part = one_t_part.replace(t, z) # z will be 1/t
+    one_t_part = one_t_part.replace(t, z)  # z will be 1/t
     if pd.nth(d):
         one_t_part *= Poly(1/pd.nth(d), z, expand=False)
     ans = t_part.as_poly(t, z, expand=False) + one_t_part.as_poly(t, z,
@@ -837,6 +822,7 @@ def derivation(p, DE, coefficientD=False, basic=False):
 
     return r
 
+
 def get_case(d, t):
     """
     Returns the type of the derivation d.
@@ -855,6 +841,7 @@ def get_case(d, t):
     if d.degree(t) > 1:
         return 'other_nonlinear'
     return 'other_linear'
+
 
 def splitfactor(p, DE, coefficientD=False, z=None):
     """
@@ -895,6 +882,7 @@ def splitfactor(p, DE, coefficientD=False, z=None):
     else:
         return (p, One)
 
+
 def splitfactor_sqf(p, DE, coefficientD=False, z=None):
     """
     Splitting Square-free Factorization
@@ -929,6 +917,7 @@ def splitfactor_sqf(p, DE, coefficientD=False, z=None):
 
     return (tuple(N), tuple(S))
 
+
 def canonical_representation(a, d, DE):
     """
     Canonical Representation.
@@ -950,6 +939,7 @@ def canonical_representation(a, d, DE):
     b, c = b.as_poly(DE.t), c.as_poly(DE.t)
 
     return (q, (b, ds), (c, dn))
+
 
 def hermite_reduce(a, d, DE):
     """
@@ -1002,6 +992,7 @@ def hermite_reduce(a, d, DE):
 
     return ((ga, gd), (r, d), (rra, rrd))
 
+
 def polynomial_reduce(p, DE):
     """
     Polynomial Reduction.
@@ -1019,6 +1010,7 @@ def polynomial_reduce(p, DE):
         p = p - derivation(q0, DE)
 
     return (q, p)
+
 
 def residue_reduce(a, d, DE, z=None, invert=True):
     """
@@ -1103,6 +1095,7 @@ def residue_reduce(a, d, DE, z=None, invert=True):
 
     return (H, b)
 
+
 def residue_reduce_to_basic(H, DE, z):
     """
     Converts the tuple returned by residue_reduce() into a Basic expression.
@@ -1113,6 +1106,7 @@ def residue_reduce_to_basic(H, DE, z):
 
     return sum((RootSum(a[0].as_poly(z), Lambda(i, i*log(a[1].as_expr()).subs(
         {z: i}).subs(s))) for a in H))
+
 
 def residue_reduce_derivation(H, DE, z):
     """
@@ -1125,6 +1119,7 @@ def residue_reduce_derivation(H, DE, z):
     i = Dummy('i')
     return S(sum((RootSum(a[0].as_poly(z), Lambda(i, i*derivation(a[1],
         DE).as_expr().subs(z, i)/a[1].as_expr().subs(z, i))) for a in H)))
+
 
 def integrate_primitive_polynomial(p, DE):
     """
@@ -1144,11 +1139,10 @@ def integrate_primitive_polynomial(p, DE):
 
     Dta, Dtb = frac_in(DE.d, DE.T[DE.level - 1])
 
-    with DecrementLevel(DE): # We had better be integrating the lowest extension (x)
-                             # with ratint().
+    with DecrementLevel(DE):  # We had better be integrating the lowest extension (x)
+                              # with ratint().
         a = p.LC()
         aa, ad = frac_in(a, DE.t)
-
 
         try:
             (ba, bd), c = limited_integrate(aa, ad, [(Dta, Dtb)], DE)
@@ -1164,6 +1158,7 @@ def integrate_primitive_polynomial(p, DE):
     # c.f. risch_integrate(log(x)**1001, x)
     q, r, b = integrate_primitive_polynomial(p - derivation(q0, DE), DE)
     return (q + q0, r, b)
+
 
 def integrate_primitive(a, d, DE, z=None):
     """
@@ -1210,6 +1205,7 @@ def integrate_primitive(a, d, DE, z=None):
 
     return (ret, i, b)
 
+
 def integrate_hyperexponential_polynomial(p, DE, z):
     """
     Integration of hyperexponential polynomials.
@@ -1254,6 +1250,7 @@ def integrate_hyperexponential_polynomial(p, DE, z):
                 qd *= vd
 
     return (qa, qd, b)
+
 
 def integrate_hyperexponential(a, d, DE, z=None):
     """
@@ -1303,6 +1300,7 @@ def integrate_hyperexponential(a, d, DE, z=None):
 
     return (ret, i, b)
 
+
 def integrate_hypertangent_polynomial(p, DE):
     """
     Integration of hypertangent polynomials.
@@ -1317,6 +1315,7 @@ def integrate_hypertangent_polynomial(p, DE):
     a = DE.d.exquo(Poly(DE.t**2 + 1, DE.t))
     c = Poly(r.nth(1)/(2*a.as_expr()), DE.t)
     return (q, c)
+
 
 def integrate_nonlinear_no_specials(a, d, DE, z=None):
     """
@@ -1360,6 +1359,7 @@ def integrate_nonlinear_no_specials(a, d, DE, z=None):
     ret = (cancel(g1[0].as_expr()/g1[1].as_expr() + q1.as_expr()).subs(s) +
         residue_reduce_to_basic(g2, DE, z))
     return (ret, b)
+
 
 class NonElementaryIntegral(Integral):
     """
@@ -1406,6 +1406,7 @@ class NonElementaryIntegral(Integral):
     # elementary=True?  Or maybe some information on why the integral is
     # nonelementary.
     pass
+
 
 def risch_integrate(f, x, extension=None, handle_first='log', separate_integral=False):
     r"""

@@ -9,7 +9,7 @@ from sympy import (
     binomial, catalan, ceiling, conjugate, cos, euler, exp, expint,
     factorial, factorial2, floor, gamma, groebner, homomorphism, hyper,
     log, lowergamma, meijerg, oo, pi, sin,
-    sqrt, sqrt, symbols, tan, uppergamma)
+    sqrt, sqrt, symbols, tan, uppergamma, subfactorial)
 
 from sympy.printing.pretty import pretty as xpretty
 from sympy.printing.pretty import pprint
@@ -83,6 +83,8 @@ Abs(x/(x**2+1)) #
 Abs(1 / (y - Abs(x)))
 factorial(n)
 factorial(2*n)
+subfactorial(n)
+subfactorial(2*n)
 factorial(factorial(factorial(n)))
 factorial(n+1) #
 conjugate(x)
@@ -1004,6 +1006,30 @@ u"""\
 
     assert pretty(expr) in [ascii_str_1, ascii_str_2]
     assert upretty(expr) in [ucode_str_1, ucode_str_2]
+
+    expr = subfactorial(n)
+    ascii_str = \
+"""\
+!n\
+"""
+    ucode_str = \
+u"""\
+!n\
+"""
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+
+    expr = subfactorial(2*n)
+    ascii_str = \
+"""\
+!(2*n)\
+"""
+    ucode_str = \
+u"""\
+!(2⋅n)\
+"""
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
 
     n = Symbol('n', integer=True)
     expr = factorial2(n)
@@ -2164,6 +2190,40 @@ u"""\
     assert upretty(expr) == ucode_str
 
 
+def test_Adjoint():
+    from sympy.matrices import Adjoint, Inverse, MatrixSymbol, Transpose
+    X = MatrixSymbol('X', 2, 2)
+    Y = MatrixSymbol('Y', 2, 2)
+    assert pretty(Adjoint(X)) == " +\nX "
+    assert pretty(Adjoint(X + Y)) == "       +\n(X + Y) "
+    assert pretty(Adjoint(X) + Adjoint(Y)) == " +    +\nX  + Y "
+    assert pretty(Adjoint(X*Y)) == "     +\n(X*Y) "
+    assert pretty(Adjoint(Y)*Adjoint(X)) == " +  +\nY *X "
+    assert pretty(Adjoint(X**2)) == "    +\n/ 2\\ \n\\X / "
+    assert pretty(Adjoint(X)**2) == "    2\n/ +\\ \n\\X / "
+    assert pretty(Adjoint(Inverse(X))) == "     +\n/ -1\\ \n\\X  / "
+    assert pretty(Inverse(Adjoint(X))) == "    -1\n/ +\\  \n\\X /  "
+    assert pretty(Adjoint(Transpose(X))) == "    +\n/ T\\ \n\\X / "
+    assert pretty(Transpose(Adjoint(X))) == "    T\n/ +\\ \n\\X / "
+    assert upretty(Adjoint(X)) == u" \u2020\nX "
+    assert upretty(Adjoint(X + Y)) == u"       \u2020\n(X + Y) "
+    assert upretty(Adjoint(X) + Adjoint(Y)) == u" \u2020    \u2020\nX  + Y "
+    assert upretty(Adjoint(X*Y)) == u"     \u2020\n(X\u22c5Y) "
+    assert upretty(Adjoint(Y)*Adjoint(X)) == u" \u2020  \u2020\nY \u22c5X "
+    assert upretty(Adjoint(X**2)) == \
+        u"    \u2020\n\u239b 2\u239e \n\u239dX \u23a0 "
+    assert upretty(Adjoint(X)**2) == \
+        u"    2\n\u239b \u2020\u239e \n\u239dX \u23a0 "
+    assert upretty(Adjoint(Inverse(X))) == \
+        u"     \u2020\n\u239b -1\u239e \n\u239dX  \u23a0 "
+    assert upretty(Inverse(Adjoint(X))) == \
+        u"    -1\n\u239b \u2020\u239e  \n\u239dX \u23a0  "
+    assert upretty(Adjoint(Transpose(X))) == \
+        u"    \u2020\n\u239b T\u239e \n\u239dX \u23a0 "
+    assert upretty(Transpose(Adjoint(X))) == \
+        u"    T\n\u239b \u2020\u239e \n\u239dX \u23a0 "
+
+
 def test_pretty_piecewise():
     expr = Piecewise((x, x < 1), (x**2, True))
     ascii_str = \
@@ -2619,6 +2679,17 @@ def test_pretty_Boolean():
 
     assert pretty(expr) == "Or(x, y)"
     assert upretty(expr) == u"x ∨ y"
+
+    syms = symbols('a:f')
+    expr = And(*syms)
+
+    assert pretty(expr) == "And(a, b, c, d, e, f)"
+    assert upretty(expr) == u"a ∧ b ∧ c ∧ d ∧ e ∧ f"
+
+    expr = Or(*syms)
+
+    assert pretty(expr) == "Or(a, b, c, d, e, f)"
+    assert upretty(expr) == u"a ∨ b ∨ c ∨ d ∨ e ∨ f"
 
     expr = Xor(x, y, evaluate=False)
 

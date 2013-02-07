@@ -408,8 +408,8 @@ class Mul(Expr, AssocOp):
             grow = []
             for j in range(i + 1, len(num_rat)):
                 bj, ej = num_rat[j]
-                g = igcd(bi, bj)
-                if g != 1:
+                g = bi.gcd(bj)
+                if g is not S.One:
                     # 4**r1*6**r2 -> 2**(r1+r2)  *  2**r1 *  3**r2
                     # this might have a gcd with something else
                     e = ei + ej
@@ -422,9 +422,9 @@ class Mul(Expr, AssocOp):
                             e = Rational(ep, e.q)
                         grow.append((g, e))
                     # update the jth item
-                    num_rat[j] = (bj//g, ej)
+                    num_rat[j] = (bj/g, ej)
                     # update bi that we are checking with
-                    bi = bi//g
+                    bi = bi/g
                     if bi is S.One:
                         break
             if bi is not S.One:
@@ -524,7 +524,7 @@ class Mul(Expr, AssocOp):
 
         if e.is_Integer:
             return Mul(*[Pow(b, e, evaluate=False) for b in cargs]) * \
-                   Pow(Mul._from_args(nc), e, evaluate=False)
+                Pow(Mul._from_args(nc), e, evaluate=False)
 
         p = Pow(b, e, evaluate=False)
 
@@ -702,10 +702,10 @@ class Mul(Expr, AssocOp):
             return terms[0].matches(newexpr, repl_dict)
         return
 
-    def matches(self, expr, repl_dict={}):
+    def matches(self, expr, repl_dict={}, old=False):
         expr = sympify(expr)
         if self.is_commutative and expr.is_commutative:
-            return AssocOp._matches_commutative(self, expr, repl_dict)
+            return AssocOp._matches_commutative(self, expr, repl_dict, old)
         elif self.is_commutative is not expr.is_commutative:
             return None
         c1, nc1 = self.args_cnc()
@@ -716,7 +716,7 @@ class Mul(Expr, AssocOp):
                 c2 = [1]
             a = Mul(*c1)
             if isinstance(a, AssocOp):
-                repl_dict = a._matches_commutative(Mul(*c2), repl_dict)
+                repl_dict = a._matches_commutative(Mul(*c2), repl_dict, old)
             else:
                 repl_dict = a.matches(Mul(*c2), repl_dict)
         if repl_dict:
@@ -807,22 +807,19 @@ class Mul(Expr, AssocOp):
             for x in rhs.args:
                 if x in a:
                     a.remove(x)
+                elif -x in a:
+                    a.remove(-x)
+                    b.append(-1)
                 else:
                     b.append(x)
             return Mul(*a)/Mul(*b)
         return lhs/rhs
 
     def as_powers_dict(self):
-        d = defaultdict(list)
+        d = defaultdict(int)
         for term in self.args:
             b, e = term.as_base_exp()
-            d[b].append(e)
-        for b, e in d.iteritems():
-            if len(e) == 1:
-                e = e[0]
-            else:
-                e = Add(*e)
-            d[b] = e
+            d[b] += e
         return d
 
     def as_numer_denom(self):
@@ -1493,6 +1490,7 @@ def _keep_coeff(coeff, factors, clear=True):
     else:
         return coeff*factors
 
-from numbers import Rational, igcd
+
+from numbers import Rational
 from power import Pow
 from add import Add

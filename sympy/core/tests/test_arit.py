@@ -1379,14 +1379,23 @@ def test_float_int():
         112345678901234567890L
     assert int(Float('1.123456789012345678901234567890e25', '')) == \
         11234567890123456789012345L
+    # decimal forces float so it's not an exact integer ending in 000000
     assert int(Float('1.123456789012345678901234567890e35', '')) == \
-        112345678901234567890123456789000000L
+        112345678901234567890123456789000192
+    assert int(Float('123456789012345678901234567890e5', '')) == \
+        12345678901234567890123456789000000
     assert Integer(Float('1.123456789012345678901234567890e20', '')) == \
         112345678901234567890
     assert Integer(Float('1.123456789012345678901234567890e25', '')) == \
         11234567890123456789012345
+    # decimal forces float so it's not an exact integer ending in 000000
     assert Integer(Float('1.123456789012345678901234567890e35', '')) == \
-        112345678901234567890123456789000000
+        112345678901234567890123456789000192
+    assert Integer(Float('123456789012345678901234567890e5', '')) == \
+        12345678901234567890123456789000000
+    assert Float('123000e-2','') == Float('1230.00', '')
+    assert Float('123000e2','') == Float('12300000', '')
+
     assert int(1 + Rational('.9999999999999999999999999')) == 1
     assert int(pi/1e20) == 0
     assert int(1 + pi/1e20) == 1
@@ -1398,3 +1407,8 @@ def test_float_int():
 
     assert int(12345678901234567890 + cos(1)**2 + sin(1)**2) == \
         12345678901234567891
+
+def test_issue_3512a():
+    assert Mul.flatten([3**Rational(1, 3),
+        Pow(-Rational(1, 9), Rational(2, 3), evaluate=False)]) == \
+        ([Rational(1, 3), (-1)**Rational(2, 3)], [], None)

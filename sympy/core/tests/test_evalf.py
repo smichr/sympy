@@ -194,6 +194,33 @@ def test_evalf_bugs():
     assert NS((-x).n()) == '-x'
     assert NS((-2*x).n()) == '-2.00000000000000*x'
     assert NS((-2*x*y).n()) == '-2.00000000000000*x*y'
+    assert cos(x).n(subs={x: 1+I}) == cos(x).subs(x, 1+I).n()
+    #3561. Also NaN != mpmath.nan
+    # In this order:
+    # 0*nan, 0/nan, 0*inf, 0/inf
+    # 0+nan, 0-nan, 0+inf, 0-inf
+    # >>> n = Some Number
+    # n*nan, n/nan, n*inf, n/inf
+    # n+nan, n-nan, n+inf, n-inf
+    assert (0*sin(oo)).n() == S.Zero
+    assert (0/sin(oo)).n() == S.Zero
+    assert (0*E**(oo)).n() == S.NaN
+    assert (0/E**(oo)).n() == S.Zero
+
+    assert (0+sin(oo)).n() == S.NaN
+    assert (0-sin(oo)).n() == S.NaN
+    assert (0+E**(oo)).n() == S.Infinity
+    assert (0-E**(oo)).n() == S.NegativeInfinity
+
+    assert (5*sin(oo)).n() == S.NaN
+    assert (5/sin(oo)).n() == S.NaN
+    assert (5*E**(oo)).n() == S.Infinity
+    assert (5/E**(oo)).n() == S.Zero
+
+    assert (5+sin(oo)).n() == S.NaN
+    assert (5-sin(oo)).n() == S.NaN
+    assert (5+E**(oo)).n() == S.Infinity
+    assert (5-E**(oo)).n() == S.NegativeInfinity
 
 
 def test_evalf_integer_parts():
@@ -371,4 +398,14 @@ def test_chop_value():
 def test_infinities():
     assert oo.evalf(chop=True) == inf
     assert (-oo).evalf(chop=True) == ninf
-    assert S.NaN.evalf(chop=True) == nan
+
+
+def test_to_mpmath():
+    assert sqrt(3)._to_mpmath(20)._mpf_ == (0, 908093L, -19, 20)
+    assert S(3.2)._to_mpmath(20)._mpf_ == (0, 838861L, -18, 20)
+
+
+def test_issue_3533_evalf():
+    add = (-100000*sqrt(2500000001) + 5000000001)
+    assert add.n() == 9.999999998e-11
+    assert (add*add).n() == 9.999999996e-21

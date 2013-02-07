@@ -15,6 +15,7 @@ from sympy.utilities.pytest import raises, XFAIL
 
 from sympy.abc import a, b, c, n, t, u, x, y, z
 
+
 class DummyNumber(object):
     """
     Minimal implementation of a number that works with SymPy.
@@ -1084,6 +1085,8 @@ def test_as_powers_dict():
     assert x.as_powers_dict() == {x: 1}
     assert (x**y*z).as_powers_dict() == {x: y, z: 1}
     assert Mul(2, 2, **dict(evaluate=False)).as_powers_dict() == {S(2): S(2)}
+    assert (x*y).as_powers_dict()[z] == 0
+    assert (x + y).as_powers_dict()[z] == 0
 
 
 def test_as_coefficients_dict():
@@ -1389,9 +1392,9 @@ def test_equals():
 
 
 def test_random():
-    from sympy import posify
+    from sympy import posify, lucas
     assert posify(x)[0]._random() is not None
-    assert S('-pi*Abs(1/log(n!)) + 1')._random(2, -2, 0, -1, 0) is None
+    assert lucas(n)._random(2, -2, 0, -1, 1) is None
 
 
 def test_round():

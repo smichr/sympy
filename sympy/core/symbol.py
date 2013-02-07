@@ -10,7 +10,7 @@ from sympy.core.logic import fuzzy_bool
 from sympy.logic.boolalg import Boolean
 from sympy.utilities.exceptions import SymPyDeprecationWarning
 
-import re
+import re, string
 
 
 class Symbol(AtomicExpr, Boolean):
@@ -185,7 +185,28 @@ class Dummy(Symbol):
 
 class Wild(Symbol):
     """
-    Wild() matches any expression but another Wild().
+    A Wild symbol matches anything.
+
+    Examples
+    ========
+
+    >>> from sympy import Wild, WildFunction, cos, pi
+    >>> from sympy.abc import x
+    >>> a = Wild('a')
+    >>> b = Wild('b')
+    >>> b.match(a)
+    {a_: b_}
+    >>> x.match(a)
+    {a_: x}
+    >>> pi.match(a)
+    {a_: pi}
+    >>> (x**2).match(a)
+    {a_: x**2}
+    >>> cos(x).match(a)
+    {a_: cos(x)}
+    >>> A = WildFunction('A')
+    >>> A.match(a)
+    {a_: A_}
     """
 
     __slots__ = ['exclude', 'properties']
@@ -216,7 +237,7 @@ class Wild(Symbol):
         return super(Wild, self)._hashable_content() + (self.exclude, self.properties)
 
     # TODO add check against another Wild
-    def matches(self, expr, repl_dict={}):
+    def matches(self, expr, repl_dict={}, old=False):
         if any(expr.has(x) for x in self.exclude):
             return None
         if any(not f(expr) for f in self.properties):
@@ -229,7 +250,7 @@ class Wild(Symbol):
         raise TypeError("'%s' object is not callable" % type(self).__name__)
 
 _re_var_range = re.compile(r"^(.*?)(\d*):(\d+)$")
-_re_var_scope = re.compile(r"^(.):(.)$")
+_re_var_scope = re.compile(r"^(.*?|)(.):(.)(.*?|)$")
 _re_var_split = re.compile(r"\s*,\s*|\s+")
 
 
@@ -369,10 +390,14 @@ def symbols(names, **args):
             match = _re_var_scope.match(name)
 
             if match is not None:
-                start, end = match.groups()
+                name, start, end, suffix = match.groups()
+                letters = list(string.ascii_lowercase + string.ascii_uppercase
+                        + string.digits)
+                start = letters.index(start)
+                end = letters.index(end)
 
-                for name in xrange(ord(start), ord(end) + 1):
-                    symbol = cls(chr(name), **args)
+                for subname in xrange(start, end + 1):
+                    symbol = cls(name + letters[subname] + suffix, **args)
                     result.append(symbol)
 
                 seq = True

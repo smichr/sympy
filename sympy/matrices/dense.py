@@ -26,8 +26,8 @@ class DenseMatrix(MatrixBase):
 
     is_MatrixExpr = False
 
-    _op_priority = 12.0
-    _class_priority = 10
+    _op_priority = 10.01
+    _class_priority = 4
 
     def __getitem__(self, key):
         """Return portion of self defined by key. If the key involves a slice
@@ -243,6 +243,9 @@ class DenseMatrix(MatrixBase):
         out = self._new(self.rows, self.cols,
                 lambda i, j: self[i, j].conjugate())
         return out
+
+    def _eval_adjoint(self):
+        return self.T.C
 
     def _eval_inverse(self, **kwargs):
         """Return the matrix inverse using the method indicated (default

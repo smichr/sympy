@@ -12,13 +12,14 @@ from sympy import (
     exp, expint, factorial, factorial2, floor, gamma, gegenbauer, hermite,
     hyper, im, im, jacobi, laguerre, legendre, lerchphi, log, lowergamma,
     meijerg, oo, polar_lift, polylog, re, re, root, sin, sqrt, symbols,
-    uppergamma, zeta)
+    uppergamma, zeta, subfactorial)
 
 from sympy.abc import mu, tau
 from sympy.printing.latex import latex
 from sympy.utilities.pytest import XFAIL, raises
 from sympy.functions import DiracDelta, Heaviside, KroneckerDelta, LeviCivita
 from sympy.logic import Implies
+from sympy.logic.boolalg import And, Or
 from sympy.core.trace import Tr
 
 x, y, z, t, a, b = symbols('x y z t a b')
@@ -142,6 +143,9 @@ def test_latex_functions():
     assert latex(factorial(k)) == r"k!"
     assert latex(factorial(-k)) == r"\left(- k\right)!"
 
+    assert latex(subfactorial(k)) == r"!k"
+    assert latex(subfactorial(-k)) == r"!\left(- k\right)"
+
     assert latex(factorial2(k)) == r"k!!"
     assert latex(factorial2(-k)) == r"\left(- k\right)!!"
 
@@ -154,7 +158,9 @@ def test_latex_functions():
     assert latex(floor(x)) == r"\lfloor{x}\rfloor"
     assert latex(ceiling(x)) == r"\lceil{x}\rceil"
     assert latex(Min(x, 2, x**3)) == r"\min\left(2, x, x^{3}\right)"
+    assert latex(Min(x, y)**2) == r"\min\left(x, y\right)^{2}"
     assert latex(Max(x, 2, x**3)) == r"\max\left(2, x, x^{3}\right)"
+    assert latex(Max(x, y)**2) == r"\max\left(x, y\right)^{2}"
     assert latex(Abs(x)) == r"\lvert{x}\rvert"
     assert latex(re(x)) == r"\Re{x}"
     assert latex(re(x + y)) == r"\Re{x} + \Re{y}"
@@ -485,15 +491,15 @@ def test_latex_Piecewise():
 
 def test_latex_Matrix():
     M = Matrix([[1 + x, y], [y, x - 1]])
-    assert latex(M) == '\\left[\\begin{smallmatrix}x + 1 & y\\\\y & x -' \
-                       '1\\end{smallmatrix}\\right]'
+    assert latex(M) == '\\left[\\begin{smallmatrix}x + 1 & y\\\\y & x - 1' \
+                       '\\end{smallmatrix}\\right]'
     settings = {'mat_str': 'bmatrix'}
     assert latex(M, **settings) == '\\left[\\begin{bmatrix}x + 1 & y\\\\y &' \
-        ' x -1\\end{bmatrix}\\right]'
+        ' x - 1\\end{bmatrix}\\right]'
     settings['mat_delim'] = None
-    assert latex(M, **settings) == '\\begin{bmatrix}x + 1 & y\\\\y & x -1' \
+    assert latex(M, **settings) == '\\begin{bmatrix}x + 1 & y\\\\y & x - 1' \
         '\\end{bmatrix}'
-    assert latex(M) == '\\left[\\begin{smallmatrix}x + 1 & y\\\\y & x -1' \
+    assert latex(M) == '\\left[\\begin{smallmatrix}x + 1 & y\\\\y & x - 1' \
                        '\\end{smallmatrix}\\right]'
 
 
@@ -793,13 +799,23 @@ def test_Tr():
     t = Tr(A*B)
     assert latex(t) == r'\mbox{Tr}\left(A B\right)'
 
+
 def test_Adjoint():
-    from sympy.matrices import MatrixSymbol, Adjoint
+    from sympy.matrices import MatrixSymbol, Adjoint, Inverse, Transpose
     X = MatrixSymbol('X', 2, 2)
     Y = MatrixSymbol('Y', 2, 2)
-    # Either of these would be fine
-    assert latex(Adjoint(X+Y)) in \
-            [r'\left(X + Y\right)^\dag', r'X^\dag + Y^\dag']
+    assert latex(Adjoint(X)) == r'X^\dag'
+    assert latex(Adjoint(X + Y)) == r'\left(X + Y\right)^\dag'
+    assert latex(Adjoint(X) + Adjoint(Y)) == r'X^\dag + Y^\dag'
+    assert latex(Adjoint(X*Y)) == r'\left(X Y\right)^\dag'
+    assert latex(Adjoint(Y)*Adjoint(X)) == r'Y^\dag X^\dag'
+    assert latex(Adjoint(X**2)) == r'\left(X^{2}\right)^\dag'
+    assert latex(Adjoint(X)**2) == r'\left(X^\dag\right)^{2}'
+    assert latex(Adjoint(Inverse(X))) == r'\left(X^{-1}\right)^\dag'
+    assert latex(Inverse(Adjoint(X))) == r'\left(X^\dag\right)^{-1}'
+    assert latex(Adjoint(Transpose(X))) == r'\left(X^T\right)^\dag'
+    assert latex(Transpose(Adjoint(X))) == r'\left(X^\dag\right)^T'
+
 
 def test_Hadamard():
     from sympy.matrices import MatrixSymbol, HadamardProduct
@@ -807,3 +823,12 @@ def test_Hadamard():
     Y = MatrixSymbol('Y', 2, 2)
     assert latex(HadamardProduct(X, Y*Y)) == r'X \circ \left(Y Y\right)'
     assert latex(HadamardProduct(X, Y)*Y) == r'\left(X \circ Y\right) Y'
+
+def test_boolean_args_order():
+    syms = symbols('a:f')
+
+    expr = And(*syms)
+    assert latex(expr) == 'a \\wedge b \\wedge c \\wedge d \\wedge e \\wedge f'
+
+    expr = Or(*syms)
+    assert latex(expr) == 'a \\vee b \\vee c \\vee d \\vee e \\vee f'

@@ -185,7 +185,7 @@ class lambdify(object):
         try:
             #The result can be sympy.Float. Hence wrap it with complex type.
             result = complex(self.lambda_func(args))
-            if abs(result.imag) > 0:
+            if abs(result.imag) > 1e-7 * abs(result):
                 return None
             else:
                 return result.real
@@ -274,7 +274,7 @@ class Lambdifier(object):
         if use_interval:
             namespace.update({'imath': __import__(
                 'sympy.plotting.intervalmath', fromlist=['intervalmath'])})
-            namespace.update({'math' : __import__('math')})
+            namespace.update({'math': __import__('math')})
 
         # Construct the lambda
         if self.print_lambda:
@@ -392,7 +392,7 @@ class Lambdifier(object):
     interval_not_functions = {
         'pi': 'math.pi',
         'E': 'math.e'
-        }
+    }
 
     interval_functions_same = [
         'sin', 'cos', 'exp', 'tan', 'atan', 'log',

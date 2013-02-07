@@ -154,12 +154,12 @@ except AttributeError:
 try:
     from itertools import product
 except ImportError:  # Python 2.5
-    def product(*args, **kwds):
+    def product(*args, **kwargs):
         """
         Cartesian product of input iterables.
 
         Equivalent to nested for-loops in a generator expression. For example,
-        product(A, B) returns the same as ((x,y) for x in A for y in B).
+        cartes(A, B) returns the same as ((x,y) for x in A for y in B).
 
         The nested loops cycle like an odometer with the rightmost element
         advancing on every iteration. This pattern creates a lexicographic
@@ -173,13 +173,17 @@ except ImportError:  # Python 2.5
         Examples
         ========
 
-        >>> from sympy.core.compatibility import product
-        >>> [''.join(p) for p in list(product('ABC', 'xy'))]
+        >>> from sympy.utilities.iterables import cartes
+        >>> [''.join(p) for p in list(cartes('ABC', 'xy'))]
         ['Ax', 'Ay', 'Bx', 'By', 'Cx', 'Cy']
-        >>> list(product(range(2), repeat=2))
+        >>> list(cartes(range(2), repeat=2))
         [(0, 0), (0, 1), (1, 0), (1, 1)]
+
+        See Also
+        ========
+        variations
         """
-        pools = map(tuple, args) * kwds.get('repeat', 1)
+        pools = map(tuple, args) * kwargs.get('repeat', 1)
         result = [[]]
         for pool in pools:
             result = [x + [y] for x in result for y in pool]
@@ -452,8 +456,11 @@ def as_int(n):
     ValueError: ... is not an integer
 
     """
-    result = int(n)
-    if result != n:
+    try:
+        result = int(n)
+        if result != n:
+            raise TypeError
+    except TypeError:
         raise ValueError('%s is not an integer' % n)
     return result
 
@@ -725,9 +732,15 @@ def ordered(seq, keys=None, default=True, warn=False):
                 d[k] = ordered(d[k], keys, default, warn)
             elif default:
                 d[k] = ordered(d[k], (_nodes, default_sort_key,),
-                                default=False, warn=warn)
+                               default=False, warn=warn)
             elif warn:
                 raise ValueError('not enough keys to break ties')
         for v in d[k]:
             yield v
         d.pop(k)
+
+try:
+    next = next
+except NameError:
+    def next(x):
+        return x.next()

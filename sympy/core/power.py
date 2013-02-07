@@ -3,13 +3,15 @@ from math import log as _log
 from sympify import _sympify
 from cache import cacheit
 from core import C
-from sympy.core.function import (_coeff_isneg, expand_complex,
-    expand_multinomial, expand_mul)
-from sympy.core.logic import fuzzy_bool
 from singleton import S
 from expr import Expr
 
-from sympy import mpmath
+from sympy.core.function import (_coeff_isneg, expand_complex,
+    expand_multinomial, expand_mul)
+from sympy.core.logic import fuzzy_bool
+from sympy.core.compatibility import as_int
+
+from sympy.mpmath.libmp import sqrtrem as mpmath_sqrtrem
 from sympy.utilities.iterables import sift
 
 
@@ -36,7 +38,7 @@ def integer_nthroot(y, n):
     if n == 1:
         return y, True
     if n == 2:
-        x, rem = mpmath.libmp.sqrtrem(y)
+        x, rem = mpmath_sqrtrem(y)
         return int(x), not rem
     if n > y:
         return 1, False
@@ -124,7 +126,12 @@ class Pow(Expr):
         if b.is_real and not b_nneg and e.is_even:
             b = abs(b)
             b_nneg = True
-        smallarg = (abs(e) <= abs(S.Pi/log(b)))
+
+        # Special case for when b is nan. See pull req 1714 for details
+        if b is S.NaN:
+            smallarg = (abs(e) <= S.Zero)
+        else:
+            smallarg = (abs(e) <= abs(S.Pi/log(b)))
         if (other.is_Rational and other.q == 2 and
                 e.is_real is False and smallarg is False):
             return -Pow(b, e*other)
@@ -217,7 +224,14 @@ class Pow(Expr):
             elif (self.exp in [S.ImaginaryUnit, -S.ImaginaryUnit] and
                   self.base in [S.ImaginaryUnit, -S.ImaginaryUnit]):
                 return True
+            elif self.exp.is_Add:
+                c, a = self.exp.as_coeff_Add()
+                if c and c.is_Integer:
+                    return C.Mul(
+                        self.base**c, self.base**a, evaluate=False).is_real
         if real_b and im_e:
+            if self.base is S.NegativeOne:
+                return True
             c = self.exp.coeff(S.ImaginaryUnit)
             if c:
                 ok = (c*C.log(self.base)/S.Pi).is_Integer
@@ -252,18 +266,25 @@ class Pow(Expr):
 
     def _eval_subs(self, old, new):
         if old.func is self.func and self.base == old.base:
-            coeff1, terms1 = self.exp.as_coeff_Mul()
-            coeff2, terms2 = old.exp.as_coeff_Mul()
+            coeff1, terms1 = self.exp.as_independent(C.Symbol, as_Add=False)
+            coeff2, terms2 = old.exp.as_independent(C.Symbol, as_Add=False)
             if terms1 == terms2:
                 pow = coeff1/coeff2
-                if pow == int(pow) or self.base.is_positive:
+                ok = False  # True if int(pow) == pow OR self.base.is_positive
+                try:
+                    pow = as_int(pow)
+                    ok = True
+                except ValueError:
+                    ok = self.base.is_positive
+                if ok:
                     # issue 2081
                     return Pow(new, pow)  # (x**(6*y)).subs(x**(3*y),z)->z**2
         if old.func is C.exp and self.exp.is_real and self.base.is_positive:
-            coeff1, terms1 = old.args[0].as_coeff_Mul()
+            coeff1, terms1 = old.args[0].as_independent(C.Symbol, as_Add=False)
             # we can only do this when the base is positive AND the exponent
             # is real
-            coeff2, terms2 = (self.exp*C.log(self.base)).as_coeff_Mul()
+            coeff2, terms2 = (self.exp*C.log(self.base)).as_independent(
+                C.Symbol, as_Add=False)
             if terms1 == terms2:
                 pow = coeff1/coeff2
                 if pow == int(pow) or self.base.is_positive:
@@ -454,7 +475,6 @@ class Pow(Expr):
         if other:
             rv *= Pow(Mul(*other), e, evaluate=False)
         return rv
-
 
     def _eval_expand_multinomial(self, **hints):
         """(a+b+..) ** n -> a**n + n*a**(n-1)*b + .., n is nonzero integer"""
@@ -749,7 +769,7 @@ class Pow(Expr):
             exp = -exp
         return Pow(n, exp), Pow(d, exp)
 
-    def matches(self, expr, repl_dict={}):
+    def matches(self, expr, repl_dict={}, old=False):
         expr = _sympify(expr)
 
         # special case, pattern = 1 and expr.exp can match to 0

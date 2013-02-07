@@ -115,7 +115,6 @@ def test_Poly_from_dict():
     assert Poly.from_dict(
         {(0,): 1, (1,): 2}, gens=x, domain=QQ).rep == DMP([QQ(2), QQ(1)], QQ)
 
-
     assert Poly.from_dict({(1,): sin(y)}, gens=x, composite=False) == \
         Poly(sin(y)*x, x, domain='EX')
     assert Poly.from_dict({(1,): y}, gens=x, composite=False) == \
@@ -124,6 +123,7 @@ def test_Poly_from_dict():
         Poly(x*y, x, y, domain='ZZ')
     assert Poly.from_dict({(1, 0): y}, gens=(x, z), composite=False) == \
         Poly(y*x, x, z, domain='EX')
+
 
 def test_Poly_from_list():
     K = FF(3)
@@ -1102,6 +1102,16 @@ def test_Poly_eject():
 
     assert f.eject(x) == Poly(x*y**3 + (x**2 + x)*y + 1, y, domain='ZZ[x]')
     assert f.eject(y) == Poly(y*x**2 + (y**3 + y)*x + 1, x, domain='ZZ[y]')
+
+    ex = x + y + z + t + w
+    g = Poly(ex, x, y, z, t, w)
+
+    assert g.eject(x) == Poly(ex, y, z, t, w, domain='ZZ[x]')
+    assert g.eject(x, y) == Poly(ex, z, t, w, domain='ZZ[x, y]')
+    assert g.eject(x, y, z) == Poly(ex, t, w, domain='ZZ[x, y, z]')
+    assert g.eject(w) == Poly(ex, x, y, z, t, domain='ZZ[w]')
+    assert g.eject(t, w) == Poly(ex, x, y, z, domain='ZZ[w, t]')
+    assert g.eject(z, t, w) == Poly(ex, x, y, domain='ZZ[w, t, z]')
 
     raises(DomainError, lambda: Poly(x*y, x, y, domain=ZZ[z]).eject(y))
     raises(NotImplementedError, lambda: Poly(x*y, x, y, z).eject(y))

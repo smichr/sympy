@@ -12,8 +12,7 @@ def AbelianGroup(*cyclic_orders):
     According to the structure theorem for finite abelian groups ([1]),
     every finite abelian group can be written as the direct product of finitely
     many cyclic groups.
-    [1] http://groupprops.subwiki.org/wiki/Structure_theorem_for_finitely
-    _generated_abelian_groups
+    [1] http://groupprops.subwiki.org/wiki/Structure_theorem_for_finitely_generated_abelian_groups
 
     Examples
     ========
@@ -229,11 +228,11 @@ def SymmetricGroup(n):
     >>> G.order()
     24
     >>> list(G.generate_schreier_sims(af=True))
-    [[0, 1, 2, 3], [0, 1, 3, 2], [0, 2, 1, 3], [0, 2, 3, 1], [0, 3, 1, 2],
-    [0, 3, 2, 1], [1, 2, 3, 0], [1, 2, 0, 3], [1, 3, 2, 0],
-    [1, 3, 0, 2], [1, 0, 2, 3], [1, 0, 3, 2], [2, 3, 0, 1], [2, 3, 1, 0],
-    [2, 0, 3, 1], [2, 0, 1, 3], [2, 1, 3, 0], [2, 1, 0, 3], [3, 0, 1, 2],
-    [3, 0, 2, 1], [3, 1, 0, 2], [3, 1, 2, 0], [3, 2, 0, 1], [3, 2, 1, 0]]
+    [[0, 1, 2, 3], [1, 2, 3, 0], [2, 3, 0, 1], [3, 1, 2, 0], [0, 2, 3, 1],
+    [1, 3, 0, 2], [2, 0, 1, 3], [3, 2, 0, 1], [0, 3, 1, 2], [1, 0, 2, 3],
+    [2, 1, 3, 0], [3, 0, 1, 2], [0, 1, 3, 2], [1, 2, 0, 3], [2, 3, 1, 0],
+    [3, 1, 0, 2], [0, 2, 1, 3], [1, 3, 2, 0], [2, 0, 3, 1], [3, 2, 1, 0],
+    [0, 3, 2, 1], [1, 0, 3, 2], [2, 1, 0, 3], [3, 0, 2, 1]]
 
     See Also
     ========

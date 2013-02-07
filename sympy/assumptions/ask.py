@@ -32,10 +32,12 @@ class Q:
     symmetric = Predicate('symmetric')
     invertible = Predicate('invertible')
     orthogonal = Predicate('orthogonal')
-    positive_definite= Predicate('positive_definite')
+    positive_definite = Predicate('positive_definite')
     upper_triangular = Predicate('upper_triangular')
     lower_triangular = Predicate('lower_triangular')
     diagonal = Predicate('diagonal')
+    triangular = Predicate('triangular')
+    unit_triangular = Predicate('unit_triangular')
 
 
 def _extract_facts(expr, symbol):
@@ -191,10 +193,20 @@ def single_fact_lookup(known_facts_keys, known_facts_cnf):
 def compute_known_facts(known_facts, known_facts_keys):
     """Compute the various forms of knowledge compilation used by the
     assumptions system.
+
+    This function is typically applied to the variables
+    ``known_facts`` and ``known_facts_keys`` defined at the bottom of
+    this file.
     """
     from textwrap import dedent, wrap
 
     fact_string = dedent('''\
+    """
+    The contents of this file are the return value of
+    ``sympy.assumptions.ask.compute_known_facts``.  Do NOT manually
+    edit this file.
+    """
+
     from sympy.logic.boolalg import And, Not, Or
     from sympy.assumptions.ask import Q
 
@@ -206,7 +218,8 @@ def compute_known_facts(known_facts, known_facts_keys):
     # -{ Known facts in compressed sets }-
     known_facts_dict = {
         %s
-    }''')
+    }
+    ''')
     # Compute the known facts in CNF form for logical inference
     LINE = ",\n    "
     HANG = ' '*8
@@ -217,7 +230,7 @@ def compute_known_facts(known_facts, known_facts_keys):
         wrap("%s: %s" % item,
             subsequent_indent=HANG,
             break_long_words=False))
-        for item in mapping.items()])
+        for item in mapping.items()]) + ','
     return fact_string % (c, m)
 
 # handlers_dict tells us what ask handler we should use
@@ -257,7 +270,6 @@ for name, value in _handlers:
     register_handler(name, _val_template % value)
 
 
-
 known_facts_keys = [getattr(Q, attr) for attr in Q.__dict__
                     if not attr.startswith('__')]
 known_facts = And(
@@ -280,7 +292,13 @@ known_facts = And(
     Implies(Q.orthogonal, Q.positive_definite),
     Implies(Q.positive_definite, Q.invertible),
     Implies(Q.diagonal, Q.upper_triangular),
-    Implies(Q.diagonal, Q.lower_triangular)
+    Implies(Q.diagonal, Q.lower_triangular),
+    Implies(Q.lower_triangular, Q.triangular),
+    Implies(Q.upper_triangular, Q.triangular),
+    Implies(Q.triangular, Q.upper_triangular | Q.lower_triangular),
+    Implies(Q.upper_triangular & Q.lower_triangular, Q.diagonal),
+    Implies(Q.diagonal, Q.symmetric),
+    Implies(Q.unit_triangular, Q.triangular),
 )
 
 from sympy.assumptions.ask_generated import known_facts_dict, known_facts_cnf

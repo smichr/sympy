@@ -1,6 +1,6 @@
 from sympy.core.core import C
 from sympy.core.sympify import _sympify, sympify
-from sympy.core.basic import Basic
+from sympy.core.basic import Basic, _aresame
 from sympy.core.cache import cacheit
 from sympy.core.compatibility import cmp, ordered
 from sympy.core.logic import fuzzy_and
@@ -121,7 +121,7 @@ class AssocOp(Basic):
         # c_part, nc_part, order_symbols
         return [], new_seq, None
 
-    def _matches_commutative(self, expr, repl_dict={}):
+    def _matches_commutative(self, expr, repl_dict={}, old=False):
         """
         Matches Add/Mul "pattern" to an expression "expr".
 
@@ -168,11 +168,11 @@ class AssocOp(Basic):
             return d
 
         # eliminate exact part from pattern: (2+a+w1+w2).matches(expr) -> (w1+w2).matches(expr-a-2)
-        wild_part = []
-        exact_part = []
         from function import WildFunction
         from symbol import Wild
-        for p in self.args:
+        wild_part = []
+        exact_part = []
+        for p in ordered(self.args):
             if p.has(Wild, WildFunction) and (not expr.has(p)):
                 # not all Wild should stay Wilds, for example:
                 # (w2+w3).matches(w1) -> (w1+w3).matches(w1) -> w3.matches(0)
@@ -181,19 +181,77 @@ class AssocOp(Basic):
                 exact_part.append(p)
 
         if exact_part:
+            exact = self.func(*exact_part)
+            free = expr.free_symbols
+            if free and (exact.free_symbols - free):
+                # there are symbols in the exact part that are not
+                # in the expr; but if there are no free symbols, let
+                # the matching continue
+                return None
             newpattern = self.func(*wild_part)
-            newexpr = self._combine_inverse(expr, self.func(*exact_part))
+            newexpr = self._combine_inverse(expr, exact)
+            if not old and (expr.is_Add or expr.is_Mul):
+                if newexpr.count_ops() > expr.count_ops():
+                    return None
             return newpattern.matches(newexpr, repl_dict)
 
         # now to real work ;)
-        expr_list = (self.identity,) + self.make_args(expr)
-        for last_op in reversed(expr_list):
-            for w in reversed(wild_part):
-                d1 = w.matches(last_op, repl_dict)
-                if d1 is not None:
-                    d2 = self.xreplace(d1).matches(expr, d1)
-                    if d2 is not None:
-                        return d2
+        i = 0
+        saw = set()
+        while expr not in saw:
+            saw.add(expr)
+            expr_list = (self.identity,) + tuple(ordered(self.make_args(expr)))
+            for last_op in reversed(expr_list):
+                for w in reversed(wild_part):
+                    d1 = w.matches(last_op, repl_dict)
+                    if d1 is not None:
+                        d2 = self.xreplace(d1).matches(expr, d1)
+                        if d2 is not None:
+                            return d2
+
+            if i == 0:
+                if self.is_Mul:
+                    # make e**i look like Mul
+                    if expr.is_Pow and expr.exp.is_Integer:
+                        if expr.exp > 0:
+                            expr = C.Mul(*
+                                [expr.base, expr.base**(expr.exp - 1)],
+                                **{'evaluate': False})
+                        else:
+                            expr = C.Mul(*
+                                [1/expr.base, expr.base**(expr.exp + 1)],
+                                **{'evaluate': False})
+                        i += 1
+                        continue
+
+                elif self.is_Add:
+                    # make i*e look like Add
+                    c, e = expr.as_coeff_Mul()
+                    if abs(c) > 1:
+                        if c > 0:
+                            expr = C.Add(*[e, (c - 1)*e],
+                                **{'evaluate': False})
+                        else:
+                            expr = C.Add(*[-e, (c + 1)*e],
+                                **{'evaluate': False})
+                        i += 1
+                        continue
+
+                    # try collection on non-Wild symbols
+                    from sympy.simplify.simplify import collect
+                    was = expr
+                    did = set()
+                    for w in reversed(wild_part):
+                        c, w = w.as_coeff_mul(Wild)
+                        free = c.free_symbols - did
+                        if free:
+                            did.update(free)
+                            expr = collect(expr, free)
+                    if expr != was:
+                        i += 0
+                        continue
+
+                break  # if we didn't continue, there is nothing more to do
 
         return
 
@@ -251,7 +309,51 @@ class AssocOp(Basic):
         return not multi
 
     def _eval_evalf(self, prec):
-        return self.func(*[s._evalf(prec) for s in self.args])
+        """
+        Evaluate the parts of self that are numbers; if the whole thing
+        was a number with no functions it would have been evaluated, but
+        it wasn't so we must judiciously extract the numbers and reconstruct
+        the object. This is *not* simply replacing numbers with evaluated
+        numbers. Nunmbers should be handled in the largest pure-number
+        expression as possible. So the code below separates ``self`` into
+        number and non-number parts and evaluates the number parts and
+        walks the args of the non-number part recursively (doing the same
+        thing).
+        """
+        x, tail = self.as_independent(C.Symbol)
+
+        if tail is not self.identity:
+            # here, we have a number so we just call to _evalf with prec;
+            # prec is not the same as n, it is the binary precision so
+            # that's why we don't call to evalf.
+            x = x._evalf(prec) if x is not self.identity else self.identity
+            args = []
+            for a in self.func.make_args(tail):
+                # here we call to _eval_evalf since we don't know what we
+                # are dealing with and all other _eval_evalf routines should
+                # be doing the same thing (i.e. taking binary prec and
+                # finding the evalf-able args)
+                newa = a._eval_evalf(prec)
+                if newa is None:
+                    args.append(a)
+                else:
+                    args.append(newa)
+            if not _aresame(tuple(args), self.func.make_args(tail)):
+                tail = self.func(*args)
+            return self.func(x, tail)
+
+        # this is the same as above, but there were no pure-number args to
+        # deal with
+        args = []
+        for a in self.args:
+            newa = a._eval_evalf(prec)
+            if newa is None:
+                args.append(a)
+            else:
+                args.append(newa)
+        if not _aresame(tuple(args), self.args):
+            return self.func(*args)
+        return self
 
     @classmethod
     def make_args(cls, expr):
@@ -308,7 +410,7 @@ class LatticeOp(AssocOp):
 
     References:
 
-    [1] - http://en.wikipedia.org/wiki/Lattice_(order)
+    [1] - http://en.wikipedia.org/wiki/Lattice_%28order%29
     """
 
     is_commutative = True

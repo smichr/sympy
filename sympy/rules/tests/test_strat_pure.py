@@ -1,5 +1,6 @@
 from sympy.rules.strat_pure import (null_safe, exhaust, memoize, condition,
-        chain, tryit, do_one, debug, switch)
+        chain, tryit, do_one, debug, switch, minimize, treesearch)
+from functools import partial
 
 def test_null_safe():
     def rl(expr):
@@ -68,3 +69,30 @@ def test_switch():
     assert rl(3) == 4
     assert rl(4) == 3
     assert rl(5) == 5
+
+def test_minimize():
+    inc = lambda x: x + 1
+    dec = lambda x: x - 1
+    rl = minimize(inc, dec)
+    assert rl(4) == 3
+
+    rl = minimize(inc, dec, objective=lambda x: -x)
+    assert rl(4) == 5
+
+def test_stratpure():
+    inc = lambda x: x + 1
+    dec = lambda x: x - 1
+    double = lambda x: 2*x
+
+    assert treesearch(inc) == inc
+    assert treesearch((inc, dec))(5) == minimize(inc, dec)(5)
+    assert treesearch([inc, dec])(5) == chain(inc, dec)(5)
+    tree = (inc, [dec, double]) # either inc or dec-then-double
+    assert treesearch(tree)(5) == 6
+    assert treesearch(tree)(1) == 0
+
+    maximize = partial(minimize, objective=lambda x: -x)
+    d = {list: chain, tuple: maximize}
+    fn = treesearch(tree, stratdict=d)
+    assert fn(4) == 6  # highest value comes from the dec then double
+    assert fn(1) == 2  # highest value comes from the inc

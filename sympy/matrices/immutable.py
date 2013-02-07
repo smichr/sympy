@@ -1,9 +1,15 @@
-from matrices import MatrixBase
-from dense import DenseMatrix
-from sparse import SparseMatrix, MutableSparseMatrix
-from expressions import MatrixExpr
-from sympy import Basic, Integer, Tuple, Dict
+from sympy.core import Basic, Integer, Tuple, Dict
+from sympy.core.sympify import converter as sympify_converter
 
+from sympy.matrices.matrices import MatrixBase
+from sympy.matrices.dense import DenseMatrix
+from sympy.matrices.sparse import SparseMatrix, MutableSparseMatrix
+from sympy.matrices.expressions import MatrixExpr
+
+
+def sympify_matrix(arg):
+    return ImmutableMatrix(arg)
+sympify_converter[MatrixBase] = sympify_matrix
 
 class ImmutableMatrix(MatrixExpr, DenseMatrix):
     """Create an immutable version of a matrix.
@@ -65,6 +71,7 @@ class ImmutableMatrix(MatrixExpr, DenseMatrix):
     _eval_trace = DenseMatrix._eval_trace
     _eval_transpose = DenseMatrix._eval_transpose
     _eval_conjugate = DenseMatrix._eval_conjugate
+    _eval_adjoint = DenseMatrix._eval_adjoint
     _eval_inverse = DenseMatrix._eval_inverse
     _eval_simplify = DenseMatrix._eval_simplify
 

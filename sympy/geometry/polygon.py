@@ -493,7 +493,6 @@ class Polygon(GeometryEntity):
         ==========
 
         [1] http://www.ariel.com.au/a/python-point-int-poly.html
-        [2] http://local.wasp.uwa.edu.au/~pbourke/geometry/insidepoly/
 
         """
         p = Point(p)
@@ -1034,7 +1033,7 @@ class RegularPolygon(Polygon):
     __slots__ = ['_n', '_center', '_radius', '_rot']
 
     def __new__(self, c, r, n, rot=0, **kwargs):
-        r, n, rot = sympify([r, n, rot])
+        r, n, rot = map(sympify, (r, n, rot))
         c = Point(c)
         if not isinstance(r, Expr):
             raise GeometryError("r must be an Expr object, not %s" % r)

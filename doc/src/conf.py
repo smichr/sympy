@@ -14,7 +14,7 @@
 import sys
 
 # If your extensions are in another directory, add it here.
-sys.path.extend(['../sympy', 'ext'])
+sys.path = ['../sympy', 'ext'] + sys.path
 
 # General configuration
 # ---------------------
@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General substitutions.
 project = 'SymPy'
-copyright = '2008, 2009, 2010, 2011, 2012 SymPy Development Team'
+copyright = '2013 SymPy Development Team'
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
@@ -58,7 +58,7 @@ release = '0.7.2-git'
 today_fmt = '%B %d, %Y'
 
 # Translations:
-locale_dirs = ["i18n/"]
+locale_dirs = ["../_build/i18n/"]
 
 # List of documents that shouldn't be included in the build.
 #unused_docs = []

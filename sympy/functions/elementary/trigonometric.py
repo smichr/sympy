@@ -59,7 +59,9 @@ def _pi_coeff(arg, cycles=1):
     something with known parity then the multiple is returned as 0 otherwise
     as 2.
 
-    Examples:
+    Examples
+    ========
+
     >>> from sympy.functions.elementary.trigonometric import _pi_coeff as coeff
     >>> from sympy import pi
     >>> from sympy.abc import x, y
@@ -93,7 +95,7 @@ def _pi_coeff(arg, cycles=1):
                 # recast exact binary fractions to Rationals
                 f = abs(c) % 1
                 if f != 0:
-                    p = -round(log(f, 2).evalf())
+                    p = -int(round(log(f, 2).evalf()))
                     m = 2**p
                     cm = c*m
                     i = int(cm)
@@ -571,9 +573,9 @@ class cos(TrigonometricFunction):
                 return r.q
 
             if None == factors:
-                a = [n/x**y for x, y in factorint(r.q).iteritems()]
+                a = [n//x**y for x, y in factorint(r.q).iteritems()]
             else:
-                a = [n/x for x in factors]
+                a = [n//x for x in factors]
             if len(a) == 1:
                 return [ r ]
             h = migcdex(a)
@@ -797,9 +799,9 @@ class tan(TrigonometricFunction):
                 narg = ((pi_coeff + S.Half) % 1 - S.Half)*S.Pi
                 # see cos() to specify which expressions should  be
                 # expanded automatically in terms of radicals
-                cresult, sresult = cos(narg), cos(narg-S.Pi/2)
+                cresult, sresult = cos(narg), cos(narg - S.Pi/2)
                 if not isinstance(cresult, cos) \
-                    and not isinstance(sresult, cos):
+                        and not isinstance(sresult, cos):
                     if cresult == 0:
                         return S.ComplexInfinity
                     return (sresult/cresult)
@@ -892,20 +894,19 @@ class tan(TrigonometricFunction):
             Yg = numbered_symbols('Y')
             Y = [ Yg.next() for i in xrange(n) ]
 
-            p = [0,0]
-            for i in xrange(n+1):
-                p[1-i%2] += symmetric_poly(i,Y)*(-1)**((i%4)//2)
-            return (p[0]/p[1]).subs(zip(Y,TX))
+            p = [0, 0]
+            for i in xrange(n + 1):
+                p[1 - i % 2] += symmetric_poly(i, Y)*(-1)**((i % 4)//2)
+            return (p[0]/p[1]).subs(zip(Y, TX))
 
         else:
             coeff, terms = arg.as_coeff_Mul(rational=True)
             if coeff.is_Integer and coeff > 1:
                 I = S.ImaginaryUnit
-                z = C.Symbol('dummy',real=True)
-                P = ((1+I*z)**coeff).expand()
-                return (C.im(P)/C.re(P)).subs([(z,tan(terms))])
+                z = C.Symbol('dummy', real=True)
+                P = ((1 + I*z)**coeff).expand()
+                return (C.im(P)/C.re(P)).subs([(z, tan(terms))])
         return tan(arg)
-
 
     def _eval_rewrite_as_exp(self, arg):
         exp, I = C.exp, S.ImaginaryUnit
@@ -1009,9 +1010,9 @@ class cot(TrigonometricFunction):
                 narg = (((pi_coeff + S.Half) % 1) - S.Half)*S.Pi
                 # see cos() to specify which expressions should be
                 # expanded automatically in terms of radicals
-                cresult, sresult = cos(narg), cos(narg-S.Pi/2)
+                cresult, sresult = cos(narg), cos(narg - S.Pi/2)
                 if not isinstance(cresult, cos) \
-                    and not isinstance(sresult, cos):
+                        and not isinstance(sresult, cos):
                     if sresult == 0:
                         return S.ComplexInfinity
                     return cresult / sresult
@@ -1151,17 +1152,17 @@ class cot(TrigonometricFunction):
             Yg = numbered_symbols('Y')
             Y = [ Yg.next() for i in xrange(n) ]
 
-            p = [0,0]
-            for i in xrange(n,-1,-1):
-                p[(n-i)%2] += symmetric_poly(i,Y)*(-1)**(((n-i)%4)//2)
-            return (p[0]/p[1]).subs(zip(Y,CX))
+            p = [0, 0]
+            for i in xrange(n, -1, -1):
+                p[(n - i) % 2] += symmetric_poly(i, Y)*(-1)**(((n - i) % 4)//2)
+            return (p[0]/p[1]).subs(zip(Y, CX))
         else:
             coeff, terms = arg.as_coeff_Mul(rational=True)
             if coeff.is_Integer and coeff > 1:
                 I = S.ImaginaryUnit
-                z = C.Symbol('dummy',real=True)
-                P = ((z+I)**coeff).expand()
-                return (C.re(P)/C.im(P)).subs([(z,cot(terms))])
+                z = C.Symbol('dummy', real=True)
+                P = ((z + I)**coeff).expand()
+                return (C.re(P)/C.im(P)).subs([(z, cot(terms))])
         return cot(arg)
 
     def _sage_(self):
