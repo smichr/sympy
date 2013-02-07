@@ -889,8 +889,8 @@ def L(rv):
     """
     return S(rv.count(C.TrigonometricFunction))
 
-#TR0,TR1,TR2,TR3,TR4,TR5,TR6,TR7,TR8,TR9,TR10,TR11,TR12,TR13 = map(debug,
-#        (TR0,TR1,TR2,TR3,TR4,TR5,TR6,TR7,TR8,TR9,TR10,TR11,TR12,TR13))
+TR0,TR1,TR2,TR3,TR4,TR5,TR6,TR7,TR8,TR9,TR10,TR11,TR12,TR13 = map(debug,
+        (TR0,TR1,TR2,TR3,TR4,TR5,TR6,TR7,TR8,TR9,TR10,TR11,TR12,TR13))
 
 _CTR1 = [TR5, TR0], [TR6, TR0], [identity]
 
