@@ -183,6 +183,7 @@ http://www.sosmath.com/trig/Trig5/trig5/pdf/pdf.html gives a formula sheet.
 """
 
 from collections import defaultdict
+from functools import partial
 
 from sympy.simplify.simplify import simplify, powsimp, ratsimp, combsimp
 from sympy.core.sympify import sympify
@@ -200,8 +201,8 @@ from sympy.core.exprtools import Factors
 from sympy.core.rules import Transform
 from sympy.core.basic import S
 from sympy.core.numbers import Integer, pi, I
-from sympy.rules import minimize, chain, debug
-from sympy.rules.strat_pure import identity
+from sympy.strategies.tree import greedy, identity
+from sympy.strategies import debug
 from sympy import SYMPY_DEBUG
 from sympy.ntheory.factor_ import perfect_power
 
@@ -1289,6 +1290,8 @@ def L(rv):
 
 
 # ============== end of basic Fu-like tools =====================
+objective = lambda x: (L(x), x.count_ops())
+strat = partial(greedy, objective=objective)
 
 if SYMPY_DEBUG:
     (TR0, TR1, TR2, TR3, TR4, TR5, TR6, TR7, TR8, TR9, TR10, TR11, TR12, TR13,
@@ -1298,22 +1301,20 @@ if SYMPY_DEBUG:
     TR2i, TRmorrie, TR14, TR15, TR16
     ))
 
-_CTR1 = [TR5, TR0], [TR6, TR0], [identity]
+# tuples are chains  --  (f, g) -> lambda x: g(f(x))
+# lists are choices  --  [f, g] -> lambda x: min(f(x), g(x), key=objective)
 
-_CTR2 = [TR11, TR5, TR0], [TR11, TR6, TR0], [TR11, TR0]
+_CTR1 = [(TR5, TR0), (TR6, TR0), identity]
 
-_CTR3 = [TR8, TR0], [TR8, TR10i, TR0], [identity]
+_CTR2 = (TR11, [(TR5, TR0), (TR6, TR0), TR0])
 
-_CTR4 = [TR4, TR10i], [identity]
+_CTR3 = [(TR8, [identity, TR10i], TR0), identity]
 
+_CTR4 = [(TR4, TR10i), identity]
 
-def CTRstrat(lists):
-    return minimize(*[chain(*list) for list in lists],
-        **dict(objective=lambda x: (L(x), x.count_ops())))
+CTR1, CTR2, CTR3, CTR4 = map(strat, (_CTR1, _CTR2, _CTR3, _CTR4))
 
-CTR1, CTR2, CTR3, CTR4 = map(CTRstrat, (_CTR1, _CTR2, _CTR3, _CTR4))
-
-_RL1 = [TR4, TR3, TR4, TR12, TR4, TR13, TR4, TR0]
+_RL1 = (TR4, TR3, TR4, TR12, TR4, TR13, TR4, TR0)
 
 
 # XXX it's a little unclear how this one is to be implemented
@@ -1322,18 +1323,14 @@ _RL1 = [TR4, TR3, TR4, TR12, TR4, TR13, TR4, TR0]
 # text refers to them being applied independently. Also, a break
 # if L starts to increase has not been implemented.
 _RL2 = [
-    [TR4, TR3, TR10, TR4, TR3, TR11],
-    [TR5, TR7, TR11, TR4],
-    [CTR3, TR0, CTR1, TR9, CTR2, TR4, TR9, TR0, TR9, CTR4],
-    [identity],
+    (TR4, TR3, TR10, TR4, TR3, TR11),
+    (TR5, TR7, TR11, TR4),
+    (CTR3, TR0, CTR1, TR9, CTR2, TR4, TR9, TR0, TR9, CTR4),
+    identity,
     ]
 
-
-def RLstrat(rls):
-    return chain(*rls)
-
-RL1 = RLstrat(_RL1)
-RL2 = CTRstrat(_RL2)
+RL1 = strat(_RL1)
+RL2 = strat(_RL2)
 
 
 def fu(rv):
