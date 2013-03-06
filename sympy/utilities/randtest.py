@@ -189,3 +189,199 @@ def _randint(seed=None):
         return give
     else:
         raise ValueError('_randint got an unexpected seed')
+
+
+def symbolics(e, s=None):
+    from sympy import Symbol, Dummy, Basic
+    if s is None:
+        s = set()
+    if isinstance(e, (list, tuple)):
+        for ei in e:
+            symbolics(ei, s)
+    if isinstance(e, Symbol):
+        s.add(e)
+    elif not isinstance(e, Basic):
+        pass
+    elif e.has(Symbol, Dummy):
+        s.add(e)
+        for ei in e.args:
+            symbolics(ei, s)
+    return s
+
+
+def structurally_equal(a, b):
+    return symbol_match(a, b) is not None
+
+
+def symbol_match(a, b, d=None):
+    from collections import defaultdict
+    from sympy import Basic, Symbol, Dummy, flatten, ordered, Atom
+    from sympy.core.compatibility import iterable, set_union, permutations
+
+    if d is None:
+        d = {}
+
+    if all(isinstance(i, Symbol) for i in (a, b)):
+        if a in d and d[a] != b:
+            return
+        d[a] = b
+        return d
+
+    if iterable(a):
+        a = Tuple(*flatten(a))
+        b = Tuple(*flatten(b))
+        if len(a) != len(b):
+            return
+
+    if a == b:
+        s = a.atoms(Symbol, Dummy)
+        d.update(dict(zip(s, s)))
+        return d
+
+    if a.func != b.func:
+        return
+
+    if len(a.args) != len(b.args):
+        return
+
+    def key(i):
+        if isinstance(i, (Symbol, Dummy)):
+            return None
+        return (
+            type(i),
+            len(i.args),
+            tuple(set([(len(i.args), None if isinstance(
+                i, (Symbol, Dummy)) else type(i)) for i in i.args])))
+
+    ta = defaultdict(set)
+    tb = defaultdict(set)
+    for i in a.args:
+        ta[key(i)].add(i)
+    for i in b.args:
+        tb[key(i)].add(i)
+
+    if len(ta) != len(tb):
+        return
+    if set(ta) != set(tb):
+        return
+
+    process = []
+    for k in ta.keys():
+        if len(ta[k]) != len(tb[k]):
+            return
+        if len(ta[k]) == 1:
+            aa, bb = ta[k].pop(), tb[k].pop()
+            rv = symbol_match(aa, bb, d)
+            if rv is None:
+                return
+            del ta[k]
+            del tb[k]
+        else:
+            if k is None:
+                process.append((ta.pop(None), tb.pop(None)))
+                continue
+
+            def key(i):
+                return len(i.atoms(Symbol, Dummy)), i.count_ops(visual=True)
+
+            na = defaultdict(set)
+            nb = defaultdict(set)
+            for v in ta[k]:
+                na[key(v)].add(v)
+            for v in tb[k]:
+                nb[key(v)].add(v)
+
+            if len(na) != len(nb) or set(na) != set(nb):
+                return
+
+            for n in na.keys():
+                if len(na[n]) != len(nb[n]):
+                    return
+                if len(na[n]) == 1:
+                    aa, bb = na[n].pop(), nb[n].pop()
+                    rv = symbol_match(aa, bb, d)
+                    if rv is None:
+                        return
+                    del na[n]
+                    del nb[n]
+
+            for n in na:
+                # resolve below
+                process.append((na[n], nb[n]))
+
+    if not process:
+        return d
+
+    for i, (a, b) in enumerate(process):
+        a = [a for a in a if a.has(Symbol, Dummy)]
+        b = [b for b in b if b.has(Symbol, Dummy)]
+        # filter out those expressions which have are now
+        # resolved on the basis of what has been seen
+        while True:
+            gota = []
+            for ai in a:
+                if ai.is_Symbol:
+                    break
+                s = ai.atoms(Symbol, Dummy) - set(d)
+                if not s:
+                    b.remove(ai.xreplace(d))
+                    gota.append(ai)
+                else:
+                    for bi in b:
+                        if symbol_match(ai, bi, d):
+                            gota.append(ai)
+                            b.remove(ai.xreplace(d))
+                            break
+            if gota:
+                a = [ai for ai in a if ai not in gota]
+            else:
+                break
+
+        process[i] = (a, b)
+
+    process = [(a,b) for a, b in process if a]
+
+    if not process:
+        return d
+
+    for i, (a, b) in enumerate(process):
+        a0 = a.pop()
+        if isinstance(a0, Symbol):
+            # remove known symbols
+            newa = []
+            for ai in a:
+                if ai not in d:
+                    newa.append(ai)
+                else:
+                    b.remove(d[ai])
+            a = newa
+            if len(a) == 1 == len(b):
+                d[a.pop()] = b.pop()
+            else:
+                process[i] = a, b
+        else:
+            a.add(a0)
+
+    # simple case (and single symbols don't unzip and flatten well
+    if 0 and len(process) == 1 and len(process[0][0]) == 1:
+        d[process[0][0].pop()] = process[0][1].pop()
+        return d
+
+    # now look for a permutation that will satisfy all expressions
+    a, b = [flatten(i) for i in zip(*process)]
+    fa = list(ordered(set_union(*[i.free_symbols for i in a])))
+    fb = list(ordered(set_union(*[i.free_symbols for i in b])))
+    newa = []
+    for i in fa:
+        if i in d:
+            newa.append((i, d[i]))
+    if newa:
+        for i, j in newa:
+            fa.remove(i)
+            fb.remove(j)
+    for p in permutations(fb):
+        reps = dict(zip(fa, p))
+        reps.update(d)
+        if all(ai.xreplace(reps) in b for ai in a):
+            return reps
+    return
