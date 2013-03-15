@@ -210,7 +210,8 @@ def symbolics(e, s=None):
 
 
 def structurally_equal(a, b):
-    return symbol_match(a, b) is not None
+    m = symbol_match(a, b)
+    return m is not None and a.xreplace(m) == b
 
 
 def symbol_match(a, b, d=None):
@@ -234,7 +235,7 @@ def symbol_match(a, b, d=None):
             return
 
     if a == b:
-        s = a.atoms(Symbol, Dummy)
+        s = a.atoms(Symbol)  # gets Symbol and Dummy
         d.update(dict(zip(s, s)))
         return d
 
