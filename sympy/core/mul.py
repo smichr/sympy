@@ -1138,9 +1138,10 @@ class Mul(Expr, AssocOp):
             pos * neg * nonpositive -> pos or zero -> None is returned
             pos * neg * nonnegative -> neg or zero -> False is returned
         """
-
-        sign = 1
+        sign = S.One
+        im_count = S.Zero
         saw_NON = False
+
         for t in self.args:
             if t.is_positive:
                 continue
@@ -1153,12 +1154,19 @@ class Mul(Expr, AssocOp):
                 saw_NON = True
             elif t.is_nonnegative:
                 saw_NON = True
+            elif t.is_imaginary:
+                sign *= S.ImaginaryUnit*C.sign(C.im(t))
+                im_count += 1
             else:
                 return
-        if sign == 1 and saw_NON is False:
-            return True
-        if sign < 0:
+
+        if im_count.is_odd:
             return False
+        elif im_count.is_even:
+            if sign.is_positive and saw_NON is False:
+                return True
+            elif sign.is_negative:
+                return False
 
     def _eval_is_negative(self):
         """Return True if self is negative, False if not, and None if it
