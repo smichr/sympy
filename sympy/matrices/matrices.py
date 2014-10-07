@@ -1492,6 +1492,12 @@ class MatrixBase(object):
         hessian
         wronskian
         """
+        try:
+            return jac(self, X)
+        except NotImplementedError:
+            return self._jacobian(X)
+
+    def _jacobian(self, X):
         if not isinstance(X, MatrixBase):
             X = self._new(X)
         # Both X and self can be a row or a column matrix, so we need to make
@@ -4121,3 +4127,43 @@ def a2idx(j, n=None):
         if not (j >= 0 and j < n):
             raise IndexError("Index out of range: a[%s]" % (j, ))
     return int(j)
+
+def jac(A, X):
+    from sympy.simplify.cse_main import cse
+    from sympy.core.function import Derivative
+
+    if any(not i.is_Symbol for i in X):
+        raise NotImplementedError('non-symbolic x value')
+    r, E = cse(A)
+    E = E[0]
+    r = list(r)
+    f = {}  # x0 -> x0(x, y, z)
+    d = {}  # Derivative(x0(x,y,z), x) -> value
+    o = []  # x1 -> expression indep of x
+    c = []  # indices of constant values to be removed from r
+    xs = set(X)
+    for i, (s, e) in enumerate(r):
+        e = e.xreplace(f)
+        ar = e.free_symbols & xs
+        if ar:
+            fs = s(*ar)
+            r[i] = fs, e
+            f[s] = fs
+            dmore = {}
+            for s in ar:
+                dmore[Derivative(fs, s)] = e.diff(s).xreplace(d)
+            d.update(dmore)
+        else:
+            o.append((s, e))
+            c.append(i)
+    for i in reversed(c):
+        del r[i]
+    J = E.applyfunc(lambda q:q.xreplace(f))._jacobian(X)
+    f = dict((v, k) for k, v in f.items())
+    J = J.applyfunc(lambda q:q.xreplace(d).xreplace(f))
+    r = [(i.xreplace(f), j) for i, j in r]
+    reps = {}
+    for i, j in o + r:
+        reps[i] = j.xreplace(reps)
+    J = J.applyfunc(lambda q:q.xreplace(reps))
+    return J
