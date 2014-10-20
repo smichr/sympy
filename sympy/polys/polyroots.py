@@ -14,6 +14,7 @@ from sympy.core.numbers import Rational, igcd
 from sympy.ntheory import divisors, isprime, nextprime
 from sympy.functions import exp, sqrt, re, im, Abs, cos, acos, sin, Piecewise
 from sympy.functions.elementary.miscellaneous import root
+from sympy.functions.elementary.complexes import sign
 
 from sympy.polys.polytools import Poly, cancel, factor, gcd_list, discriminant
 from sympy.polys.specialpolys import cyclotomic_poly
@@ -43,49 +44,47 @@ def roots_linear(f):
 
 def roots_quadratic(f):
     """Returns a list of roots of a quadratic polynomial."""
-    a, b, c = f.all_coeffs()
     dom = f.get_domain()
+    symbolic = not dom.is_Numerical
+    if symbolic:
+        a, b, c = f.all_coeffs()
+    else:
+        a, b, c = f.monic().all_coeffs()
 
     def _simplify(expr):
         if dom.is_Composite:
-            return factor(expr)
+            rv = factor(expr)
         else:
-            return simplify(expr)
+            rv = simplify(expr)
+        return rv
 
     if c is S.Zero:
         r0, r1 = S.Zero, -b/a
 
-        if not dom.is_Numerical:
+        if symbolic:
             r1 = _simplify(r1)
+        elif r1.is_negative:
+            r0, r1 = r1, r0
+
     elif b is S.Zero:
         r = -c/a
+        R = sqrt(_simplify(r) if symbolic else r)
+        r0, r1 = -R, R
 
-        if not dom.is_Numerical:
-            R = sqrt(_simplify(r))
-        else:
-            R = sqrt(r)
-
-        r0 = R
-        r1 = -R
     else:
+        A = 2*a
         d = b**2 - 4*a*c
+        R = -b/A
+        if symbolic:
+            d, R = _simplify(d), _simplify(R)
+        D = sqrt(d)/A
 
-        if dom.is_Numerical:
-            D = sqrt(d)
+        r0, r1 = [expand_2arg(i) for i in (R - D, R + D)]
 
-            r0 = (-b + D) / (2*a)
-            r1 = (-b - D) / (2*a)
-        else:
-            D = sqrt(_simplify(d))
-            A = 2*a
+    if symbolic:
+        r0, r1 = sorted((r0, r1), key=default_sort_key)
 
-            E = _simplify(-b/A)
-            F = D/A
-
-            r0 = E + F
-            r1 = E - F
-
-    return sorted([expand_2arg(i) for i in (r0, r1)], key=default_sort_key)
+    return [r0, r1]
 
 
 def roots_cubic(f, trig=False):
@@ -332,19 +331,55 @@ def roots_binomial(f):
     n = f.degree()
 
     a, b = f.nth(n), f.nth(0)
-    alpha = (-cancel(b/a))**Rational(1, n)
+    base = -cancel(b/a)
+    alpha = root(base, n)
 
     if alpha.is_number:
         alpha = alpha.expand(complex=True)
+        # now define some parameters that will allow us to order the roots:
+        # sorted reals and sorted complex (according to re and im parts).
+        neg = base.is_negative
+        even = n % 2 == 0
+        if even == True and (base - 1).is_positive:
+            big = True
+        else:
+            big = False
+    else:
+        neg = None
 
-    roots, I = [], S.ImaginaryUnit
+    # get the indices in the right order so the computed
+    # roots will be sorted as described above
+    if neg is None:
+        ks = list(range(n))
+    else:
+        ks = []
+        imax = n//2
+        if even:
+            ks.append(imax)
+            imax -= 1
+        if not neg:
+            ks.append(0)
+        for i in range(imax, 0, -1):
+            if neg:
+                ks.extend([i, -i])
+            else:
+                ks.extend([-i, i])
+        if neg:
+            ks.append(0)
+            if big:
+                for i in range(0, len(ks), 2):
+                    pair = ks[i: i + 2]
+                    pair = list(reversed(pair))
 
-    for k in xrange(n):
-        zeta = exp(2*k*S.Pi*I/n).expand(complex=True)
+    # compute the roots
+    roots, d = [], 2*S.Pi*S.ImaginaryUnit/n
+    for k in ks:
+        zeta = exp(k*d).expand(complex=True)
         roots.append((alpha*zeta).expand(power_base=False))
 
-    return sorted(roots, key=default_sort_key)
-
+    if neg is None:
+        roots.sort(key=default_sort_key)
+    return roots
 
 def _inv_totient_estimate(m):
     """
