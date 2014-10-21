@@ -44,48 +44,55 @@ def roots_linear(f):
 
 def roots_quadratic(f):
     """Returns a list of roots of a quadratic polynomial."""
+    a, b, c = f.all_coeffs()
     dom = f.get_domain()
-    symbolic = not dom.is_Numerical
-    if symbolic:
-        a, b, c = f.all_coeffs()
-    else:
-        a, b, c = f.monic().all_coeffs()
 
     def _simplify(expr):
         if dom.is_Composite:
-            rv = factor(expr)
+            return factor(expr)
         else:
-            rv = simplify(expr)
-        return rv
+            return simplify(expr)
 
     if c is S.Zero:
         r0, r1 = S.Zero, -b/a
 
-        if symbolic:
+        if not dom.is_Numerical:
             r1 = _simplify(r1)
         elif r1.is_negative:
             r0, r1 = r1, r0
-
     elif b is S.Zero:
         r = -c/a
-        R = sqrt(_simplify(r) if symbolic else r)
-        r0, r1 = -R, R
 
+        if not dom.is_Numerical:
+            R = sqrt(_simplify(r))
+        else:
+            R = sqrt(r)
+
+        r0 = -R
+        r1 = R
     else:
-        A = 2*a
         d = b**2 - 4*a*c
-        R = -b/A
-        if symbolic:
-            d, R = _simplify(d), _simplify(R)
-        D = sqrt(d)/A
 
-        r0, r1 = [expand_2arg(i) for i in (R - D, R + D)]
+        if dom.is_Numerical:
+            A = 2*a
+            D = sqrt(d)/A
+            B = -b/A
+            r0 = B - D
+            r1 = B + D
+            if a.is_negative:
+                r0, r1 = r1, r0
+        else:
+            D = sqrt(_simplify(d))
+            A = 2*a
 
-    if symbolic:
-        r0, r1 = sorted((r0, r1), key=default_sort_key)
+            E = _simplify(-b/A)
+            F = D/A
+
+            r0 = E + F
+            r1 = E - F
+            r0, r1 = sorted([expand_2arg(i) for i in (r0, r1)], key=default_sort_key)
 
     return [r0, r1]
-
 
 def roots_cubic(f, trig=False):
     """Returns a list of roots of a cubic polynomial."""
