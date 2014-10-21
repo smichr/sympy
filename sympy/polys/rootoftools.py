@@ -365,7 +365,8 @@ class RootOf(Expr):
         dom = poly.get_domain()
 
         if not dom.is_ZZ:
-            raise NotImplementedError("RootOf is not supported over %s" % dom)
+            raise NotImplementedError(
+                "sorted roots not supported over %s" % dom)
 
         return coeff, poly
 
