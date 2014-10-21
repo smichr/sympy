@@ -2,7 +2,7 @@
 
 from sympy import (S, symbols, Symbol, Wild, Integer, Rational, sqrt,
     powsimp, Lambda, sin, cos, pi, I, Interval, re, im, exp, ZZ, Piecewise,
-    acos)
+    acos, default_sort_key)
 
 from sympy.polys import (Poly, cyclotomic_poly, intervals, nroots,
     PolynomialError)
@@ -59,6 +59,12 @@ def test_roots_quadratic():
     f = Poly(x**2 + (-y**2 - 2)*x + y**2 + 1, x)
     assert roots_quadratic(f) == \
         [y**2/2 - sqrt(y**4)/2 + 1, y**2/2 + sqrt(y**4)/2 + 1]
+
+    # check that sorting matches default_sort_key except for ZZ domain
+    f = Poly(sqrt(2)*x**2 - 1, x)
+    r = roots_quadratic(f)
+    assert r == sorted(r, key=default_sort_key)
+
 
 def test_roots_cubic():
     assert roots_cubic(Poly(2*x**3, x)) == [0, 0, 0]
@@ -207,6 +213,12 @@ def test_roots_binomial():
         p = Poly(a*x**n + s*b)
         roots = roots_binomial(p)
         assert roots == _nsort(roots)
+
+    # check that sorting matches default_sort_key except for ZZ domain
+    f = Poly(x**5 - sqrt(2), x)
+    r = roots_binomial(f)
+    assert r == sorted(r, key=default_sort_key)
+
 
 def test_roots_preprocessing():
     f = a*y*x**2 + y - b

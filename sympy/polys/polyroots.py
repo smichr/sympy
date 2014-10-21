@@ -58,41 +58,37 @@ def roots_quadratic(f):
 
         if not dom.is_Numerical:
             r1 = _simplify(r1)
-        elif r1.is_negative:
+        elif dom.is_ZZ and r1 < 0:
             r0, r1 = r1, r0
     elif b is S.Zero:
         r = -c/a
-
         if not dom.is_Numerical:
-            R = sqrt(_simplify(r))
-        else:
-            R = sqrt(r)
+            r = _simplify(r)
 
+        R = sqrt(r)
         r0 = -R
         r1 = R
     else:
         d = b**2 - 4*a*c
+        A = 2*a
+        B = -b/A
 
-        if dom.is_Numerical:
-            A = 2*a
-            D = sqrt(d)/A
-            B = -b/A
-            r0 = B - D
-            r1 = B + D
-            if a.is_negative:
-                r0, r1 = r1, r0
-        else:
-            D = sqrt(_simplify(d))
-            A = 2*a
+        if not dom.is_Numerical:
+            d = _simplify(d)
+            B = _simplify(B)
 
-            E = _simplify(-b/A)
-            F = D/A
+        D = sqrt(d)/A
+        r0 = B - D
+        r1 = B + D
+        if dom.is_ZZ and a < 0:
+            r0, r1 = r1, r0
+        elif not dom.is_Numerical:
+            r0, r1 = [expand_2arg(i) for i in (r0, r1)]
 
-            r0 = E + F
-            r1 = E - F
-            r0, r1 = sorted([expand_2arg(i) for i in (r0, r1)], key=default_sort_key)
+    if dom.is_ZZ:
+        return [r0, r1]
+    return sorted((r0, r1), key=default_sort_key)
 
-    return [r0, r1]
 
 def roots_cubic(f, trig=False):
     """Returns a list of roots of a cubic polynomial."""
@@ -336,6 +332,7 @@ def roots_quartic(f):
 def roots_binomial(f):
     """Returns a list of roots of a binomial polynomial."""
     n = f.degree()
+    zz = f.get_domain().is_ZZ
 
     a, b = f.nth(n), f.nth(0)
     base = -cancel(b/a)
@@ -345,18 +342,17 @@ def roots_binomial(f):
         alpha = alpha.expand(complex=True)
         # now define some parameters that will allow us to order the roots:
         # sorted reals and sorted complex (according to re and im parts).
-        neg = base.is_negative
-        even = n % 2 == 0
-        if even == True and (base - 1).is_positive:
-            big = True
-        else:
-            big = False
-    else:
-        neg = None
+        if zz:
+            neg = base < 0
+            even = n % 2 == 0
+            if even == True and (base - 1) > 0:
+                big = True
+            else:
+                big = False
 
     # get the indices in the right order so the computed
-    # roots will be sorted as described above
-    if neg is None:
+    # roots will be sorted when the domain is ZZ
+    if not zz:
         ks = list(range(n))
     else:
         ks = []
@@ -384,9 +380,10 @@ def roots_binomial(f):
         zeta = exp(k*d).expand(complex=True)
         roots.append((alpha*zeta).expand(power_base=False))
 
-    if neg is None:
+    if not zz:
         roots.sort(key=default_sort_key)
     return roots
+
 
 def _inv_totient_estimate(m):
     """
