@@ -298,7 +298,7 @@ class RootOf(Expr):
             return cls._complexes_index(complexes, index - reals_count)
 
     @classmethod
-    def _real_roots(cls, poly):
+    def _real_roots(cls, poly, radicals=False):
         """Get real roots of a composite polynomial. """
         (_, factors) = poly.factor_list()
 
@@ -314,8 +314,11 @@ class RootOf(Expr):
         return roots
 
     @classmethod
-    def _all_roots(cls, poly):
+    def _all_roots(cls, poly, radicals=False):
         """Get real and complex roots of a composite polynomial. """
+        if radicals and cls._roots_trivial(poly, True):
+            return
+
         (_, factors) = poly.factor_list()
 
         reals = cls._get_reals(factors)
@@ -390,7 +393,12 @@ class RootOf(Expr):
         coeff, poly = cls._preprocess_roots(poly)
         roots = []
 
-        for root in getattr(cls, method)(poly):
+        if radicals:
+            r = cls._roots_trivial(poly, radicals)
+            if r:
+                return [coeff*i for i in r]
+
+        for root in getattr(cls, method)(poly, radicals=radicals):
             roots.append(coeff*cls._postprocess_root(root, radicals))
 
         return roots

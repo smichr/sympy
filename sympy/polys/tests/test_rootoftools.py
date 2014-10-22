@@ -219,6 +219,10 @@ def test_RootOf_all_roots():
         RootOf(x**3 - x**2 + 1, 2),
     ]
 
+    # don't fail for trivial polynomials
+    assert len(Poly(-4*x**8 + 1, x).all_roots()) == 8
+
+
 def test_RootOf_eval_rational():
     p = legendre_poly(4, x, polys=True)
     roots = [r.eval_rational(S(1)/10**20) for r in p.real_roots()]
