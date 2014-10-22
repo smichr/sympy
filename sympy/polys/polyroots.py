@@ -42,8 +42,15 @@ def roots_linear(f):
     return [r]
 
 
-def roots_quadratic(f):
+def roots_quadratic(f, _sort=False):
     """Returns a list of roots of a quadratic polynomial."""
+    # If _sort is True, roots are sorted with defaut_sort_key. Otherwise,
+    # an attempt will be made to sort the roots
+    # with reals before non-real roots and non-real sorted according
+    # to real part and imaginary part, e.g. -1, 1, -1 + I, 2 - I;
+    # this will always work if the domain is ZZ.
+
+
     a, b, c = f.all_coeffs()
     dom = f.get_domain()
 
@@ -58,7 +65,7 @@ def roots_quadratic(f):
 
         if not dom.is_Numerical:
             r1 = _simplify(r1)
-        elif dom.is_ZZ and r1 < 0:
+        elif not _sort and r1.is_negative:
             r0, r1 = r1, r0
     elif b is S.Zero:
         r = -c/a
@@ -80,12 +87,12 @@ def roots_quadratic(f):
         D = sqrt(d)/A
         r0 = B - D
         r1 = B + D
-        if dom.is_ZZ and a < 0:
+        if not _sort and a.is_negative:
             r0, r1 = r1, r0
         elif not dom.is_Numerical:
             r0, r1 = [expand_2arg(i) for i in (r0, r1)]
 
-    if dom.is_ZZ:
+    if not _sort:
         return [r0, r1]
     return sorted((r0, r1), key=default_sort_key)
 
@@ -329,10 +336,9 @@ def roots_quartic(f):
                 for a1, a2 in zip(_ans(y1), _ans(y2))]
 
 
-def roots_binomial(f):
+def roots_binomial(f, _sort=False):
     """Returns a list of roots of a binomial polynomial."""
     n = f.degree()
-    zz = f.get_domain().is_ZZ
 
     a, b = f.nth(n), f.nth(0)
     base = -cancel(b/a)
@@ -340,21 +346,24 @@ def roots_binomial(f):
 
     if alpha.is_number:
         alpha = alpha.expand(complex=True)
-        # now define some parameters that will allow us to order the roots:
-        # sorted reals and sorted complex (according to re and im parts).
-        if zz:
-            neg = base < 0
-            even = n % 2 == 0
-            if even == True and (base - 1) > 0:
+
+    if _sort:
+        ks = list(range(n))
+    else:
+        # define some parameters that will allow us to order the roots.
+        # If the domain is ZZ this is guaranteed to return roots sorted
+        # with reals before non-real roots and non-real sorted according
+        # to real part and imaginary part, e.g. -1, 1, -1 + I, 2 - I
+        neg = base.is_negative
+        even = n % 2 == 0
+        if neg:
+            if even == True and (base + 1).is_positive:
                 big = True
             else:
                 big = False
 
-    # get the indices in the right order so the computed
-    # roots will be sorted when the domain is ZZ
-    if not zz:
-        ks = list(range(n))
-    else:
+        # get the indices in the right order so the computed
+        # roots will be sorted when the domain is ZZ
         ks = []
         imax = n//2
         if even:
@@ -380,7 +389,7 @@ def roots_binomial(f):
         zeta = exp(k*d).expand(complex=True)
         roots.append((alpha*zeta).expand(power_base=False))
 
-    if not zz:
+    if _sort:
         roots.sort(key=default_sort_key)
     return roots
 

@@ -60,9 +60,10 @@ def test_roots_quadratic():
     assert roots_quadratic(f) == \
         [y**2/2 - sqrt(y**4)/2 + 1, y**2/2 + sqrt(y**4)/2 + 1]
 
-    # check that sorting matches default_sort_key except for ZZ domain
     f = Poly(sqrt(2)*x**2 - 1, x)
     r = roots_quadratic(f)
+    assert r == _nsort(r)
+    r = roots_quadratic(f, _sort=True)
     assert r == sorted(r, key=default_sort_key)
 
 
@@ -207,17 +208,14 @@ def test_roots_binomial():
 
     assert powsimp(r0[0]) == powsimp(r1[0])
     assert powsimp(r0[1]) == powsimp(r1[1])
-    for a, b, s, n in cartes((1, 2), (1, 2), (-1, 1), (2, 3, 4)):
+    for a, b, s, n in cartes((1, 2), (1, 2), (-1, 1), (2, 3, 4, 5)):
         if a == b and a != 1:  # a == b == 1 is sufficient
             continue
         p = Poly(a*x**n + s*b)
         roots = roots_binomial(p)
         assert roots == _nsort(roots)
-
-    # check that sorting matches default_sort_key except for ZZ domain
-    f = Poly(x**5 - sqrt(2), x)
-    r = roots_binomial(f)
-    assert r == sorted(r, key=default_sort_key)
+        roots = roots_binomial(p, _sort=True)
+        assert roots == sorted(roots, key=default_sort_key)
 
 
 def test_roots_preprocessing():
