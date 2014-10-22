@@ -14,7 +14,7 @@ from sympy.polys.polyroots import (root_factors, roots_linear,
 from sympy.polys.orthopolys import legendre_poly
 
 from sympy.utilities.iterables import cartes
-from sympy.utilities.pytest import raises
+from sympy.utilities.pytest import raises, XFAIL
 from sympy.utilities.randtest import verify_numerically
 import sympy
 
@@ -46,12 +46,6 @@ def test_roots_quadratic():
         [-e*(a + c)/(a - c) - sqrt((a*b + c*d - a*d - b*c + 4*a*c*e**2)/(a - c)**2),
          -e*(a + c)/(a - c) + sqrt((a*b + c*d - a*d - b*c + 4*a*c*e**2)/(a - c)**2)]
 
-    # issue 8255:
-    for _a, _b, _c in cartes((-2, 2), (-2, 2), (0, -1)):
-        f = Poly(_a*x**2 + _b*x + _c)
-        roots = roots_quadratic(f)
-        assert roots == _nsort(roots)
-
     # check for simplification
     f = Poly(y*x**2 - 2*x - 2*y, x)
     assert roots_quadratic(f) == \
@@ -65,6 +59,21 @@ def test_roots_quadratic():
     assert r == _nsort(r)
     r = roots_quadratic(f, _sort=True)
     assert r == sorted(r, key=default_sort_key)
+
+    # issue 8255
+    f = Poly(-24*x**2 - 180*x + 264)
+    assert [w.n(2) for w in f.all_roots(radicals=True)] == \
+           [w.n(2) for w in f.all_roots(radicals=False)]
+    for _a, _b, _c in cartes((-2, 2), (-2, 2), (0, -1)):
+        f = Poly(_a*x**2 + _b*x + _c)
+        roots = roots_quadratic(f)
+        assert roots == _nsort(roots)
+
+
+@XFAIL
+def test_issue_8289():
+    roots = (Poly(x**2 + 2)*Poly(x**4 + 2)).all_roots()
+    assert roots == _nsort(roots)
 
 
 def test_roots_cubic():
