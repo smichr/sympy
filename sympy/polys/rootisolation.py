@@ -1820,8 +1820,13 @@ class ComplexInterval(object):
 
     def is_disjoint(self, other):
         """Return ``True`` if two isolation intervals are disjoint. """
-        return ((self.conj != other.conj) or ((self.bx <= other.ax or other.bx <= self.ax) or
-                                              (self.by <= other.ay or other.by <= self.ay)))
+        if self.conj != other.conj:
+            return True
+        re_distinct = (self.bx <= other.ax or other.bx <= self.ax)
+        if re_distinct:
+            return True
+        im_distinct = (self.by <= other.ay or other.by <= self.ay)
+        return im_distinct
 
     def _inner_refine(self):
         """Internal one step complex root refinement procedure. """

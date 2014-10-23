@@ -218,6 +218,8 @@ class RootOf(Expr):
     @classmethod
     def _complexes_sorted(cls, complexes):
         """Make complex isolating intervals disjoint and sort roots. """
+        if not complexes:
+            return []
         cache = {}
 
         for i, (u, f, k) in enumerate(complexes):
@@ -227,7 +229,33 @@ class RootOf(Expr):
 
             complexes[i] = (u, f, k)
 
-        complexes = sorted(complexes, key=lambda r: (r[0].ax, r[0].ay))
+        # although the intervals are pair-wise disjoint, we have refine
+        # them enough that we have len(complex)//2 disjoint
+        # intervals in real and complex components
+        N = len(complexes)//2 - 1
+        def disj(u, v):
+            return u != v and u[0] >= v[1] or u[1] <= v[0]
+        while True:
+            for atr in 'xy':
+                n = 0  # number of intervals disjoint from the first one
+                u = (
+                    getattr(complexes[0][0], 'a%s'%atr),
+                    getattr(complexes[0][0], 'b%s'%atr))
+                for v in set([(
+                        getattr(v, 'a%s'%atr),
+                        getattr(v, 'b%s'%atr)) for v, _, _ in complexes]):
+                    if disj(u, v):
+                        n += 1
+                if n < N:
+                    break  # refine
+            else:
+                break  # distinctly disjoint now
+            # TODO only refine the ones that are not disjoint
+            for i, (u, f, k) in enumerate(complexes):
+                u = u._inner_refine()
+                complexes[i] = u, f, k
+
+        complexes = sorted(complexes, key=lambda (u, f, k): (u.ax, u.ay))
 
         for root, factor, _ in complexes:
             if factor in cache:

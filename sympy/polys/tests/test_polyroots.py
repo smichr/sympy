@@ -70,9 +70,12 @@ def test_roots_quadratic():
         assert roots == _nsort(roots)
 
 
-@XFAIL
 def test_issue_8289():
     roots = (Poly(x**2 + 2)*Poly(x**4 + 2)).all_roots()
+    assert roots == _nsort(roots)
+    roots = Poly(x**6 + 3*x**3 + 2, x).all_roots()
+    assert roots == _nsort(roots)
+    roots = Poly(x**6 - x + 1).all_roots()
     assert roots == _nsort(roots)
 
 
