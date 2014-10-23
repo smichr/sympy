@@ -255,7 +255,7 @@ class RootOf(Expr):
                 u = u._inner_refine()
                 complexes[i] = u, f, k
 
-        complexes = sorted(complexes, key=lambda (u, f, k): (u.ax, u.ay))
+        complexes = sorted(complexes, key=lambda ufk: (ufk[0].ax, ufk[0].ay))
 
         for root, factor, _ in complexes:
             if factor in cache:

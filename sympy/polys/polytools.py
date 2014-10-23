@@ -3407,10 +3407,9 @@ class Poly(Expr):
             # Mpmath puts real roots first, then complex ones. SymPy polynomial
             # module orders roots by their real components (if they are equal,
             # then by their imaginary components). So we reorder the roots here
-            # to conform to the SymPy ordering.  XXX in all_roots, it looks
-            # like the mpmath convention is used.
+            # to conform to the SymPy ordering.
             roots = list(map(sympify,
-                sorted(roots, key=lambda r: (r.real, r.imag))))
+                sorted(roots, key=lambda r: (1 if r.imag else 0, r.real, r.imag))))
         finally:
             sympy.mpmath.mp.dps = dps
 
