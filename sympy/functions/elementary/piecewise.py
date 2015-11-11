@@ -102,6 +102,11 @@ class Piecewise(Function):
                 raise TypeError(
                     "Cond %s is of type %s, but must be a Relational,"
                     " Boolean, or a built-in bool." % (cond, type(cond)))
+            if 0 and isinstance(cond, Equality):
+                cond = cond.canonical
+                if cond.lhs.is_Symbol:
+                    e, c = pair.args
+                    pair = ExprCondPair(e.subs(cond.lhs, cond.rhs), c)
             newargs.append(pair)
             if cond == True:
                 break
@@ -122,41 +127,88 @@ class Piecewise(Function):
         # 1) Hit an unevaluable cond (e.g. x<1) -> keep object
         # 2) Hit a true condition -> return that expr
         # 3) Remove false conditions, if no conditions left -> raise ValueError
+        # 4) remove expr/cond pairs from Piecewise args that have a condition
+        #    matching any previous arg's condition
         all_conds_evaled = True    # Do all conds eval to a bool?
         piecewise_again = False    # Should we pass args to Piecewise again?
         non_false_ecpairs = []
-        or1 = Or(*[cond for (_, cond) in args if cond != true])
+        or1 = Or(*[c for (_, c) in args if c != true])
         for expr, cond in args:
-            # Check here if expr is a Piecewise and drop any parts past
-            # a matching condition. This allows the collapsing of
-            # Piecewise((Piecewise(...,(x,x<0),...),x<0)) to
-            #            Piecewise(...,(x,x<0)).
-            # This is important when using piecewise_fold to simplify
-            # multiple Piecewise instances having the same conds.
-            # Eventually, this code should be able to collapse Piecewise
-            # with different intervals, but this will probably require
-            # using the new assumptions.
-            if isinstance(expr, Piecewise):
-                or2 = Or(*[c for (_, c) in expr.args if c != true])
-                new_expr = None
-                for i, (e, c) in enumerate(expr.args):
-                    # Don't collapse if cond is "True" as this leads to
-                    # incorrect simplifications with nested Piecewises.
-                    if c == cond and (or1 == or2 or cond != true):
-                        iexpr, new_expr = i, expr
-                if new_expr is not None:
-                    if iexpr < len(expr.args) - 1:
-                        expr = Piecewise(*expr.args[:iexpr + 1])
-                        piecewise_again = True
-                    else:
-                        return new_expr
+            # see if the condition evaluates
             cond_eval = cls.__eval_cond(cond)
             if cond_eval is None:
                 all_conds_evaled = False
-            elif cond_eval:
+            elif cond_eval == true:
                 if all_conds_evaled:
                     return expr
-            if len(non_false_ecpairs) != 0:
+            else:
+                continue
+            # check if Piecewise args can be simplified
+            if isinstance(expr, Piecewise):
+                # drop any expr/cond pair that has a condition
+                # matching a previous condition of an arg
+                new_args = []
+                for e, c in expr.args:
+                    for _, ci in non_false_ecpairs:
+                        if c == ci:
+                            continue
+                        new_args.append(ExprCondPair(e, c))
+                    if len(new_args) != len(expr.args):
+                        if new_args:
+                            expr = Piecewise(*new_args, evaluate=False)
+                        else:
+                            continue
+                # Drop any parts past a pair that has a condition
+                # matching the current condition. This allows the
+                # collapsing of
+                # Piecewise((Piecewise(...,(x,x<0),...),x<0)) to
+                #            Piecewise(...,(x,x<0)).
+                # This is important when using piecewise_fold to simplify
+                # multiple Piecewise instances having the same conds.
+                # Eventually, this code should be able to collapse Piecewise
+                # with different intervals, but this will probably require
+                # using the new assumptions.
+
+                if 1 or or1 == Or(*[c for (_, c) in expr.args if c != true]):
+                    # check for match which will truncate expr's ec pairs
+                    iexpr = None
+                    for i, (e, c) in enumerate(expr.args):
+                        if c == cond:
+                            iexpr = i
+                    if iexpr is not None:
+                        if iexpr < len(expr.args) - 1:
+                            expr = Piecewise(*expr.args[:iexpr + 1])
+                            piecewise_again = True
+                        elif len(expr.args) == 1:
+                            expr = expr.args[0]
+                            piecewise_again = True
+                        else:
+                            pass  # for covereage
+                if isinstance(expr, Piecewise):
+                    s = cond.as_set()
+                    cargs = []
+                    hit = False
+                    for e, c in expr.args:
+                        cs = c.as_set()
+                        # eliminate any ec pairs if c does not intersect with cond
+                        if cs.intersection(s) is S.EmptySet:
+                            hit = True
+                            continue
+                        # replace c with cond if cond is a subset of c
+                        if s.is_subset(cs):
+                            c = cond
+                            hit = True
+                        cargs.append(ExprCondPair(e, c))
+                    if hit:
+                        if not cargs:
+                            continue
+                        expr = Piecewise(*cargs)
+                        piecewise_again = True
+            elif isinstance(expr, ExprCondPair) and expr.cond == cond:
+                non_false_ecpairs.append(expr)
+                piecewise_again=True
+                continue
+            if non_false_ecpairs:
                 if non_false_ecpairs[-1].cond == cond:
                     continue
                 elif non_false_ecpairs[-1].expr == expr:
@@ -167,6 +219,7 @@ class Piecewise(Function):
                     continue
             non_false_ecpairs.append(ExprCondPair(expr, cond))
         if len(non_false_ecpairs) != len(args) or piecewise_again:
+            #print('==>',expr)
             return cls(*non_false_ecpairs)
 
         return None
