@@ -127,22 +127,29 @@ class Piecewise(Function):
         non_false_ecpairs = []
         or1 = Or(*[cond for (_, cond) in args if cond != true])
         for expr, cond in args:
-            # Check here if expr is a Piecewise and collapse if one of
-            # the conds in expr matches cond. This allows the collapsing
-            # of Piecewise((Piecewise(x,x<0),x<0)) to Piecewise((x,x<0)).
+            # Check here if expr is a Piecewise and drop any parts past
+            # a matching condition. This allows the collapsing of
+            # Piecewise((Piecewise(...,(x,x<0),...),x<0)) to
+            #            Piecewise(...,(x,x<0)).
             # This is important when using piecewise_fold to simplify
             # multiple Piecewise instances having the same conds.
-            # Eventually, this code should be able to collapse Piecewise's
-            # having different intervals, but this will probably require
+            # Eventually, this code should be able to collapse Piecewise
+            # with different intervals, but this will probably require
             # using the new assumptions.
             if isinstance(expr, Piecewise):
                 or2 = Or(*[c for (_, c) in expr.args if c != true])
-                for e, c in expr.args:
+                new_expr = None
+                for i, (e, c) in enumerate(expr.args):
                     # Don't collapse if cond is "True" as this leads to
                     # incorrect simplifications with nested Piecewises.
                     if c == cond and (or1 == or2 or cond != true):
-                        expr = e
+                        iexpr, new_expr = i, expr
+                if new_expr is not None:
+                    if iexpr < len(expr.args) - 1:
+                        expr = Piecewise(*expr.args[:iexpr + 1])
                         piecewise_again = True
+                    else:
+                        return new_expr
             cond_eval = cls.__eval_cond(cond)
             if cond_eval is None:
                 all_conds_evaled = False

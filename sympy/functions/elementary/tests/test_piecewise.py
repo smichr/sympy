@@ -394,9 +394,10 @@ def test_piecewise_interval():
 
 
 def test_piecewise_collapse():
-    p1 = Piecewise((x, x < 0), (x**2, x > 1))
-    p2 = Piecewise((p1, x < 0), (p1, x > 1))
-    assert p2 == Piecewise((x, x < 0), (x**2, 1 < x))
+    p1 = Piecewise((x, x > 0), (x**2, x > 1), (1, x > 2))
+    assert Piecewise((p1, x > 0)) == Piecewise(*p1.args[:1])
+    assert Piecewise((p1, x > 1)) == Piecewise(*p1.args[:2])
+    assert Piecewise((p1, x > 2)) == p1
 
     p1 = Piecewise((Piecewise((x, x < 0), (1, True)), True))
     assert p1 == Piecewise((Piecewise((x, x < 0), (1, True)), True))
