@@ -12,7 +12,7 @@ from sympy.polys.rootoftools import RootOf
 from sympy.solvers.solvers import solve
 from sympy.abc import x, y
 
-from sympy.utilities.pytest import raises, slow, XFAIL
+from sympy.utilities.pytest import raises, slow
 
 
 inf = oo.evalf()
@@ -291,6 +291,7 @@ def test_issue_9954():
     assert isolve(x**2 < 0, x, relational=True) == S.EmptySet.as_relational(x)
 
 
+@slow
 def test_slow_general_univariate():
     assert str(solve(sqrt(x) + 1/root(x, 3) - 2 > 0
         ).as_set().n(5)) == '(0, 0.37284) U (1.0, +inf)'
