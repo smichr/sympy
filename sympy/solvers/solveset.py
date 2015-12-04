@@ -1265,9 +1265,13 @@ def linsolve(system, *symbols):
 
 def solve(f_x, x, **kwargs):
     """
-    Emulates `sympy.solvers.solvers.solve` using `solveset`.
+    Emulates `sympy.solvers.solvers.solve` using `solveset_real`.
     """
-    solns = solveset(f_x, x, domain=S.Reals)
+    n, d = f_x.as_numer_denom()
+    if kwargs.get('compact', False) and all(i.is_polynomial(x) for i in (n, d)):
+        from sympy import real_roots
+        return [r for r in real_roots(n, x) if r not in (real_roots(d, x) if x in d.free_symbols else S.EmptySet)]
+    solns = solveset_real(f_x, x)
     if type(solns) is FiniteSet:
         return list(solns)
     elif solns is S.EmptySet:
