@@ -25,6 +25,7 @@ from sympy.matrices import Matrix
 from sympy.polys import (roots, Poly, degree, together, PolynomialError,
                          RootOf)
 from sympy.solvers.solvers import checksol, denoms
+from sympy.solvers.inequalities import solve_univariate_inequality
 from sympy.utilities import filldedent
 
 import warnings
@@ -654,10 +655,10 @@ def _has_rational_power(expr, symbol):
     (False, 1)
     """
     a, p, q = Wild('a'), Wild('p'), Wild('q')
-    pattern_match = expr.match(a*p**q)
-    if pattern_match is None or pattern_match[a] is S.Zero:
+    pattern_match = expr.match(a*p**q) or {}
+    if pattern_match.get(a, S.Zero) is S.Zero:
         return (False, S.One)
-    elif p not in pattern_match.keys() or a not in pattern_match.keys():
+    elif p not in pattern_match.keys():
         return (False, S.One)
     elif isinstance(pattern_match[q], Rational) \
             and pattern_match[p].has(symbol):
@@ -695,11 +696,9 @@ def _solve_radical(f, symbol, solveset_solver):
 
 def _solve_abs(f, symbol):
     """ Helper function to solve equation involving absolute value function """
-    from sympy.solvers.inequalities import solve_univariate_inequality
-    assert f.has(Abs)
     p, q, r = Wild('p'), Wild('q'), Wild('r')
-    pattern_match = f.match(p*Abs(q) + r)
-    if not pattern_match[p].is_zero:
+    pattern_match = f.match(p*Abs(q) + r) or {}
+    if not pattern_match.get(p, S.Zero).is_zero:
         f_p, f_q, f_r = pattern_match[p], pattern_match[q], pattern_match[r]
         q_pos_cond = solve_univariate_inequality(f_q >= 0, symbol,
                                                  relational=False)
@@ -875,8 +874,7 @@ def solveset(f, symbol=None, domain=S.Complexes):
     Examples
     ========
 
-    >>> from sympy import exp, Symbol, Eq, pprint, S
-    >>> from sympy.solvers.solveset import solveset
+    >>> from sympy import exp, Symbol, Eq, pprint, S, solveset
     >>> from sympy.abc import x
 
     * The default domain is complex. Not specifying a domain will lead to the
@@ -930,9 +928,10 @@ def solveset(f, symbol=None, domain=S.Complexes):
 
     if f.is_Relational:
         if not domain.is_subset(S.Reals):
-            raise NotImplementedError("Inequalities in the complex domain are "
-                                      "not supported. Try the real domain by"
-                                      "setting domain=S.Reals")
+            raise NotImplementedError(filldedent('''
+                Inequalities in the complex domain are
+                not supported. Try the real domain by
+                setting domain=S.Reals'''))
         try:
             result = solve_univariate_inequality(
             f, symbol, relational=False).intersection(domain)
@@ -982,8 +981,7 @@ def linear_eq_to_matrix(equations, *symbols):
     Examples
     ========
 
-    >>> from sympy.solvers.solveset import linear_eq_to_matrix
-    >>> from sympy import symbols
+    >>> from sympy import linear_eq_to_matrix, symbols
     >>> x, y, z = symbols('x, y, z')
     >>> eqns = [x + 2*y + 3*z - 1, 3*x + y + z + 6, 2*x + 4*y + 9*z - 2]
     >>> A, b = linear_eq_to_matrix(eqns, [x, y, z])
@@ -1139,9 +1137,7 @@ def linsolve(system, *symbols):
     Examples
     ========
 
-    >>> from sympy.solvers.solveset import linsolve
-    >>> from sympy import Matrix, S
-    >>> from sympy import symbols
+    >>> from sympy import Matrix, S, linsolve, symbols
     >>> x, y, z = symbols("x, y, z")
     >>> A = Matrix([[1, 2, 3], [4, 5, 6], [7, 8, 10]])
     >>> b = Matrix([3, 6, 9])
@@ -1255,7 +1251,7 @@ def linsolve(system, *symbols):
     if params:
         for s in sol:
             for k, v in enumerate(params):
-                s = s.subs(v, symbols[free_syms[k]])
+                s = s.xreplace({v: symbols[free_syms[k]]})
             solution.append(s)
 
     else:
