@@ -47,6 +47,11 @@ def test_And():
     assert And(e, e.canonical) == e.canonical
     g, l, ge, le = A > B, B < A, A >= B, B <= A
     assert And(g, l, ge, le) == And(l, le)
+    a = A > 2
+    b = S(4) > A
+    ans = And(a.reversed, b.reversed)
+    assert And(a, b) == ans
+    assert And(b, a) == ans
 
 
 def test_Or():
@@ -69,6 +74,11 @@ def test_Or():
     assert Or(e, e.canonical) == e
     g, l, ge, le = A > B, B < A, A >= B, B <= A
     assert Or(g, l, ge, le) == Or(g, ge)
+    a = A > 2
+    b = S(4) > A
+    ans = Or(b.canonical, a.canonical)
+    assert Or(a, b) == ans
+    assert Or(b, a) == ans
 
 
 def test_Xor():

@@ -334,7 +334,24 @@ class And(LatticeOp, BooleanFunction):
                 if any(r == nc for r in rel):
                     return [S.false]
                 rel.append(c)
+                x = c  # put args in canonical form
             newargs.append(x)
+        # make two inequalities like x < 2 & x > 1 look like 1 < x < 2
+        if len([i for i in newargs if i not in (True, False) and
+                i.is_Relational]) == 2:
+            if all('>' in i.rel_op or '>' in i.rel_op
+                   for i in newargs) == 2:
+                free = set().union(*[i.free_symbols for i in newargs])
+                if len(free) == 1:
+                    x = free.pop()
+                    if all(x == i.lhs for i in newargs):
+                        a, b = [i.rhs for i in newargs]
+                        rel = a < b
+                        if rel in (True, False):
+                            if not rel:
+                                newargs = list(reversed(newargs))
+                                newargs[0] = newargs[0].reversed
+
         return LatticeOp._new_args_filter(newargs, And)
 
     def as_set(self):
@@ -405,6 +422,7 @@ class Or(LatticeOp, BooleanFunction):
                 if any(r == nc for r in rel):
                     return [S.true]
                 rel.append(c)
+                x = c  # make args canonical
             newargs.append(x)
         return LatticeOp._new_args_filter(newargs, Or)
 
@@ -417,7 +435,7 @@ class Or(LatticeOp, BooleanFunction):
 
         >>> from sympy import Or, Symbol
         >>> x = Symbol('x', real=True)
-        >>> Or(x>2, x<-2).as_set()
+        >>> Or(x > 2, x < -2).as_set()
         (-oo, -2) U (2, oo)
         """
         from sympy.sets.sets import Union
