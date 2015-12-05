@@ -901,7 +901,13 @@ def solveset(f, symbol=None, domain=S.Complexes):
 
     """
 
-    from sympy.solvers.inequalities import solve_univariate_inequality
+    f = sympify(f)
+
+    if f is S.false:
+        return EmptySet()
+
+    if f is S.true:
+        return domain
 
     if symbol is None:
         free_symbols = f.free_symbols
@@ -913,14 +919,6 @@ def solveset(f, symbol=None, domain=S.Complexes):
                 multivariate equation.'''))
     elif not symbol.is_Symbol:
         raise ValueError('A Symbol must be given, not type %s: %s' % (type(symbol), symbol))
-
-    f = sympify(f)
-
-    if f is S.false:
-        return EmptySet()
-
-    if f is S.true:
-        return domain
 
     if isinstance(f, Eq):
         from sympy.core import Add

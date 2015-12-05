@@ -162,7 +162,7 @@ def test_invert_complex():
 
 
 def test_domain_check():
-    assert domain_check(1/(1 + (1/(x+1))**2), x, -1) is False
+    assert domain_check(1/(1 + (1/(x + 1))**2), x, -1) is False
     assert domain_check(x**2, x, 0) is True
     assert domain_check(x, x, oo) is False
     assert domain_check(0, x, oo) is False
@@ -743,6 +743,7 @@ def test_solve_complex_unsolvable():
     solution = solveset_complex(cos(x) - S.Half, x)
     assert solution == unsolved_object
 
+
 @XFAIL
 def test_solve_trig_simplified():
     from sympy.abc import n
@@ -853,6 +854,7 @@ def test_solveset():
     x = Symbol('x')
     raises(ValueError, lambda: solveset(x + y))
 
+    assert solveset(True, domain=S.Reals) == S.Reals  # issue 10197
     assert solveset(exp(x) - 1, domain=S.Reals) == FiniteSet(0)
     assert solveset(exp(x) - 1, x, S.Reals) == FiniteSet(0)
     assert solveset(Eq(exp(x), 1), x, S.Reals) == FiniteSet(0)
