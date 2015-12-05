@@ -1276,5 +1276,12 @@ def solve(f_x, x, **kwargs):
         return list(solns)
     elif solns is S.EmptySet:
         return []
+    elif solns.is_Interval:
+        return [solns.as_relational(x)]
     else:
-        raise NotImplementedError
+        raise NotImplementedError(filldedent('''
+            The return value from solveset was not recognized
+            as something that `solvers.solve` would have returned;
+            if it is something that `solvers.solve` would have
+            returned, a new `elif` block should be added to the code.
+            '''))
