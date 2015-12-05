@@ -487,6 +487,8 @@ def solveset_real(f, symbol):
         for (expr, in_set) in expr_set_pairs:
             solns = solveset_real(expr, symbol).intersect(in_set)
             result = result + solns
+    elif f.is_Relational:
+        return solveset(f, symbol, domain=S.Reals)
     else:
         lhs, rhs_s = invert_real(f, 0, symbol)
         if lhs == symbol:

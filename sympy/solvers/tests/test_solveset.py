@@ -565,11 +565,9 @@ def test_solve_abs():
         ) == Interval(-1, 2)
 
     # issue #10069
-    assert solveset_real(abs(1/(x - 1)) - 1 > 0, x) == \
-        ConditionSet(x, Eq((1 - Abs(x - 1))/Abs(x - 1) > 0, 0),
-            S.Reals)
-    assert solveset(abs(1/(x - 1)) - 1 > 0, x, domain=S.Reals
-        ) == Union(Interval.open(0, 1), Interval.open(1, 2))
+    ans = Union(Interval.open(0, 1), Interval.open(1, 2))
+    assert solveset_real(abs(1/(x - 1)) - 1 > 0, x) == ans
+    assert solveset(abs(1/(x - 1)) - 1 > 0, x, domain=S.Reals) == ans
 
 
 @XFAIL
