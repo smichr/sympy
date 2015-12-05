@@ -450,7 +450,6 @@ def solveset_real(f, symbol):
     if not symbol.is_Symbol:
         raise ValueError("%s is not a symbol" % (symbol))
 
-    f = sympify(f)
     if not isinstance(f, (Expr, Number)):
         raise ValueError("%s is not a valid SymPy expression" % (f))
 
@@ -899,14 +898,15 @@ def solveset(f, symbol=None, domain=S.Complexes):
 
     f = sympify(f)
 
-    if f is S.false:
-        return EmptySet()
-
     if f is S.true:
         return domain
 
+    free_symbols = f.free_symbols
+
+    if f == False or not free_symbols:
+        return EmptySet()
+
     if symbol is None:
-        free_symbols = f.free_symbols
         if len(free_symbols) == 1:
             symbol = free_symbols.pop()
         else:

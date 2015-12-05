@@ -483,7 +483,7 @@ def test_solveset_real_gen_is_pow():
 
 
 def test_no_sol():
-    assert solveset_real(4, x) == EmptySet()
+    assert solveset_real(S(4), x) == EmptySet()
     assert solveset_real(exp(x), x) == EmptySet()
     assert solveset_real(x**2 + 1, x) == EmptySet()
     assert solveset_real(-3*a/sqrt(x), x) == EmptySet()
@@ -493,7 +493,7 @@ def test_no_sol():
 
 
 def test_sol_zero_real():
-    assert solveset_real(0, x) == S.Reals
+    assert solveset_real(S(0), x) == S.Reals
     assert solveset_real(-x**2 - 2*x + (x + 1)**2 - 1, x) == S.Reals
 
 
@@ -851,7 +851,12 @@ def test_solve_lambert():
 def test_solveset():
     x = Symbol('x')
     raises(ValueError, lambda: solveset(x + y))
+    # solveset_real is not meant to be called directly so it
+    # expects args to be sympified
+    raises(ValueError, lambda: solveset_real(0, x))
 
+    assert solveset(0) == S.EmptySet
+    assert solveset(1) == S.EmptySet
     assert solveset(True, domain=S.Reals) == S.Reals  # issue 10197
     assert solveset(exp(x) - 1, domain=S.Reals) == FiniteSet(0)
     assert solveset(exp(x) - 1, x, S.Reals) == FiniteSet(0)
