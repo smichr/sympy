@@ -397,14 +397,6 @@ def solve_univariate_inequality(expr, gen, relational=True):
     from sympy.solvers.solvers import denoms
     from sympy.solvers.solveset import solve
 
-    # This keeps the function independent of the assumptions about `gen`.
-    # `solveset` makes sure this function is called only when the domain is
-    # real.
-    d = Dummy(real=True)
-    expr = expr.subs(gen, d)
-    _gen = gen
-    gen = d
-
     if expr is S.true:
         rv = S.Reals
     elif expr is S.false:
@@ -472,9 +464,9 @@ def solve_univariate_inequality(expr, gen, relational=True):
         if valid(start + 1 if start is not S.NegativeInfinity else 0):
             sol_sets.append(Interval(start, end, True, True))
 
-        rv = Union(*sol_sets).subs(gen, _gen)
+        rv = Union(*sol_sets)
 
-    return rv if not relational else rv.as_relational(_gen)
+    return rv if not relational else rv.as_relational(gen)
 
 
 def _solve_inequality(ie, s):

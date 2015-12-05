@@ -25,7 +25,7 @@ from sympy.matrices import Matrix
 from sympy.polys import (roots, Poly, degree, together, PolynomialError,
                          RootOf)
 from sympy.solvers.solvers import checksol, denoms
-from sympy.solvers.inequalities import solve_univariate_inequality
+from sympy.solvers.inequalities import reduce_inequalities
 from sympy.utilities import filldedent
 
 import warnings
@@ -927,8 +927,8 @@ def solveset(f, symbol=None, domain=S.Complexes):
                 not supported. Try the real domain by
                 setting domain=S.Reals'''))
         try:
-            result = solve_univariate_inequality(
-            f, symbol, relational=False).intersection(domain)
+            result = reduce_inequalities(
+            f, symbol).as_set().intersection(domain)
         except NotImplementedError:
             result = ConditionSet(symbol, f, domain)
         return result
