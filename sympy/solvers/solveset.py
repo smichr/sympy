@@ -183,6 +183,7 @@ def _invert_real(f, g_ys, symbol):
             tan_cot_invs = Union(*[imageset(Lambda(n, n*pi + f.inverse()(g_y)), \
                                         S.Integers) for g_y in g_ys])
             return _invert_real(f.args[0], tan_cot_invs, symbol)
+
     return (f, g_ys)
 
 
@@ -447,11 +448,11 @@ def solveset_real(f, symbol):
 
     """
     if not symbol.is_Symbol:
-        raise ValueError(" %s is not a symbol" % (symbol))
+        raise ValueError("%s is not a symbol" % (symbol))
 
     f = sympify(f)
     if not isinstance(f, (Expr, Number)):
-        raise ValueError(" %s is not a valid sympy expression" % (f))
+        raise ValueError("%s is not a valid SymPy expression" % (f))
 
     original_eq = f
     f = together(f)
@@ -462,8 +463,8 @@ def solveset_real(f, symbol):
     if not symbol in fraction(f)[1].free_symbols and f.is_rational_function():
         f = expand(f)
 
-    if f.has(Piecewise):
-        f = piecewise_fold(f)
+    f = piecewise_fold(f)
+
     result = EmptySet()
 
     if f.expand().is_zero:
