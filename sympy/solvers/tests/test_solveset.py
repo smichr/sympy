@@ -25,7 +25,7 @@ from sympy.physics.units import cm
 from sympy.solvers.solveset import (
     solveset_real, domain_check, solveset_complex, linear_eq_to_matrix,
     linsolve, _is_function_class_equation, invert_real, invert_complex,
-    solveset)
+    solveset, real_solve)
 
 a = Symbol('a', real=True)
 b = Symbol('b', real=True)
@@ -413,16 +413,14 @@ def test_solveset_sqrt_2():
         FiniteSet(-295244/S(59049))
 
 
-@XFAIL
-def test_solve_sqrt_fail():
-    # this only works if we check real_root(eq.subs(x, S(1)/3))
-    # but checksol doesn't work like that
-    eq = (x**3 - 3*x**2)**Rational(1, 3) + 1 - x
+def test_solve_sqrt():
+    eq = (x**3 - 3*x**2)**Rational(1, 3) - sqrt(3)*I/3 - x
     assert solveset_real(eq, x) == FiniteSet(S(1)/3)
 
 
 @slow
 def test_solve_sqrt_3():
+
     R = Symbol('R')
     eq = sqrt(2)*R*sqrt(1/(R + 1)) + (R + 1)*(sqrt(2)*sqrt(1/(R + 1)) - 1)
     sol = solveset_complex(eq, R)
@@ -1054,3 +1052,8 @@ def test_issue_9913():
 def test_issue_10023():
     assert solveset(-1 + 1/Abs(x - 1), x, domain=S.Reals) == \
         FiniteSet(0, 2)
+
+
+def test_real_solve():
+    assert real_solve(1 - x**3/sqrt(x) - x**2, x, compact=True) == \
+        [RootOf(x**5 - x**4 + 2*x**2 - 1, 0)]

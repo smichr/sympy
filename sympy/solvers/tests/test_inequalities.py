@@ -295,10 +295,11 @@ def test_issue_9954():
     assert isolve(x**2 < 0, x, relational=True) == S.EmptySet.as_relational(x)
 
 
-@slow
-def test_slow_general_univariate():
-    assert str(solve(sqrt(x) + 1/root(x, 3) - 2 > 0
-        ).as_set().n(5)) == '(0, 0.37284) U (1.0, +inf)'
+def test_general_univariate():
+    ans = solve(sqrt(x) + 1/root(x, 3) - 2 >= 0)
+    r = RootOf(x**4 + x**3 + x**2 - x - 1, 1)
+    assert ans == Or(And(S(0) < x, x <= r**6), And(S(1) <= x, x < oo))
+    assert str(ans.as_set().n(5)) == '(0, 0.37284] U [1.0, +inf)'
 
 
 def test_issue_8545():

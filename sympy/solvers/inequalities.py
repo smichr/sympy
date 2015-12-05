@@ -395,7 +395,7 @@ def solve_univariate_inequality(expr, gen, relational=True):
     """
 
     from sympy.solvers.solvers import denoms
-    from sympy.solvers.solveset import solve
+    from sympy.solvers.solveset import real_solve
 
     if expr is S.true:
         rv = S.Reals
@@ -403,15 +403,10 @@ def solve_univariate_inequality(expr, gen, relational=True):
         rv = S.EmptySet
     else:
         e = expr.lhs - expr.rhs
-        parts = n, d = e.as_numer_denom()
-        if all(i.is_polynomial(gen) for i in parts):
-            solns = solve(n, gen, check=False)
-            singularities = solve(d, gen, check=False)
-        else:
-            solns = solve(e, gen, check=False)
-            singularities = []
-            for d in denoms(e):
-                singularities.extend(solve(d, gen))
+        solns = real_solve(e, gen, compact=True)
+        singularities = []
+        for d in denoms(e):
+            singularities.extend(real_solve(d, gen, compact=True))
 
         include_x = expr.func(0, 0)
 

@@ -12,6 +12,7 @@ from sympy.core import S, Pow, Dummy, pi, Expr, Wild, Mul, Equality
 from sympy.core.numbers import I, Number, Rational, oo
 from sympy.core.function import (Lambda, expand, expand_complex)
 from sympy.core.relational import Eq
+from sympy.logic.boolalg import And, Or
 from sympy.simplify.simplify import fraction, trigsimp
 from sympy.functions import (log, Abs, tan, cot, sin, cos, sec, csc, exp,
                              acos, asin, atan, acsc, asec, arg,
@@ -23,8 +24,8 @@ from sympy.sets import (FiniteSet, EmptySet, imageset, Interval, Intersection,
                         Union, ConditionSet)
 from sympy.matrices import Matrix
 from sympy.polys import (roots, Poly, degree, together, PolynomialError,
-                         RootOf)
-from sympy.solvers.solvers import checksol, denoms
+                         RootOf, real_roots)
+from sympy.solvers.solvers import checksol, denoms, unrad
 from sympy.solvers.inequalities import reduce_inequalities
 from sympy.utilities import filldedent
 
@@ -1257,25 +1258,67 @@ def linsolve(system, *symbols):
     return solution
 
 
-def solve(f_x, x, **kwargs):
+def real_solve(f, x=None, **kwargs):
     """
     Emulates `sympy.solvers.solvers.solve` using `solveset_real`.
     """
-    n, d = f_x.as_numer_denom()
-    if kwargs.get('compact', False) and all(i.is_polynomial(x) for i in (n, d)):
-        from sympy import real_roots
-        return [r for r in real_roots(n, x) if r not in (real_roots(d, x) if x in d.free_symbols else S.EmptySet)]
-    solns = solveset_real(f_x, x)
+    f = sympify(f)
+    if f.is_Relational:
+        raise NotImplementedError
+
+    free = f.free_symbols
+    if x is None:
+        if len(free) > 1:
+            raise ValueError(filldedent('''
+                must specify independent variable for
+                multivariate expressions'''))
+        x = free.pop()
+
+    n, d = f.as_numer_denom()
+    if len(free) == 1 and not f.is_Relational:
+        poly = lambda e, x: e.is_polynomial(x)
+        solns = None
+        try:
+            if all(poly(i, x) for i in (n, d)):
+                singularities = set(real_roots(d, x)) \
+                    if x in d.free_symbols else set()
+                solns = set(real_roots(n, x) if x in n.free_symbols \
+                    else real_solve(n, x))
+            else:
+                raise NotImplementedError
+        except (NotImplementedError, PolynomialError):
+            u = unrad(f, x)
+            if u and poly(u[0], u[0].free_symbols.pop()):
+                eq, cov = u
+                if cov:
+                    isym, ieq = cov
+                    inv = real_solve(ieq, x, **kwargs)[0]
+                    solns = set([inv.subs(isym, xi) for xi in real_solve(eq, isym, **kwargs)])
+                else:
+                    solns = set(real_solve(eq, x, **kwargs))
+                singularities = set(real_solve(d, x, compact=True))
+        if solns is not None:
+            return list(solns - singularities)
+
+    solns = solveset_real(f, x)
     if type(solns) is FiniteSet:
         return list(solns)
     elif solns is S.EmptySet:
         return []
-    elif solns.is_Interval:
-        return [solns.as_relational(x)]
-    else:
-        raise NotImplementedError(filldedent('''
-            The return value from solveset was not recognized
-            as something that `solvers.solve` would have returned;
-            if it is something that `solvers.solve` would have
-            returned, a new `elif` block should be added to the code.
-            '''))
+    elif solns.is_Intersection and len(solns.args) == 2 and S.Reals in solns.args:
+        a, b = solns.args
+        if a == S.Reals:
+            a, b = b, a
+        return list(a)
+    elif isinstance(solns, (And, Or, Union)):
+        try:
+            return solns.as_relational(x)
+        except AttributeError:
+            pass
+    raise NotImplementedError(filldedent('''
+        The return value from solveset was not recognized
+        as something that `solvers.solve` would have returned;
+        if it is something that `solvers.solve` would have
+        returned, a new `elif` block should be added to the code.
+        The value obtained was %s
+        ''' % solns))
