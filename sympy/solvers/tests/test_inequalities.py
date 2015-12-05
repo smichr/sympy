@@ -182,6 +182,9 @@ def test_reduce_abs_inequalities():
         3*x - 5) < 7) == And(Lt(S(1)/2, x), Lt(x, 4))
     assert reduce_inequalities(abs(x - 4) + abs(3*abs(x) - 5) < 7) == \
         Or(And(S(-2) < x, x < -1), And(S(1)/2 < x, x < 4))
+    # issue 10198
+    assert reduce_inequalities(-1 + 1/abs(1/x - 1) < 0) == \
+        Or(And(-oo < x, x < 0), And(S(0) < x, x < S(1)/2))
 
     nr = Symbol('nr', real=False)
     raises(TypeError, lambda: reduce_inequalities(abs(nr - 5) < 3))
