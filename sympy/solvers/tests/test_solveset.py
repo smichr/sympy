@@ -413,12 +413,7 @@ def test_solveset_sqrt_2():
     assert solveset_real(1/(5 + x)**(S(1)/5) - 9, x) == \
         FiniteSet(-295244/S(59049))
 
-
-@XFAIL
-def test_solve_sqrt_fail():
-    # this only works if we check real_root(eq.subs(x, S(1)/3))
-    # but checksol doesn't work like that
-    eq = (x**3 - 3*x**2)**Rational(1, 3) + 1 - x
+    eq = (x**3 - 3*x**2)**Rational(1, 3) - I/sqrt(3) - x
     assert solveset_real(eq, x) == FiniteSet(S(1)/3)
 
 
