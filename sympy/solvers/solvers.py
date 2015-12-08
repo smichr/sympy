@@ -2925,7 +2925,9 @@ def unrad(eq, *syms, **flags):
     """ Remove radicals with symbolic arguments and return (eq, cov),
     None or raise an error:
 
-    None is returned if there are no radicals to remove.
+    None is returned if there are no radicals to remove or when there are
+    no radicals in the numerator and the denomonimator does not contain
+    any symbols of interest.
 
     NotImplementedError is raised if there are radicals and they cannot be
     removed or if the relationship between the original symbols and the
@@ -2982,6 +2984,18 @@ def unrad(eq, *syms, **flags):
     >>> unrad(eq)
     (_p**3 + _p**2 - 2, [_p, _p**6 - x])
 
+    >>> unrad(x/sqrt(x))
+    (x, [])
+
+    In the following example, although there are radicals
+    to remove in the denominator, there are none in the
+    numerator and there are no radicals in variable x in
+    the denominator so there is no need to remove radicals
+    and None is returned:
+
+    >>> unrad(x/sqrt(y)) is None
+    True
+
     """
     _inv_error = 'cannot get an analytical solution for the inversion'
 
@@ -3008,7 +3022,11 @@ def unrad(eq, *syms, **flags):
 
         # remove constants and powers of factors since these don't change
         # the location of the root; XXX should factor or factor_terms be used?
-        eq = factor_terms(_mexpand(eq.as_numer_denom()[0], recursive=True))
+        old = None
+        while old != eq:
+            old = eq
+            eq = _mexpand(eq.as_numer_denom()[0], recursive=True)
+        eq = factor_terms(eq)
         if eq.is_Mul:
             args = []
             for f in eq.args:

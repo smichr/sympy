@@ -5,7 +5,7 @@ from sympy import (
     exp, log, pi, sin, sinh, sec, sqrt, symbols,
     tan, tanh, atan2, arg,
     Lambda, imageset, cot, acot, I, EmptySet, Union, E, Interval, Intersection,
-    oo)
+    oo, root)
 
 from sympy.core.function import nfloat
 from sympy.core.relational import Unequality as Ne
@@ -337,6 +337,10 @@ def test__has_rational_power():
 
 
 def test_solveset_sqrt_1():
+    assert solveset(x**(S(3)/2) + 4, x) == FiniteSet(
+        (root(2, 3)*(-1 + sqrt(3)*I)).expand())
+    assert solveset(sqrt(x**3), x) == FiniteSet(0)
+    assert solveset(x**(S(3)/2) + 4, x, S.Reals) == S.EmptySet
     assert solveset_real(sqrt(5*x + 6) - 2 - x, x) == \
         FiniteSet(-S(1), S(2))
     assert solveset_real(sqrt(x - 1) - x + 7, x) == FiniteSet(10)
@@ -417,19 +421,13 @@ def test_solveset_sqrt_2():
     assert solveset_real(eq, x) == FiniteSet(S(1)/3)
 
 
-@slow
 def test_solve_sqrt_3():
-    R = Symbol('R')
-    eq = sqrt(2)*R*sqrt(1/(R + 1)) + (R + 1)*(sqrt(2)*sqrt(1/(R + 1)) - 1)
-    sol = solveset_complex(eq, R)
+    assert solveset(sqrt(x) - sqrt(y), x) == FiniteSet(y)
 
-    assert sol == FiniteSet(*[S(5)/3 + 4*sqrt(10)*cos(atan(3*sqrt(111)/251)/3)/3,
-        -sqrt(10)*cos(atan(3*sqrt(111)/251)/3)/3 + 40*re(1/((-S(1)/2 -
-        sqrt(3)*I/2)*(S(251)/27 + sqrt(111)*I/9)**(S(1)/3)))/9 +
-        sqrt(30)*sin(atan(3*sqrt(111)/251)/3)/3 + S(5)/3 +
-        I*(-sqrt(30)*cos(atan(3*sqrt(111)/251)/3)/3 -
-        sqrt(10)*sin(atan(3*sqrt(111)/251)/3)/3 + 40*im(1/((-S(1)/2 -
-        sqrt(3)*I/2)*(S(251)/27 + sqrt(111)*I/9)**(S(1)/3)))/9)])
+    eq = sqrt(2)*x*sqrt(1/(x + 1)) + (x + 1)*(sqrt(2)*sqrt(1/(x + 1)) - 1)
+    sol = solveset_complex(eq, x)
+    assert sol == FiniteSet(*[
+        RootOf(x**3 - 5*x**2 - 5*x - 1, 1), RootOf(x**3 - 5*x**2 - 5*x - 1, 2)])
 
     # the number of real roots will depend on the value of m: for m=1 there are 4
     # and for m=-1 there are none.
@@ -583,8 +581,9 @@ def test_real_imag_splitting():
     a, b = symbols('a b', real=True, finite=True)
     assert solveset_real(sqrt(a**2 - b**2) - 3, a) == \
         FiniteSet(-sqrt(b**2 + 9), sqrt(b**2 + 9))
-    assert solveset_real(sqrt(a**2 + b**2) - 3, a) != \
-        S.EmptySet
+    assert solveset_real(sqrt(a**2 + b**2) - 3, a) == \
+        Intersection(S.Reals, FiniteSet(
+        -sqrt(-b**2 + 9), sqrt(-b**2 + 9)))
 
 
 def test_units():
@@ -1028,11 +1027,6 @@ def test_issue_9778():
     assert solveset(x**(S(3)/5) + 1, x, S.Reals) == S.EmptySet
     assert solveset(x**3 + y, x, S.Reals) == Intersection(Interval(-oo, oo), \
         FiniteSet((-y)**(S(1)/3)*Piecewise((1, Ne(-im(y), 0)), ((-1)**(S(2)/3), -y < 0), (1, True))))
-
-
-@XFAIL
-def test_issue_failing_pow():
-    assert solveset(x**(S(3)/2) + 4, x, S.Reals) == S.EmptySet
 
 
 def test_issue_9849():

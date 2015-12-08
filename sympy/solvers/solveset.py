@@ -121,7 +121,7 @@ def _invert_real(f, g_ys, symbol):
         base_has_sym = base.has(symbol)
         expo_has_sym = expo.has(symbol)
 
-        if not expo_has_sym:
+        if not expo_has_sym and expo.is_Integer:
             res = imageset(Lambda(n, real_root(n, expo)), g_ys)
             if expo.is_rational:
                 numer, denom = expo.as_numer_denom()
@@ -499,7 +499,8 @@ def solveset_real(f, symbol):
             for equation in equations:
                 if equation == f:
                     if any(_has_rational_power(g, symbol)[0]
-                           for g in equation.args):
+                            for g in (equation.args if not
+                            equation.is_Pow else [equation])):
                         result += _solve_radical(equation,
                                                  symbol,
                                                  solveset_real)
@@ -678,60 +679,91 @@ def _has_rational_power(expr, symbol):
 def _solve_radical(f, symbol, solveset_solver):
     """ Helper function to solve equations with radicals """
     from sympy.solvers.solvers import unrad
-    from sympy import minpoly
-    eq, cov = unrad(f)
-    if not cov:
-        result = solveset_solver(eq, symbol) - \
+    from sympy import (minpoly, roots as _roots,
+        real_roots as _real_roots, Poly, RootOf, nsimplify)
+
+    # high order results are often obtained so to keep checking robust and
+    # output small, RootOf instances are used if possible
+    if solveset_solver == solveset_real:
+        _roots = lambda eq, x: _real_roots(eq)
+    else:
+        _roots = lambda eq, x: [RootOf(eq, i) for i in range(Poly(eq, x).degree(x))]
+    def roots(eq, x):
+        try:
+            r = list(_roots(eq, x))
+            for i, ri in enumerate(r):
+                if not isinstance(ri, RootOf):
+                    r[i] = nsimplify(ri)
+            return FiniteSet(*r)
+        except (NotImplementedError, PolynomialError):
+            return solveset_solver(eq, x)
+
+    u = unrad(f)
+    if not u:
+        result = roots(f, symbol) - \
             Union(*[solveset_solver(g, symbol) for g in denoms(f, [symbol])])
     else:
-        y, yeq = cov
-        if not solveset_solver(y - I, y):
-            yreal = Dummy('yreal', real=True)
-            yeq = yeq.xreplace({y: yreal})
-            eq = eq.xreplace({y: yreal})
-            y = yreal
-        g_y_s = solveset_solver(yeq, symbol)
-        f_y_sols = solveset_solver(eq, y)
-        result = Union(*[imageset(Lambda(y, g_y), f_y_sols)
-                         for g_y in g_y_s])
+        eq, cov = u
+        if not cov:
+            result = roots(eq, symbol) - \
+                Union(*[solveset_solver(g, symbol) for g in denoms(f, [symbol])])
+        else:
+            y, yeq = cov
+            if not solveset_solver(y - I, y):
+                yreal = Dummy('yreal', real=True)
+                yeq = yeq.xreplace({y: yreal})
+                eq = eq.xreplace({y: yreal})
+                y = yreal
+            g_y_s = solveset_solver(yeq, symbol)
+            f_y_sols = roots(eq, y)
+            result = Union(*[imageset(Lambda(y, g_y), f_y_sols)
+                             for g_y in g_y_s])
 
     unverified = []
     verified = []
-    for s in result:
+    if result.is_FiniteSet:
+        iter = result
+    elif result.is_Complement:
+        iter = result.args[0]
+    elif (result.is_Intersection and
+            len(result.args) == 2 and result.args[0] == S.Reals):
+        iter = result.args[1]
+    else:
+        raise NotImplementedError(filldedent('''
+            iteration over roots is not implemented for
+            %s''' % result))
+
+    for s in iter:
         v = f.subs(symbol, s)
-        c = v.is_zero
-        if c is False:
-            continue
-        if c:
-            verified.append(s)
-            continue
+        test = 0
+        while True:
+            test += 1
+            if test == 1:
+                c = v.is_zero
+            elif test == 2:
+                c = checksol(f, symbol, s, numerical=False)
+            elif test == 3:
+                # minpoly will be used in equals after other simplification
+                # so rather than redo what's been done, try minpoly now;
+                # we might also try
+                # sqrtdenest(v).as_numer_denom()[0].expand() == 0 first
+                try:
+                    c = minpoly(v).is_Symbol
+                    if not c:
+                        c = None  # XX if c is False is that proof that v is not zero or is it a minpoly insufficiency?
+                except NotAlgebraic:
+                    c = None
+            elif test == 4:
+                c = v.equals(0)
+            else:
+                unverified.append(s)
+                break
 
-        c = checksol(f, symbol, v, numerical=False)
-        if c is False:
-            continue
-        if c:
-            verified.append(s)
-            continue
-
-        # minpoly will be used in equals after other simplification
-        # so rather than redo what's been done, try minpoly now;
-        # we might also try sqrtdenest(v).as_numer_denom()[0].expand() == 0 first
-        try:
-            c = minpoly(v).is_Symbol
-            if c:  # XX if c is False is that proof that v is not zero or is it a minpoly insufficiency?
-                verified.append(s)
+            if c is None:
                 continue
-        except NotAlgebraic:
-            pass
-
-        c = v.equals(0)
-        if c is False:
-            continue
-        elif c:
-            verified.append(s)
-            continue
-
-        unverified.append(s)
+            if c:
+                verified.append(s)
+            break
 
     if not unverified:
         return FiniteSet(*verified)
@@ -845,7 +877,8 @@ def solveset_complex(f, symbol):
             for equation in equations:
                 if equation == f:
                     if any(_has_rational_power(g, symbol)[0]
-                           for g in equation.args):
+                            for g in (equation.args if not
+                            equation.is_Pow else [equation])):
                         result += _solve_radical(equation,
                                                  symbol,
                                                  solveset_complex)

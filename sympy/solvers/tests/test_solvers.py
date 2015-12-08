@@ -777,7 +777,6 @@ def test_polysys():
                  y - 3, x - y - 4], (y, x))
 
 
-@slow
 def test_unrad1():
     raises(NotImplementedError, lambda:
         unrad(sqrt(x) + sqrt(x + 1) + sqrt(1 - sqrt(x)) + 3))
@@ -807,6 +806,12 @@ def test_unrad1():
         return str(rv[0]) in [str(ans[0]), str(-ans[0])] and \
             str(rv[1]) == str(ans[1])
 
+    assert unrad(x) is None
+    assert unrad(x/sqrt(y)) is None
+    assert unrad(x/sqrt(x)) == (x, [])
+    eq = sqrt(2)*x*sqrt(1/(x + 1)) + (x + 1)*(sqrt(2)*sqrt(1/(x + 1)) - 1)
+    assert check(unrad(eq),
+        (x**3 - 5*x**2 - 5*x - 1, []))
     assert check(unrad(sqrt(x)),
         (x, []))
     assert check(unrad(sqrt(x) + 1),
