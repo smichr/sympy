@@ -39,7 +39,7 @@ n = Symbol('n', real=True)
 
 
 def test_invert_real():
-    x = Dummy(real=True)
+    x = Dummy('x', real=True)
     n = Symbol('n')
 
     minus_n = Intersection(Interval(-oo, 0), FiniteSet(-n))
@@ -69,10 +69,12 @@ def test_invert_real():
     assert invert_real(2**exp(x), y, x) == (x, FiniteSet(log(log(y)/log(2))))
 
     assert invert_real(x**2, y, x) == (x, FiniteSet(sqrt(y), -sqrt(y)))
-    assert invert_real(x**Rational(1, 2), y, x) == (x, FiniteSet(y**2))
+    ## assert invert_real(x**Rational(1, 2), y, x) == (x, FiniteSet(y**2))
+    assert invert_real(x**Rational(1, 2), y, x) == (sqrt(x), FiniteSet(y))
 
     raises(ValueError, lambda: invert_real(x, x, x))
-    raises(ValueError, lambda: invert_real(x**pi, y, x))
+    neg = Dummy('neg', negative=True)
+    raises(ValueError, lambda: invert_real(neg**pi, y, x))
     raises(ValueError, lambda: invert_real(S.One, y, x))
 
     assert invert_real(x**31 + x, y, x) == (x**31 + x, FiniteSet(y))
@@ -126,7 +128,8 @@ def test_invert_real():
         (tan(x), imageset(Lambda(n, n*pi + atan(y)), S.Integers))
 
     x = Symbol('x', positive=True)
-    assert invert_real(x**pi, y, x) == (x, FiniteSet(y**(1/pi)))
+    ##assert invert_real(x**pi, y, x) == (x, FiniteSet(y**(1/pi)))
+    assert invert_real(x**pi, y, x) == (x**pi, FiniteSet(y))
 
     # Test for ``set_h`` containing information about the domain
 
