@@ -5,7 +5,7 @@ from sympy.core.symbol import Symbol, symbols
 from sympy.functions.elementary.exponential import exp
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.geometry import Point, Point2D, Line, Polygon, Segment, convex_hull,\
-    intersection, centroid, Point3D, Line3D, Circle
+    intersection, centroid, Point3D, Line3D, Circle, Ellipse
 from sympy.geometry.util import (idiff, closest_points,
     farthest_points, _ordered_points, are_coplanar, gsolve)
 from sympy.polys.rootoftools import CRootOf
@@ -204,3 +204,4 @@ def test_gsolve():
         7*CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 1)**2, evaluate=False)/(6 +
         8*CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 1)),
         CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 1))])
+    assert gsolve(Circle(Point2D(4, -8), 2), Ellipse(Point2D(4, 5), 5, 7)) == set()
