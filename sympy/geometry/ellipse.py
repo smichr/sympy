@@ -28,7 +28,7 @@ from sympy.polys import DomainError, Poly, PolynomialError
 from sympy.polys.polyutils import _not_a_coeff, _nsort
 from sympy.solvers import solve
 from sympy.solvers.solveset import linear_coeffs
-from sympy.utilities.misc import filldedent, func_name
+from sympy.utilities.misc import filldedent, func_name, uniq
 
 from mpmath.libmp.libmpf import prec_to_dps
 
@@ -159,6 +159,71 @@ class Ellipse(GeometrySet):
             raise GeometryError("Invalid value encountered when computing hradius / vradius.")
 
         return GeometryEntity.__new__(cls, center, hradius, vradius, **kwargs)
+
+    def _do_ellipse_intersection(self, o):
+        """The intersection of an ellipse with another ellipse or a circle.
+
+        Private helper method for `intersection`.
+
+        """
+        try:
+            from sympy.geometry.util import gsolve
+            result = gsolve(self, o)
+            return list(ordered([Point(*s) for s in result]))
+        except (NotImplementedError, AssertionError):
+            # TODO: Replace solve with nonlinsolve, when
+            # nonlinsolve will be able to solve in real domain
+            x = Dummy('x', real=True)
+            y = Dummy('y', real=True)
+            seq = self.equation(x, y)
+            oeq = o.equation(x, y)
+            result = solve([seq, oeq], x, y)
+            return list(ordered([Point(*r) for r in list(uniq(result))]))
+
+    def _do_line_intersection(self, o):
+        """
+        Find the intersection of a LinearEntity and the ellipse.
+
+        All LinearEntities are treated as a line and filtered at
+        the end to see that they lie in o.
+
+        """
+
+        try:
+            from sympy.geometry.util import gsolve
+            line = Line(o)
+            sol = gsolve(self, line)
+            return list(ordered([Point(*s) for s in sol if
+                    isinstance(o, Line) or s in o]))
+        except (NotImplementedError, AssertionError):
+            pass
+        hr_sq = self.hradius ** 2
+        vr_sq = self.vradius ** 2
+        lp = o.points
+
+        ldir = lp[1] - lp[0]
+        diff = lp[0] - self.center
+        mdir = Point(ldir.x/hr_sq, ldir.y/vr_sq)
+        mdiff = Point(diff.x/hr_sq, diff.y/vr_sq)
+
+        a = ldir.dot(mdir)
+        b = ldir.dot(mdiff)
+        c = diff.dot(mdiff) - 1
+        det = simplify(b*b - a*c)
+
+        result = []
+        if det == 0:
+            t = -b / a
+            result.append(lp[0] + (lp[1] - lp[0]) * t)
+        # Definite and potential symbolic intersections are allowed.
+        elif (det > 0) != False:
+            root = sqrt(det)
+            t_a = (-b - root) / a
+            t_b = (-b + root) / a
+            result.append( lp[0] + (lp[1] - lp[0]) * t_a )
+            result.append( lp[0] + (lp[1] - lp[0]) * t_b )
+
+        return [r for r in result if r in o]
 
     def _svg(self, scale_factor=1., fill_color="#66cc99"):
         """Returns SVG ellipse element for the Ellipse.
