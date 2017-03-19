@@ -1,5 +1,6 @@
 from sympy.core.function import (Derivative, Function)
 from sympy.core.mul import Mul
+from sympy.core.numbers import Rational
 from sympy.core.singleton import S
 from sympy.core.symbol import Symbol, symbols
 from sympy.functions.elementary.exponential import exp
@@ -153,10 +154,10 @@ def test_are_coplanar():
 #@slow
 def test_gsolve():
     a, x, y = symbols('a x y')
-    raises(AssertionError, lambda: gsolve(1, 2, x, y))
+    # raises(AssertionError, lambda: gsolve(1, 2, x, y))
     raises(AssertionError, lambda: gsolve(a + x, a - y, x, y))
     raises(AssertionError, lambda: gsolve(x + 1/x, x - 2, x, y))
-    raises(AssertionError, lambda: gsolve(x - 2, y - 2))
+    #raises(AssertionError, lambda: gsolve(x - 2, y - 2))
     raises(AttributeError, lambda: gsolve(Segment((0, 1), (1, 2)), x - 2, x, y))
     assert gsolve(Line((0, 1), slope=1), Line((0, 1), slope=-2)
         ) == set([(0, 1)])
@@ -176,32 +177,33 @@ def test_gsolve():
     assert gsolve(x**2 + y - 2, y - 1, x, y) == set([(-1, 1), (1, 1)])
     assert gsolve(y - 1, x**2 + y - 2, x, y) == set([(-1, 1), (1, 1)])
     assert gsolve(
-        x**2 + 3*x*y + 3*x + y**2 + 3*y + 1, 
+        x**2 + 3*x*y + 3*x + y**2 + 3*y + 1,
         x**2 + 2*x*y + x + y**2 + 2*y + 1, x, y) == set([(1, -1)])
-    eqs = (x-2)**2-x*y*3-y**2,x**2-3*x*y-y**2
+    eqs = (x-2)**2 - x*y*3 - y**2, x**2 - 3*x*y - y**2
+    r1 = Rational(1, 4)
+    r2 = Rational(3, 2)
     assert gsolve(eqs[0], eqs[1], x, y, check=False) == set([
-        (-sqrt(-S(3)/2 + sqrt(13)/2)*sqrt(S(9)/2 + 13*sqrt(13)/2)/2 -
-        S(1)/4 + 3*sqrt(13)/4, -S(3)/2 + sqrt(13)/2), (-S(1)/4 + sqrt(-S(3)/2 +
-        sqrt(13)/2)*sqrt(S(9)/2 + 13*sqrt(13)/2)/2 + 3*sqrt(13)/4, -S(3)/2
-        + sqrt(13)/2), (-sqrt(-S(9)/2 + 13*sqrt(13)/2)*sqrt(S(3)/2 +
-        sqrt(13)/2)/2 - 3*sqrt(13)/4 - S(1)/4, -sqrt(13)/2 - S(3)/2),
-        (-3*sqrt(13)/4 - S(1)/4 + sqrt(-S(9)/2 + 13*sqrt(13)/2)*sqrt(S(3)/2 +
-        sqrt(13)/2)/2, -sqrt(13)/2 - S(3)/2)])
+        (-r1 + sqrt(142 - 30*sqrt(13))/4 + 3*sqrt(13)/4, -r2 + sqrt(13)/2),
+        (-sqrt(142 - 30*sqrt(13))/4 - r1 + 3*sqrt(13)/4, -r2 + sqrt(13)/2),
+        (-3*sqrt(13)/4 - r1 + sqrt(30*sqrt(13) + 142)/4, -sqrt(13)/2 - r2),
+        (-sqrt(30*sqrt(13) + 142)/4 - 3*sqrt(13)/4 - r1, -sqrt(13)/2 - r2)])
+    # this is a case where a potential y solution satisfies e2y but
+    # x and y do not satisfy e2
     assert gsolve(eqs[0], eqs[1], x, y) == set([
-        (-sqrt(-S(3)/2 + sqrt(13)/2)*sqrt(S(9)/2 + 13*sqrt(13)/2)/2 - S(1)/4 +
-        3*sqrt(13)/4, -S(3)/2 + sqrt(13)/2), (-3*sqrt(13)/4 - S(1)/4 + sqrt(-S(9)/2 +
-        13*sqrt(13)/2)*sqrt(S(3)/2 + sqrt(13)/2)/2, -sqrt(13)/2 - S(3)/2)])
-    assert gsolve(y-(x-3), x**2/9 + (y/4 - S(1)/4)**2 - 1,
+        (-sqrt(142 - 30*sqrt(13))/4 - r1 + 3*sqrt(13)/4, -r2 + sqrt(13)/2),
+        (-3*sqrt(13)/4 - r1 + sqrt(30*sqrt(13) + 142)/4, -sqrt(13)/2 - r2)])
+    assert gsolve(y - (x - 3), x**2/9 + (y/4 - S(1)/4)**2 - 1,
         x, y, check=False) == set([(0, -3), (S(72)/25, -S(3)/25)])
-    assert gsolve(
+    sol = gsolve(
         -8*x*y - 6*x - 7*y**2 - y - 7,
-        -9*x**2 - 10*x*y - x - 4*y**2 + 5*y, x, y, check=False) == set([
-        (Mul(-1, CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 0) +
-        7*CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 0)**2 +
-        7, evaluate=False)/(8*CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 0) + 6),
-        CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 0)),
-        (Mul(-1, CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 1) + 7 +
-        7*CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 1)**2, evaluate=False)/(6 +
-        8*CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 1)),
-        CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, 1))])
+        -9*x**2 - 10*x*y - x - 4*y**2 + 5*y, x, y, check=False)
+    _r0 = Rational(1, 2)
+    ro = lambda i: CRootOf(137*y**4 - 366*y**3 - 115*y**2 - 536*y + 399, i)
+    ans = set([
+        (_r0*2*(-7 - 7*ro(0)**2 - ro(0))/(4*ro(0) + 3)/2, ro(0)),
+        (_r0*2*(-7*ro(1)**2 - 7 - ro(1))/(3 + 4*ro(1))/2, ro(1))])
     assert gsolve(Circle(Point2D(4, -8), 2), Ellipse(Point2D(4, 5), 5, 7)) == set()
+    # ycond is always false (first equation is never real for real coef
+    assert gsolve(9*x**2 + 2*x*y - 7*x + 5*y**2 + 8*y + 6,
+        2*x**2 - 10*x*y - 6*x - 2*y**2 + 6*y + 3, x, y) == set()
+    assert gsolve(-2*x**2 + x*y + 2*x - 2*y**2 - 1, x**2 + y) == set()
