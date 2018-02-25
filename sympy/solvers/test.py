@@ -1072,8 +1072,8 @@ def solveset(f, symbol=None, domain=S.Complexes):
     # the solution is a set, duplication of results is not
     # an issue, e.g. {y, -y} when y is 0 will be {0}
     f, mask = _masked(f, Abs)
-    if symbol.is_real or not mask:
-        f = f.rewrite(Piecewise) # everything that's not an Abs
+    print(f, mask)
+    f = f.rewrite(Piecewise) # everything that's not an Abs
     for d, e in mask:
         # everything *in* an Abs
         e = e.func(e.args[0].rewrite(Piecewise))
@@ -2354,3 +2354,10 @@ def nonlinsolve(system, *symbols):
         result = substitution(
             polys_expr + nonpolys, symbols, exclude=denominators)
         return result
+
+
+from sympy import symbols
+x = Symbol('x')
+y = exp(x+1/x**2)
+solution = solveset(y**2+y, x, S.Reals)
+print(solution)

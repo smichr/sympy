@@ -1717,12 +1717,8 @@ def test_issue_10158():
     assert solveset(x*Max(x, 15) - 10, x, dom) == FiniteSet(2/S(3))
     assert solveset(x*Min(x, 15) - 10, x, dom) == FiniteSet(
         -sqrt(10), sqrt(10))
-    # the following gets rewritten to
-    # Piecewise((x - 1, x + 2 >= Abs(x - 3) - 1), (Abs(x - 3) - 4, True))
-    # and the Abs in the relational is solved as though x were real so
-    # should there be a check in Piecewise for Abs in conditions when the
-    # domain is complex?
-    assert solveset(Max(Abs(x - 3) - 1, x + 2) - 3, x, dom) == FiniteSet(-1, 1)
+    # since Abs are not solved in complex domain the following raises error.
+    raises(ValueError, lambda: solveset(Max(Abs(x - 3) - 1, x + 2) - 3, x, dom))
     raises(ValueError, lambda: solveset(Abs(x - 1) - Abs(y), x, dom))
     raises(ValueError, lambda: solveset(Abs(x + 4*Abs(x + 1)), x, dom))
     assert solveset(2*Abs(x + Abs(x + Max(3, x))) - 2, x, S.Reals
