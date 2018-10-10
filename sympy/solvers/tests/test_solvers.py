@@ -1990,3 +1990,8 @@ def test_issue_15307():
     eq1 = Eq(12513*x + 2*y - 219093, -5726*x - y)
     eq2 = Eq(-2*x + 8, 2*x - 40)
     assert solve([eq1, eq2]) == {x:12, y:75}
+
+
+def test_issue_12561():
+    x = Dummy('x', real=True)
+    assert all(i.is_real for i in solve(x ** 3 - x + 1, x))

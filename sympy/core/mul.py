@@ -1178,6 +1178,16 @@ class Mul(Expr, AssocOp):
         return self._eval_real_imag(True)
 
     def _eval_real_imag(self, real):
+        from sympy.core.expr import _n2
+        try:
+            r, i = _n2(self)
+            if not real:
+                r, i = i, r
+            if i:
+                return None if i._prec == 1 else False
+            return True
+        except TypeError:
+            pass
         zero = False
         t_not_re_im = None
 

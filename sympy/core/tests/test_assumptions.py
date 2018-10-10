@@ -1014,8 +1014,10 @@ def test_issue_10302():
     r = Symbol('r', real=True)
     u = -(3*2**pi)**(1/pi) + 2*3**(1/pi)
     i = u + u*I
-    assert i.is_real is None  # w/o simplification this should fail
-    assert (u + i).is_zero is None
+    # w/o simplification this should fail, but
+    # since as_real_imag is used in _n2, it passes
+    assert i.is_real
+    assert (u + i).is_zero
     assert (1 + i).is_zero is False
     a = Dummy('a', zero=True)
     assert (a + I).is_zero is False
@@ -1023,6 +1025,7 @@ def test_issue_10302():
     assert (a + I).is_imaginary
     assert (a + x + I).is_imaginary is None
     assert (a + r*I + I).is_imaginary is None
+
 
 def test_complex_reciprocal_imaginary():
     assert (1 / (4 + 3*I)).is_imaginary is False

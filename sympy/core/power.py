@@ -506,6 +506,14 @@ class Pow(Expr):
 
     def _eval_is_real(self):
         from sympy import arg, exp, log, Mul
+        from sympy.core.expr import _n2
+        try:
+            r, i = _n2(self)
+            if i:
+                return None if i._prec == 1 else False
+            return True
+        except TypeError:
+            pass
         real_b = self.base.is_real
         if real_b is None:
             if self.base.func == exp and self.base.args[0].is_imaginary:

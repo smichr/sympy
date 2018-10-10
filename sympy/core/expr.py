@@ -271,7 +271,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2del(self, other)
         if n2 is not None:
             return _sympify(n2 >= 0)
         if self.is_real or other.is_real:
@@ -292,7 +292,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2del(self, other)
         if n2 is not None:
             return _sympify(n2 <= 0)
         if self.is_real or other.is_real:
@@ -313,7 +313,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2del(self, other)
         if n2 is not None:
             return _sympify(n2 > 0)
         if self.is_real or other.is_real:
@@ -334,7 +334,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2del(self, other)
         if n2 is not None:
             return _sympify(n2 < 0)
         if self.is_real or other.is_real:
@@ -750,62 +750,38 @@ class Expr(Basic, EvalfMixin):
     def _eval_is_positive(self):
         from sympy.polys.numberfields import minimal_polynomial
         from sympy.polys.polyerrors import NotAlgebraic
-        if self.is_number:
-            if self.is_real is False:
-                return False
+        try:
+            n, i = _n2(self)
+        except TypeError:
+            return
+        if i:
+            return None if i._prec == 1 else False
+        if n._prec != 1:
+            return bool(n > 0)
+        elif self.is_algebraic and not self.has(Function):
             try:
-                # check to see that we can get a value
-                n2 = self._eval_evalf(2)
-                if n2 is None:
-                    raise AttributeError
-                if n2._prec == 1:  # no significance
-                    raise AttributeError
-                if n2 == S.NaN:
-                    raise AttributeError
-            except (AttributeError, ValueError):
-                return None
-            n, i = self.evalf(2).as_real_imag()
-            if not i.is_Number or not n.is_Number:
-                return False
-            if n._prec != 1 and i._prec != 1:
-                return bool(not i and n > 0)
-            elif n._prec == 1 and (not i or i._prec == 1) and \
-                    self.is_algebraic and not self.has(Function):
-                try:
-                    if minimal_polynomial(self).is_Symbol:
-                        return False
-                except (NotAlgebraic, NotImplementedError):
-                    pass
+                if minimal_polynomial(self).is_Symbol:
+                    return False
+            except (NotAlgebraic, NotImplementedError):
+                pass
 
     def _eval_is_negative(self):
         from sympy.polys.numberfields import minimal_polynomial
         from sympy.polys.polyerrors import NotAlgebraic
-        if self.is_number:
-            if self.is_real is False:
-                return False
+        try:
+            n, i = _n2(self)
+        except TypeError:
+            return
+        if i:
+            return None if i._prec == 1 else False
+        if n._prec != 1:
+            return bool(n < 0)
+        elif self.is_algebraic and not self.has(Function):
             try:
-                # check to see that we can get a value
-                n2 = self._eval_evalf(2)
-                if n2 is None:
-                    raise AttributeError
-                if n2._prec == 1:  # no significance
-                    raise AttributeError
-                if n2 == S.NaN:
-                    raise AttributeError
-            except (AttributeError, ValueError):
-                return None
-            n, i = self.evalf(2).as_real_imag()
-            if not i.is_Number or not n.is_Number:
-                return False
-            if n._prec != 1 and i._prec != 1:
-                return bool(not i and n < 0)
-            elif n._prec == 1 and (not i or i._prec == 1) and \
-                    self.is_algebraic and not self.has(Function):
-                try:
-                    if minimal_polynomial(self).is_Symbol:
-                        return False
-                except (NotAlgebraic, NotImplementedError):
-                    pass
+                if minimal_polynomial(self).is_Symbol:
+                    return False
+            except (NotAlgebraic, NotImplementedError):
+                pass
 
     def _eval_interval(self, x, a, b):
         """
@@ -3462,7 +3438,7 @@ class UnevaluatedExpr(Expr):
             return self.args[0]
 
 
-def _n2(a, b):
+def _n2del(a, b):
     """Return (a - b).evalf(2) if a and b are comparable, else None.
     This should only be used when a and b are already sympified.
     """
@@ -3472,6 +3448,21 @@ def _n2(a, b):
         dif = (a - b).evalf(2)
         if dif.is_comparable:
             return dif
+
+
+def _n2(n):
+    """Return the real and imaginary parts of n, if it is numerical
+    expression with arguments, evaluated to a precision of 2; if n is
+    a simple +/-Number return it unevaluated as n, 0 or 0, n; return
+    None if expr is not a number.
+    """
+    from sympy.core.evalf import pure_complex
+    if n.is_number:
+        r, i = pure_complex(n.n(2), True)
+        if i._prec == 1 or r._prec == 1:
+            r, i = [pure_complex(i.n(2).expand(), True)[0]
+                for i in n.as_real_imag()]
+        return r, i
 
 
 from .mul import Mul

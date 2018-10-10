@@ -309,7 +309,7 @@ class Equality(Relational):
     def __new__(cls, lhs, rhs=0, **options):
         from sympy.core.add import Add
         from sympy.core.logic import fuzzy_bool
-        from sympy.core.expr import _n2
+        from sympy.core.expr import _n2del
         from sympy.simplify.simplify import clear_coefficients
 
         lhs = _sympify(lhs)
@@ -359,7 +359,7 @@ class Equality(Relational):
                     if z:
                         return S.true
                 # evaluate numerically if possible
-                n2 = _n2(lhs, rhs)
+                n2 = _n2del(lhs, rhs)
                 if n2 is not None:
                     return _sympify(n2 == 0)
                 # see if the ratio evaluates
