@@ -1123,8 +1123,8 @@ def _solve_exponential(lhs, rhs, symbol, domain):
         conditions = And(
             a_base > 0,
             b_base > 0,
-            Eq(im(a_exp), 0),
-            Eq(im(b_exp), 0))
+            Eq(a_exp.as_real_imag()[1], 0),
+            Eq(b_exp.as_real_imag()[1], 0))
     else:
         conditions = And(
             Ne(a_base, 0),

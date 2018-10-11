@@ -271,9 +271,9 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2del(self, other)
-        if n2 is not None:
-            return _sympify(n2 >= 0)
+        dif = _n2dif(self, other)
+        if dif is not None:
+            return _sympify(dif >= 0)
         if self.is_real or other.is_real:
             dif = self - other
             if dif.is_nonnegative is not None and \
@@ -292,9 +292,9 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2del(self, other)
-        if n2 is not None:
-            return _sympify(n2 <= 0)
+        dif = _n2dif(self, other)
+        if dif is not None:
+            return _sympify(dif <= 0)
         if self.is_real or other.is_real:
             dif = self - other
             if dif.is_nonpositive is not None and \
@@ -313,9 +313,9 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2del(self, other)
-        if n2 is not None:
-            return _sympify(n2 > 0)
+        dif = _n2dif(self, other)
+        if dif is not None:
+            return _sympify(dif > 0)
         if self.is_real or other.is_real:
             dif = self - other
             if dif.is_positive is not None and \
@@ -334,9 +334,9 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2del(self, other)
-        if n2 is not None:
-            return _sympify(n2 < 0)
+        dif = _n2dif(self, other)
+        if dif is not None:
+            return _sympify(dif < 0)
         if self.is_real or other.is_real:
             dif = self - other
             if dif.is_negative is not None and \
@@ -752,13 +752,13 @@ class Expr(Basic, EvalfMixin):
         from sympy.polys.polyerrors import NotAlgebraic
         try:
             n, i = _n2(self)
+            if i and i._prec != 1:
+                return False
+            if not i and n._prec != 1:
+                return bool(n > 0)
         except TypeError:
-            return
-        if i:
-            return None if i._prec == 1 else False
-        if n._prec != 1:
-            return bool(n > 0)
-        elif self.is_algebraic and not self.has(Function):
+            pass
+        if self.is_algebraic and not self.has(Function):
             try:
                 if minimal_polynomial(self).is_Symbol:
                     return False
@@ -770,13 +770,13 @@ class Expr(Basic, EvalfMixin):
         from sympy.polys.polyerrors import NotAlgebraic
         try:
             n, i = _n2(self)
+            if i and i._prec != 1:
+                return False
+            if not i and n._prec != 1:
+                return bool(n < 0)
         except TypeError:
-            return
-        if i:
-            return None if i._prec == 1 else False
-        if n._prec != 1:
-            return bool(n < 0)
-        elif self.is_algebraic and not self.has(Function):
+            pass
+        if self.is_algebraic and not self.has(Function):
             try:
                 if minimal_polynomial(self).is_Symbol:
                     return False
@@ -3438,7 +3438,7 @@ class UnevaluatedExpr(Expr):
             return self.args[0]
 
 
-def _n2del(a, b):
+def _n2dif(a, b):
     """Return (a - b).evalf(2) if a and b are comparable, else None.
     This should only be used when a and b are already sympified.
     """
@@ -3456,8 +3456,12 @@ def _n2(n):
     a simple +/-Number return it unevaluated as n, 0 or 0, n; return
     None if expr is not a number.
     """
+    from sympy.core.basic import Basic
+    from sympy.core.symbol import Symbol
     from sympy.core.evalf import pure_complex
-    if n.is_number:
+    def _atomic(i):
+        return isinstance(i, Basic) and (i.is_Atom or all(_atomic(a) for a in i.args))
+    if not n.atoms(Symbol) and not _atomic(n):
         r, i = pure_complex(n.n(2), True)
         if i._prec == 1 or r._prec == 1:
             r, i = [pure_complex(i.n(2).expand(), True)[0]

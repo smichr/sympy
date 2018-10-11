@@ -491,9 +491,10 @@ class Add(Expr, AssocOp):
         from sympy.core.expr import _n2
         try:
             r, i = _n2(self)
-            if i:
-                return None if i._prec == 1 else False
-            return True
+            if i and i._prec != 1:
+                return False
+            if not i:
+                return True
         except TypeError:
             pass
         return _fuzzy_group(

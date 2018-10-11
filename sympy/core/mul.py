@@ -1183,9 +1183,10 @@ class Mul(Expr, AssocOp):
             r, i = _n2(self)
             if not real:
                 r, i = i, r
-            if i:
-                return None if i._prec == 1 else False
-            return True
+            if i and i._prec != 1:
+                return False
+            if not i:
+                return True
         except TypeError:
             pass
         zero = False

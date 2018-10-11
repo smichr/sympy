@@ -517,8 +517,7 @@ def solve_univariate_inequality(expr, gen, relational=True, domain=S.Reals, cont
                 # or it might give None...
                 solns = solvify(e, gen, domain)
                 if solns is None:
-                    # in which case we raise ValueError
-                    raise ValueError
+                    solns = S.EmptySet
             except (ValueError, NotImplementedError):
                 # replace gen with generic x since it's
                 # univariate anyway
@@ -591,8 +590,8 @@ def solve_univariate_inequality(expr, gen, relational=True, domain=S.Reals, cont
             # If expr contains imaginary coefficients, only take real
             # values of x for which the imaginary part is 0
             make_real = S.Reals
-            if im(expanded_e) != S.Zero:
-                check = True
+            clip = (im(expanded_e) != S.Zero)
+            if clip:
                 im_sol = FiniteSet()
                 try:
                     a = solveset(im(expanded_e), gen, domain)
@@ -621,8 +620,7 @@ def solve_univariate_inequality(expr, gen, relational=True, domain=S.Reals, cont
                             im_sol -= FiniteSet(s)
                 except (TypeError):
                     im_sol = S.Reals
-                    check = False
-
+                    clip = False
                 if isinstance(im_sol, EmptySet):
                     raise ValueError(filldedent('''
                         %s contains imaginary parts which cannot be
@@ -664,12 +662,11 @@ def solve_univariate_inequality(expr, gen, relational=True, domain=S.Reals, cont
             if valid(_pt(start, end)):
                 sol_sets.append(Interval.open(start, end))
 
-            if im(expanded_e) != S.Zero and check:
+            if clip:
                 rv = (make_real).intersect(_domain)
             else:
                 rv = Intersection(
                     (Union(*sol_sets)), make_real, _domain).subs(gen, _gen)
-
     return rv if not relational else rv.as_relational(_gen)
 
 
