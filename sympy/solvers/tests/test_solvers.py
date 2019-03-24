@@ -577,8 +577,8 @@ def test_issue_1572_1364_1368():
     assert solve((sqrt(x**2 - 1) - 2)) in ([sqrt(5), -sqrt(5)],
                                            [-sqrt(5), sqrt(5)])
     assert set(solve((2**exp(y**2/x) + 2)/(x**2 + 15), y)) == set([
-        -sqrt(x)*sqrt(-log(log(2)) + log(log(2) + I*pi)),
-        sqrt(x)*sqrt(-log(log(2)) + log(log(2) + I*pi))])
+        sqrt(x*(log((log(2) + I*pi)/log(2)))),
+        -sqrt(-x*(log((log(2) + I*pi)/log(2))))])
 
     C1, C2 = symbols('C1 C2')
     f = Function('f')
