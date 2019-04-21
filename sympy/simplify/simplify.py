@@ -1576,8 +1576,8 @@ def nc_simplify(expr, deep=True):
     def _reduce_inverses(_args):
         # replace consecutive negative powers by an inverse
         # of a product of positive powers, e.g. a**-1*b**-1*c
-        # will simplify to (a*b)**-1*c;
-        # return that new args list and the number of negative
+        # will simplify to (b*a)**-1*c;
+        # return the new args and the number of negative
         # powers in it (inv_tot)
         inv_tot = 0 # total number of inverses
         inverses = []
@@ -1600,8 +1600,8 @@ def nc_simplify(expr, deep=True):
         return inv_tot, tuple(args)
 
     def get_score(s):
-        # compute the number of arguments of s
-        # (including in nested expressions) overall
+        # compute the number of arguments of s overall
+        # (including nested expressions)
         # but ignore exponents
         if isinstance(s, _Pow):
             return get_score(s.args[0])
@@ -1637,7 +1637,7 @@ def nc_simplify(expr, deep=True):
     inv_tot, args = _reduce_inverses(args)
     # if most arguments are negative, work with the inverse
     # of the expression, e.g. a**-1*b*a**-1*c**-1 will become
-    # (c*a*b**-1*a)**-1 at the end so can work with c*a*b**-1*a
+    # (c*a*b**-1*a)**-1 at the end so we can work with c*a*b**-1*a
     invert = False
     if inv_tot > len(args)/2:
         invert = True
@@ -1767,8 +1767,8 @@ def nc_simplify(expr, deep=True):
         # so there are two possible simplifications:
         # a*(b*a**2)**3*a**-1 or (a*b*a)**3
         # The latter is obviously simpler.
-        # But in a*b*a**2*b**2*a**2 the simplifications are
-        # a*(b*a**2)**2 and (a*b*a)**3*a in which case
+        # But in a*b*a**2*b*a**2*b*a**2 the simplifications are
+        # a*(b*a**2)**3 and (a*b*a)**3*a in which case
         # it's better to stick with the shorter subterm
         if post_exp and exp % 2 == 0 and start > 0:
             exp = exp/2
