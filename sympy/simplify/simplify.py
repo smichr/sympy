@@ -1552,13 +1552,14 @@ def minimal_expand(args):
     ========
 
     >>> from sympy import symbols
+    >>> from sympy.simplify.simplify import minimal_expand
     >>> a,b,c = symbols('a:c', commutative=False)
     >>> minimal_expand((c, (a*b)**4, c))
-    [c, a, b, (a*b)**2, a, b, c]
-    >>> minimal_expand(((a*b)**2, c, (a*b)**-3, c)))
-    [a, b, a, b, c, b**(-1), a**(-1), (a*b)**(-1), b**(-1), a**(-1), c]
+    (c, a, b, (a*b)**2, a, b, c)
+    >>> minimal_expand(((a*b)**2, c, (a*b)**-3, c))
+    (a, b, a, b, c, b**(-1), a**(-1), (a*b)**(-1), b**(-1), a**(-1), c)
     >>> minimal_expand(((a*b)**2, c, (a*b*c)**-3, c))
-    [a, b, a, b, c, c**(-1), b**(-1), a**(-1), (a*b*c)**(-2), c]
+    (a, b, a, b, c, c**(-1), b**(-1), a**(-1), (a*b*c)**(-2), c)
     """
     newargs = []
     lastp = []
