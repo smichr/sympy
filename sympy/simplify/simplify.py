@@ -1497,7 +1497,94 @@ def clear_coefficients(expr, rhs=S.Zero):
         rhs = -rhs
     return expr, rhs
 
-def nc_simplify(expr, deep=True):
+def minimal_expand(args):
+    """Return modified args where, if the power has p args in base and p is
+    less than or equal to twice the number of args before or after
+    it then expand out a set of args in that direction
+
+    Examples
+    ========
+
+    >>> from sympy import symbols
+    >>> a,b,c = symbols('a:c', commutative=False)
+    >>> minimal_expand((c, (a*b)**4, c))
+    [c, a, b, (a*b)**2, a, b, c]
+    >>> minimal_expand(((a*b)**2, c, (a*b)**-3, c)))
+    [a, b, a, b, c, b**(-1), a**(-1), (a*b)**(-1), b**(-1), a**(-1), c]
+    >>> minimal_expand(((a*b)**2, c, (a*b*c)**-3, c))
+    [a, b, a, b, c, c**(-1), b**(-1), a**(-1), (a*b*c)**(-2), c]
+    """
+    newargs = []
+    lastp = []
+    def _expand_last():
+      if not lastp:
+        return
+      # expand last Pow to right
+      i = len(newargs)
+      after = i - lastp[-1] - 1
+      a = newargs[lastp[-1]]
+      a_args = Mul.make_args(a.base)
+      last = len(a_args)
+      if 2*after >= last:
+          if a.exp < 0:
+              a_args = reversed(a_args)
+              e = -1
+          else:
+              e = 1
+          x = tuple([b**e for b in a_args])
+          newa = Pow(a.base, a.exp - e)
+          if newa.is_Pow:
+            newa = newa,
+            pop = False
+          else:
+            newa = Mul.make_args(newa)
+            pop = True
+          newargs[lastp[-1]: lastp[-1] + 1] = newa + x
+          if pop:
+              lastp.pop()
+
+    prev = S.One
+    for i, a in enumerate(args):
+        if not (a.is_Pow and a.exp.is_Integer):
+            newargs.append(a)
+            if i == len(args) - 1:
+              # this is the last non-Pow
+              # expand last if applicable
+              _expand_last()
+        elif i == 0:
+            # first arg
+            lastp.append(len(newargs))
+            newargs.append(a)
+        elif lastp and prev.is_Pow:
+            # Pow afer a previous Pow
+            lastp.append(len(newargs))
+            newargs.append(a)
+        else:
+            # a Pow with non-Pow to the left
+            # expand previous if necessary
+            _expand_last()
+            # expand this Pow to left
+            before = len(newargs) if not lastp else len(newargs) - lastp[-1] - 1
+            a_args = Mul.make_args(a.base)
+            this = len(a_args)
+            if 2*before >= this:
+                if a.exp < 0:
+                    e = -1
+                    a_args = reversed(a_args)
+                else:
+                    e = 1
+                x = [b**e for b in a_args]
+                newargs.extend(x)
+                newa = Pow(a.base, a.exp - e)
+                if newa.is_Pow:
+                  lastp.append(len(newargs))
+                  newargs.append(newa)
+                else:
+                  newargs.extend(Mul.make_args(newa))
+        prev = a
+    return tuple(newargs)
+
+def nc_simplify(expr, deep=True, cache=set()):
     '''
     Simplify a non-commutative expression composed of multiplication
     and raising to a power by grouping repeated subterms into one power.
@@ -1557,7 +1644,7 @@ def nc_simplify(expr, deep=True):
         # For example, let expr=c*a*b*a*b*a*b*a*b. Then m[3][0] contains
         # the lengths of overlaps of c*a*b*a*b with a*b*a*b. The overlaps
         # are a*b*a*b, a*b and the empty word so that m[3][0]=[4,2,0].
-        # All overlaps rather than only the longest one are recorded
+        # All overlaps (rather than only the longest one) are recorded
         # because this information helps calculate other overlap lengths.
         m = [[([1, 0] if a == args[0] else [0]) for a in args[1:]]]
         for i in range(1, len(args)):
@@ -1622,29 +1709,32 @@ def nc_simplify(expr, deep=True):
     args = expr.args[:]
     if isinstance(expr, _Pow):
         if deep:
-            return _Pow(nc_simplify(args[0]), args[1]).doit()
+            return _Pow(nc_simplify(args[0], cache=cache), args[1]).doit()
         else:
             return expr
     elif isinstance(expr, _Add):
-        return _Add(*[nc_simplify(a, deep=deep) for a in args]).doit()
+        return _Add(*[nc_simplify(a, deep=deep, cache=cache) for a in args]).doit()
     else:
         # get the non-commutative part
         c_args, args = expr.args_cnc()
         com_coeff = Mul(*c_args)
         if com_coeff != 1:
-            return com_coeff*nc_simplify(expr/com_coeff, deep=deep)
+            return com_coeff*nc_simplify(expr/com_coeff, deep=deep, cache=cache)
 
     inv_tot, args = _reduce_inverses(args)
+    if args not in cache:
+        cache.add(args)
+        args = tuple(minimal_expand(args))
     # if most arguments are negative, work with the inverse
     # of the expression, e.g. a**-1*b*a**-1*c**-1 will become
     # (c*a*b**-1*a)**-1 at the end so we can work with c*a*b**-1*a
     invert = False
     if inv_tot > len(args)/2:
         invert = True
-        args = [a**-1 for a in args[::-1]]
+        args = tuple([a**-1 for a in args[::-1]])
 
     if deep:
-        args = tuple(nc_simplify(a) for a in args)
+        args = tuple(nc_simplify(a, cache=cache) for a in args)
 
     m = _overlaps(args)
 
@@ -1804,16 +1894,18 @@ def nc_simplify(expr, deep=True):
             post = post_arg**post_exp
 
     if simp:
-        subterm = _Pow(nc_simplify(simp[1], deep=deep), simp[2])
-        pre = nc_simplify(_Mul(*args[:simp[0]])*pre, deep=deep)
-        post = post*nc_simplify(_Mul(*args[simp[3]:]), deep=deep)
+        subterm = _Pow(nc_simplify(simp[1], deep=deep, cache=cache), simp[2])
+        pre = nc_simplify(_Mul(*args[:simp[0]])*pre, deep=deep, cache=cache)
+        post = post*nc_simplify(_Mul(*args[simp[3]:]), deep=deep, cache=cache)
         simp = pre*subterm*post
         if pre != 1 or post != 1:
             # new simplifications may be possible but no need
             # to recurse over arguments
-            simp = nc_simplify(simp, deep=False)
+            simp = nc_simplify(simp, deep=False, cache=cache)
     else:
         simp = _Mul(*args)
+        if args not in cache:
+            simp = nc_simplify(simp, deep=False, cache=cache)
 
     if invert:
         simp = _Pow(simp, -1)
@@ -1822,7 +1914,7 @@ def nc_simplify(expr, deep=True):
     if not isinstance(expr, MatrixExpr):
         f_expr = factor_nc(expr)
         if f_expr != expr:
-            alt_simp = nc_simplify(f_expr, deep=deep)
+            alt_simp = nc_simplify(f_expr, deep=deep, cache=cache)
             simp = compare(simp, alt_simp)
     else:
         simp = simp.doit(inv_expand=False)
