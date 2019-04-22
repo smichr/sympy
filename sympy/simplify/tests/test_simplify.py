@@ -796,3 +796,4 @@ def test_nc_simplify():
     # issue 16691
     _check(a*(b*a)**-1*b, 1)
     _check(a**2*b*a*b, a*(a*b)**2, matrix=False)  # A**2*B*A*B
+    _check(a*(a*(a*b)**2)**2, a*(a*(a*b)**2)**2)

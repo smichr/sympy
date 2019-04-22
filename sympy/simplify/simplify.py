@@ -1543,7 +1543,7 @@ def clear_coefficients(expr, rhs=S.Zero):
         rhs = -rhs
     return expr, rhs
 
-def minimal_expand(args):
+def minimal_expand(args, deep=False):
     """Return modified args where, if the power has p args in base and
     p is less than or equal to twice the number of args before or after
     it then expand out a set of args in that direction
@@ -1592,7 +1592,10 @@ def minimal_expand(args):
 
     prev = S.One
     for i, a in enumerate(args):
-        if not (a.is_Pow and a.exp.is_Integer):
+        if deep and a.is_Pow and a.exp.is_Integer:
+            if a.base.is_Mul:
+                a = Pow(Mul(*minimal_expand(a.base.args, deep=deep)), a.exp)
+        if not (a.is_Pow and a.exp.is_Integer):  # it might have changed
             newargs.append(a)
             if i == len(args) - 1:
               # this is the last non-Pow
@@ -1625,10 +1628,12 @@ def minimal_expand(args):
                 newargs.extend(x)
                 newa = Pow(a.base, a.exp - e)
                 if newa.is_Pow:
-                  lastp.append(len(newargs))
-                  newargs.append(newa)
+                    lastp.append(len(newargs))
+                    newargs.append(newa)
                 else:
-                  newargs.extend(Mul.make_args(newa))
+                    newargs.extend(Mul.make_args(newa))
+            else:
+                newargs.append(a)
         prev = a
     return tuple(newargs)
 
@@ -1775,10 +1780,17 @@ def nc_simplify(expr, deep=True, cache=set()):
             return com_coeff*nc_simplify(
                 expr/com_coeff, deep=deep, cache=cache)
 
+    if deep:
+        newargs = []
+        for a in args:
+            if a.is_Pow:
+                newargs.extend(minimal_expand([a], deep=deep))
+            else:
+                newargs.append(a)
     inv_tot, args = _reduce_inverses(args)
     if args not in cache:
         cache.add(args)
-        args = tuple(minimal_expand(args))
+        args = tuple(minimal_expand(args, deep=deep))
     # if most arguments are negative, work with the inverse
     # of the expression, e.g. a**-1*b*a**-1*c**-1 will become
     # (c*a*b**-1*a)**-1 at the end so we can work with c*a*b**-1*a
@@ -1861,6 +1873,7 @@ def nc_simplify(expr, deep=True, cache=set()):
             elif isinstance(args[end], _Pow) and \
                     args[end].args[0].args == subterm:
                 # for cases like a*b*a*b*(a*b)**2*a*b
+                # XXX uncovered
                 p += args[end].args[1]
                 end += 1
             else:
