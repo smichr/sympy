@@ -661,6 +661,53 @@ def test_piecewise_solveset():
 
     assert solveset(Piecewise((x - 1, Ne(x, I)), (x, True)), x) == FiniteSet(1)
 
+    abs2 = Piecewise((-x, x <= 0), (x, x > 0))
+    f = abs2.subs(x, x - 2)
+    assert solveset(f, x, S.Reals) == FiniteSet(2)
+    assert solveset(f - 1, x, S.Reals) == FiniteSet(1, 3)
+
+    f = Piecewise(((x - 2)**2, x >= 0), (1, True))
+    assert solveset(f, x, S.Reals) == FiniteSet(2)
+
+    g = Piecewise(((x - 5)**5, x >= 4), (f, True))
+    assert solveset(g, x, S.Reals) == FiniteSet(2, 5)
+
+    g = Piecewise(((x - 5)**5, x >= 4), (f, x < 4))
+    assert solveset(g, x, S.Reals) == FiniteSet(2, 5)
+
+    g = Piecewise(((x - 5)**5, x >= 2), (f, x < 2))
+    assert solveset(g, x, S.Reals) == FiniteSet(5)
+
+    g = Piecewise(((x - 5)**5, x >= 2), (f, True))
+    assert solveset(g, x, S.Reals) == FiniteSet(5)
+
+    g = Piecewise(((x - 5)**5, x >= 2), (f, True), (10, False))
+    assert solveset(g, x, S.Reals) == FiniteSet(5)
+
+    g = Piecewise(((x - 5)**5, x >= 2),
+                  (-x + 2, x - 2 <= 0), (x - 2, x - 2 > 0))
+    assert solveset(g, x, S.Reals) == FiniteSet(5)
+
+
+    # issue 10122
+    assert solveset(
+        Piecewise((x, x >= 0),(-x, True)) +
+        Piecewise((x - 1, x >= 1), (1 - x, True)) - 1 > 0,
+        x, domain=S.Reals) == Union(
+        Interval.open(-oo, 0), Interval.open(1, oo))
+    assert solveset(abs(x) + abs(1 - x) - 1 > 0, x, domain=S.Reals
+        ) == Union(Interval.open(-oo, 0), Interval.open(1, oo))
+
+
+@XFAIL
+def test_issue_10534():
+    # The solution should not be FiniteSet(-1, 0) so
+    # when this is fixed the rhs can be changed to whatever
+    # it should be. But for now a NotImplementedError is raised
+    y = Symbol('y')
+    assert solveset_real(
+        Piecewise((x, y < 0), (x + 1, True)), x) != FiniteSet(-1, 0)
+
 
 def test_solveset_complex_polynomial():
     from sympy.abc import x, a, b, c
