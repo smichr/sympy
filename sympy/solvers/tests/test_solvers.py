@@ -5,7 +5,7 @@ from sympy import (
     erfcinv, exp, im, log, pi, re, sec, sin,
     sinh, solve, solve_linear, sqrt, sstr, symbols, sympify, tan, tanh,
     root, simplify, atan2, arg, Mul, SparseMatrix, ask, Tuple, nsolve, oo,
-    E, cbrt, denom, Add, Piecewise)
+    E, cbrt, denom, Add, Piecewise, Union, Ge, Interval)
 
 from sympy.core.compatibility import range
 from sympy.core.function import nfloat
@@ -2075,17 +2075,23 @@ def test_piecewise_solve():
     f = Piecewise(((x - 2)**2, x >= 0), (0, True))
     raises(NotImplementedError, lambda: solve(f, x))
 
-    def nona(ans):
-        return list(filter(lambda x: x is not S.NaN, ans))
+    # issue 10354
+    # it's not glamorous, but it works
+    nan = S.NaN
+    assert solve(Piecewise((x, y < 0), (x + 1, True)), x) == [
+        Piecewise((-1, y >= 0), (nan, True)),
+        Piecewise((0, y < 0), (nan, True))]
+    def nonan(ans):
+        return list(filter(lambda x: x is not nan, ans))
     p = Piecewise((x**2 - 4, x < y), (x - 2, True))
     ans = solve(p, x)
-    assert nona([i.subs(y, -2) for i in ans]) == [2]
-    assert nona([i.subs(y, 2) for i in ans]) == [-2, 2]
-    assert nona([i.subs(y, 3) for i in ans]) == [-2, 2]
+    assert nonan([i.subs(y, -2) for i in ans]) == [2]
+    assert nonan([i.subs(y, 2) for i in ans]) == [-2, 2]
+    assert nonan([i.subs(y, 3) for i in ans]) == [-2, 2]
     assert ans == [
-        Piecewise((-2, y > -2), (S.NaN, True)),
-        Piecewise((2, y <= 2), (S.NaN, True)),
-        Piecewise((2, y > 2), (S.NaN, True))]
+        Piecewise((-2, y > -2), (nan, True)),
+        Piecewise((2, y <= 2), (nan, True)),
+        Piecewise((2, y > 2), (nan, True))]
 
     # issue 6060
     absxm3 = Piecewise(
@@ -2108,10 +2114,23 @@ def test_piecewise_solve():
     assert solve(f - 1) == [1/sqrt(2)]
 
 
-@XFAIL
-def test_issue_10122():
-    assert solve(
+    # issue 10122
+    ans = solve(
         Piecewise((x, x >= 0),(-x, True)) +
-        Piecewise((x - 1, x >= 1), (1 - x, True)) - 1 > 0, x) == Or(
-        And(Lt(S.NegativeInfinity, x), Lt(x, S.Zero)),
-        And(Lt(S.One, x), Lt(x, S.Infinity)))
+        Piecewise((x - 1, x >= 1), (1 - x, True)) - 1 > 0, x)
+    # this answer could be simplified
+    assert ans == Or(
+        And(Ge(x, 1), Lt(1, x), Lt(x, oo)),
+        And(Lt(-oo, x), Lt(x, 0), Lt(x, 1)))
+    assert ans.as_set() == Union(Interval.open(-oo, 0), Interval.open(1, oo))
+
+    # issue 10255
+    assert solve(Piecewise((1, x < 1), (3, True)) > 1) == (x >= 1)
+    # XXX should return value for True and False input to solve be
+    # the same value? i.e. treat it like a Boolean solution
+    p = Piecewise((2, x < 1), (3, True)) > 1
+    assert p != True  # if p == True the answer will be []
+    assert solve(p) == True
+    p = Piecewise((2, x < 1), (-3, True)) > 5
+    assert p != False  # if p == False the answer will be []
+    assert solve(p) == False

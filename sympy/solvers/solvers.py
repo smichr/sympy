@@ -982,7 +982,40 @@ def solve(f, *symbols, **flags):
             f[i] = fi
 
         if fi.is_Relational:
-            return reduce_inequalities(f, symbols=symbols)
+            fi = piecewise_fold(fi)
+            if isinstance(fi, Relational):
+                return reduce_inequalities(f, symbols=symbols)
+            if isinstance(fi, BooleanAtom):
+                return fi
+            if isinstance(fi, Piecewise):
+                if any(isinstance(e, BooleanAtom) or
+                        isinstance(e, Relational)
+                        for e, _ in fi.args):
+                    cond_free = set()
+                    e_free = set()
+                    for e, c in fi.args:
+                        cond_free |= c.free_symbols
+                        e_free |= e.free_symbols
+                    if len(cond_free) > 1:
+                        raise NotImplementedError('multivariate conditions')
+                    have = e_free & set(symbols) or symbols
+                    if len(have) != 1:
+                        raise ValueError(filldedent('''
+                            must specify 1 symbol for which
+                            to solve'''))
+                    symbol = symbols.pop()
+                    or_args = []
+                    for i, (e, cond) in enumerate(fi.args):
+                        if e == False:
+                            continue # XXX or cond = ~cond?
+                        # the explicit condition for this expr is the
+                        # current cond and none of the previous conditions
+                        this = solve(e, symbol, **flags)
+                        if not isinstance(this, list):
+                            this = [this]
+                        args = [~c for _, c in fi.args[:i]] + [cond] + this
+                        or_args.append(And(*args))
+                    return Or(*or_args)
 
         if isinstance(fi, Poly):
             f[i] = fi.as_expr()
