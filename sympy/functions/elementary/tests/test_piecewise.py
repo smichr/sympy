@@ -746,6 +746,12 @@ def test_as_expr_set_pairs():
     assert Piecewise(((x - 2)**2, x >= 0), (0, True)).as_expr_set_pairs() == \
         [((x - 2)**2, Interval(0, oo)), (0, Interval(-oo, 0, True, True))]
 
+    raises(NotImplementedError, lambda:
+        Piecewise((1, x < 1), (2, y < 1)).as_expr_set_pairs())
+    # but be careful, the following doesn't raise an error
+    assert Piecewise((x, x < 1), (y, x < 2)).as_expr_set_pairs() == \
+        [(x, Interval.open(-oo, 1)), (y, Interval.Ropen(1, 2))]
+
 
 def test_S_srepr_is_identity():
     p = Piecewise((10, Eq(x, 0)), (12, True))

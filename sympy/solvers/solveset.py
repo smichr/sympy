@@ -57,7 +57,7 @@ def _masked(f, *atoms):
     where ``e`` is an object of type given by ``atoms`` in which
     any other instances of atoms have been recursively replaced with
     Dummy symbols, too. The tuples are ordered so that if they are
-    applied in sequence, the origin ``f`` will be restored.
+    applied in sequence, the original ``f`` will be restored.
 
     Examples
     ========
@@ -905,6 +905,12 @@ def _solveset(f, symbol, domain, _check=False):
         a = f.args[0]
         result = solveset_real(a > 0, symbol)
     elif f.is_Piecewise:
+        cond_free = set()
+        for _, c in f.args:
+            cond_free |= c.free_symbols
+        if len(cond_free) > 1 or cond_free and symbol not in cond_free:
+            raise NotImplementedError(
+                'conditions not univariate in %s' % symbol)
         result = EmptySet()
         expr_set_pairs = f.as_expr_set_pairs(domain)
         for (expr, in_set) in expr_set_pairs:
