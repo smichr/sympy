@@ -1,5 +1,5 @@
 from sympy.solvers.decompogen import decompogen, compogen
-from sympy import sin, cos, sqrt, Abs
+from sympy import sin, cos, sqrt, Abs, Piecewise
 from sympy import symbols
 from sympy.utilities.pytest import XFAIL, raises
 
@@ -17,6 +17,7 @@ def test_decompogen():
     assert decompogen(x, y) == [x]
     assert decompogen(1, x) == [1]
     raises(TypeError, lambda: decompogen(x < 5, x))
+    raises(TypeError, lambda: decompogen(Piecewise((x, x < 0), (1, True)), x))
 
 
 def test_decompogen_poly():
