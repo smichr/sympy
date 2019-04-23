@@ -1,9 +1,10 @@
 from __future__ import print_function
 from textwrap import dedent
+import string
 
 from sympy import (
     symbols, Integral, Tuple, Dummy, Basic, default_sort_key, Matrix,
-    factorial, true)
+    factorial, true, oo)
 from sympy.combinatorics import RGS_enum, RGS_unrank, Permutation
 from sympy.core.compatibility import range
 from sympy.utilities.iterables import (
@@ -16,12 +17,14 @@ from sympy.utilities.iterables import (
     permutations, postfixes, postorder_traversal, prefixes, reshape,
     rotate_left, rotate_right, runs, sift, strongly_connected_components,
     subsets, take, topological_sort, unflatten, uniq, variations,
-    ordered_partitions, rotations)
+    ordered_partitions, rotations, seq_replace, find, split,
+    longest_repetition, extract_repetitions)
 from sympy.utilities.enumerative import (
     factoring_visitor, multiset_partitions_taocp )
 
 from sympy.core.singleton import S
 from sympy.functions.elementary.piecewise import Piecewise, ExprCondPair
+from sympy.sets.fancysets import Range
 from sympy.utilities.pytest import raises
 
 w, x, y, z = symbols('w,x,y,z')
@@ -93,6 +96,14 @@ def test_group():
     assert group([1, 1, 2, 2, 2, 1, 3, 3]) == [[1, 1], [2, 2, 2], [1], [3, 3]]
     assert group([1, 1, 2, 2, 2, 1, 3, 3], multiple=False) == [(1, 2),
                  (2, 3), (1, 1), (3, 2)]
+
+    f = lambda x: x <= 2
+    assert group([], f=f) == []
+    assert group([1, 2, 3, 1, 2, 3], f=f) == [[1, 2], [3], [1, 2], [3]]
+
+    assert group('abcdefghi', f=lambda c:c in 'bc') == ['a', 'bc', 'defghi']
+    assert group('abcdefghi', f=lambda c:c in 'bc', multiple=False) == [
+        ('a', 1), ('bc', 1), ('defghi', 1)]
 
 
 def test_subsets():
@@ -167,10 +178,12 @@ def test_cartes():
     assert list(cartes('a', repeat=2)) == [('a', 'a')]
     assert list(cartes(list(range(2)))) == [(0,), (1,)]
 
+
 def test_filter_symbols():
     s = numbered_symbols()
     filtered = filter_symbols(s, symbols("x0 x2 x3"))
     assert take(filtered, 3) == list(symbols("x1 x4 x5"))
+
 
 def test_numbered_symbols():
     s = numbered_symbols(cls=Dummy)
@@ -783,3 +796,210 @@ def test_ibin():
     assert ibin(3, 3, str=True) == '011'
     assert list(ibin(2, 'all')) == [(0, 0), (0, 1), (1, 0), (1, 1)]
     assert list(ibin(2, 'all', str=True)) == ['00', '01', '10', '11']
+
+
+def test_seq_replace():
+    l = [1, 2, 3, 2, 3, 4]
+    seq_replace(l, [2, 3], 5)
+    assert l == [1, 5, 5, 4]
+
+    l = [1, 2, 1, 2, 3]
+    seq_replace(l, [1, 2, 3], 4)
+    assert l == [1, 2, 4]
+
+    l = [1, 2, 1, 2, 1, 2]
+    seq_replace(l, [1, 2], 3)
+    assert l == [3, 3, 3]
+
+    l = [1, 2, 1, 2, 1, 2]
+    seq_replace(l, [1, 2])
+    assert l == []
+
+    l = [1, 2, 1, 2, 1, 3]
+    seq_replace(l, [3])
+    assert l == [1, 2, 1, 2, 1]
+
+    l = [1, 2, 1, 2]
+    seq_replace(l, [1, 2], [1, 2])
+    assert l == [1, 2, 1, 2]
+
+    l = [1, 2, 1, 2]
+    seq_replace(l, [], [])
+    assert l == [1, 2, 1, 2]
+
+
+def test_longest_repetition():
+    lr = longest_repetition
+    assert lr(['a']) == []
+    assert lr(['aaa']) == ['a']
+    assert lr(['aaaa']) == ['aa']
+    assert lr(['aaaac']) == ['aa']
+    assert lr(['babab']) == ['ba', 'ab']
+    assert lr(['bcbcb']) == ['bc', 'cb']
+    assert lr(['abcabd']) == ['ab']
+    assert lr(['aabaabc']) == ['aab']
+    assert lr(['abcxxabcxxabc']) == ['abcxx', 'bcxxa', 'cxxab', 'xxabc']
+    assert lr(['aba$bxa$bab']) == ['a$b']
+    assert lr('aba$bxa$bab'.split('$')) == ['ab', 'ba']
+    assert lr(['a$$$$$$aaaa']) == ['$$$']
+    assert lr('a$$$$$$aaaa'.split('$')) == ['aa']
+    assert lr(split(list('a$$$$$$aaaabb'), list('a$'))) == [['b']]
+    assert lr('ab$aa$abba$'.split('$')) == ['ab']
+    assert lr('baaabaaaa'.split('b')) == ['aaa']
+    s = [1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1]
+    assert longest_repetition([s], limit=2) == \
+        [[1, 1], [1, 0], [0, 1]]
+    # for mixed input (rare case, likely) strings are returned as lists
+    assert extract_repetitions(
+        'ABC',
+        ['abab', [1, 2, 1, 2, 'a', 'c', 'a', 'c']]) == (
+        [('C', ['a', 'c']), ('B', [1, 2]), ('A', ['a', 'b'])],
+        [['A', 'A'], ['B', 'B', 'C', 'C']])
+
+
+def test_split():
+    assert split('a') == ['a']
+    assert split('a', 'b') == ['a']
+    assert split('a', 'a') == ['', '']
+    assert split('ab', 'a') == ['', 'b']
+    assert split('cab', 'a') == ['c', 'b']
+    assert split('cab', 'b') == ['ca', '']
+    assert split('cab', 'c') == ['', 'ab']
+    assert split('ccab', 'c') == ['', 'ab']
+    assert split([1, 0, 2, 3, 4, 3], [3, 2]) == [[1, 0], [4], []]
+    assert split([1, 0, 2, 3, 4, 3], 3) == [[1, 0, 2], [4], []]
+
+
+def test_find():
+    assert find('', 'a') == -1
+    assert find('a', 'a') == 0
+    assert find('aa', 'a') == 0
+    assert find('ba', 'a') == 1
+    assert find('aa', 'a', start=1) == 1
+    assert find('aa', 'a', all=True) == [0, 1]
+    assert find('aa', 'a', start=1, all=True) == [1]
+    assert find('aa', 'a', 2, all=True) == []
+    assert find('aa', 'aaa', all=True) == []
+    assert find('aba', 'a', start=1) == 2
+    assert find('aba', 'a', start=3) == -1
+    assert find('aba', 'a', start=-1) == 2
+    assert find('aba', 'a', start=-2) == 2
+    assert find('aba', 'a', start=-3) == 0
+    assert find('aba', 'a', start=-4) == 0
+    assert find('aba', 'a', start=-5) == 0
+
+
+def test_extract_repetitions():
+    U = string.ascii_uppercase
+    s = [
+        'dcaabededb', 'aaacdddaba', 'dcaceacdcb', 'ecabcedbad',
+        'eebeabdebb', 'ebbdabdbbc', 'ddeadbeadb', 'decedceced',
+        'edddbcceea', 'eeddacdcac']
+    a, b = extract_repetitions(U, s)
+    assert a == \
+        [('Q', 'bb'), ('P', 'dc'), ('O', 'ec'), ('N', 'ee'), ('M',
+        'ad'), ('L', 'dd'), ('K', 'ac'), ('J', 'ed'), ('I', 'ab'),
+        ('H', 'Jb'), ('G', 'eQ'), ('F', 'Id'), ('E', 'Pa'), ('D',
+        'Ld'), ('C', 'eMb'), ('B', 'OJ'), ('A', 'Ec')]
+    assert b == \
+        ['EIJH', 'aaKDIa', 'AeKPb', 'OIcHM', 'NbeFG', 'GdFQc', 'LCC',
+        'dBcB', 'eDbccNa', 'eJdKA']
+    for ai in a[::-1]:
+        for i in range(len(b)):
+            b[i] = b[i].replace(*ai)
+    assert s == b
+
+    s = [list(i) for i in ('abc','abcd','abcde')]
+    re = extract_repetitions(U, s)
+    assert re == ([('B', ['a', 'b', 'c']), ('A', ['B', 'd'])],
+        [['B'], ['A'], ['A', 'e']])
+    s = [[ord(i) for i in i] for i in ('abc','abcd','abcde')]
+    ans = ([(-2, [97, 98, 99]), (-1, [-2, 100])], [[-2], [-1], [-1, 101]])
+    assert extract_repetitions([-1, -2], s) == ans
+    assert extract_repetitions(Range(-1, -oo, -1), s) == \
+        ([(-2, [97, 98, 99]), (-1, [-2, 100])], [[-2], [-1], [-1, 101]])
+    x0, x1 = take(numbered_symbols(), 2)
+    assert extract_repetitions(numbered_symbols(), s) == \
+        ([(x1, [97, 98, 99]), (x0, [x1, 100])], [[x1], [x0], [x0, 101]])
+
+
+def test_ncnc():
+    a,b,c = symbols('a:c', commutative=False)
+    from sympy.abc import x
+    def _cse(*e):
+        muls = all(i.is_Mul or i.is_Pow for i in e)
+        if not muls:
+            assert all(i.is_Add for i in e)
+            F = Add
+        else:
+            F = Mul
+        def remap(*e):
+            args = list(ordered(set(flatten(F.make_args(i) for i in e))))
+            mapping = dict(zip(args, range(len(args))))
+            for k in list(mapping.keys()):
+                if muls and k.is_Pow and k.exp.is_Integer and k.exp > 0:
+                    b,p = k.as_base_exp()
+                elif k.is_Mul and k.args[0].is_Integer and k.args[0] > 0:
+                    p,b = k.as_two_terms()
+                else:
+                    continue
+                if b in mapping:
+                    v = mapping[b]
+                else:
+                    v = mapping[k]
+                    mapping[b] = v
+                mapping[k]=[v]*p
+            return mapping, [
+                flatten([mapping[a] for a in F.make_args(i)]) for i in e]
+        m, ints = remap(*e)
+        commutative=all(i.is_commutative for i in m)
+        if commutative:
+            for i in ints:
+                i.sort()
+        r, c = extract_repetitions(
+            numbered_symbols(commutative=commutative), ints)
+        rev_map = {v:k for k,v in m.items() if type(v) is int}
+        for i in range(len(r)):
+            a,b = r[i]
+            b = F(*[rev_map.get(j,j) for j in b])
+            r[i] = a, b
+        for i in range(len(c)):
+            c[i] = F(*[rev_map.get(j,j) for j in c[i]])
+        return r, c
+
+    from sympy import Add, Mul
+    import string
+    def _check(a, b, matrix=None, deep=None):
+        print(_cse(a), b)
+    '''
+    In the following, CAPS are noncommutative and lowercase are commutative.
+    #10238
+    assert str(_cse(A*B*A*B*C*D, A*A*B*E*C*D)) == '([(x1, C*D), (x0, A*B)], [x0**2*x1, A*x0*E*x1])'
+    #6717
+    assert str(_cse(B*A*A, A*A)) == '([(x0, A**2)], [B*x0, x0])'
+    #10228
+    assert str(_cse(x*y, x**2*y)) == '([(x0, x*y)], [x0, x*x0])'
+    assert str(_cse(x + y, 2*x + y)) == '([(x0, x + y)], [x0, x + x0])'
+    '''
+    _check(a*b*a**2*b*a**2*b, 1)
+    _check(a*b*a*b*a*b*c*(a*b)**3*c, ((a*b)**3*c)**2)
+    _check(a*b*(a*b)**-2*a*b, 1)
+    _check(a**2*b*a*b*a*b*(a*b)**-1, a*(a*b)**2, matrix=False)
+    _check(b*a*b**2*a*b**2*a*b**2, b*(a*b**2)**3)
+    _check(a*b*a**2*b*a**2*b*a**3, (a*b*a)**3*a**2)
+    _check(a**2*b*a**4*b*a**4*b*a**2, (a**2*b*a**2)**3)
+    _check(a**3*b*a**4*b*a**4*b*a, a**3*(b*a**4)**3*a**-3)
+    _check(a*b*a*b + a*b*c*x*a*b*c, (a*b)**2 + x*(a*b*c)**2)
+    _check(a*b*a*b*c*a*b*a*b*c, ((a*b)**2*c)**2)
+    _check(b**-1*a**-1*(a*b)**2, a*b)
+    _check(a**-1*b*c**-1, (c*b**-1*a)**-1)
+    expr = a**3*b*a**4*b*a**4*b*a**2*b*a**2*(b*a**2)**2*b*a**2*b*a**2
+    for i in range(10):
+        expr *= a*b
+    _check(expr.expand(), a**3*(b*a**4)**2*(b*a**2)**6*(a*b)**10)
+    _check((a*b*a*b)**2, (a*b*a*b)**2, deep=False)
+    _check(a*b*(c*d)**2, a*b*(c*d)**2)
+    expr = b**-1*(a**-1*b**-1 - a**-1*c*b**-1)**-1*a**-1
+    assert nc_simplify(expr) == (1-c)**-1
+    # commutative expressions should be returned without an error
+    assert nc_simplify(2*x**2) == 2*x**2
