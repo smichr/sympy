@@ -51,45 +51,6 @@ from types import GeneratorType
 from collections import defaultdict
 
 
-def _masked(f, *atoms):
-    """Return ``f``, with all objects given by ``atoms`` replaced with
-    Dummy symbols, ``d``, and the list of replacements, ``(d, e)``,
-    where ``e`` is an object of type given by ``atoms`` in which
-    any other instances of atoms have been recursively replaced with
-    Dummy symbols, too. The tuples are ordered so that if they are
-    applied in sequence, the original ``f`` will be restored.
-
-    Examples
-    ========
-
-    >>> from sympy import cos
-    >>> from sympy.abc import x
-    >>> from sympy.solvers.solveset import _masked
-
-    >>> f = cos(cos(x) + 1)
-    >>> f, reps = _masked(cos(1 + cos(x)), cos)
-    >>> f
-    _a1
-    >>> reps
-    [(_a1, cos(_a0 + 1)), (_a0, cos(x))]
-    >>> for d, e in reps:
-    ...     f = f.xreplace({d: e})
-    >>> f
-    cos(cos(x) + 1)
-    """
-    sym = numbered_symbols('a', cls=Dummy, real=True)
-    mask = []
-    for a in ordered(f.atoms(*atoms)):
-        for i in mask:
-            a = a.replace(*i)
-        mask.append((a, next(sym)))
-    for i, (o, n) in enumerate(mask):
-        f = f.replace(o, n)
-        mask[i] = (n, o)
-    mask = list(reversed(mask))
-    return f, mask
-
-
 def _invert(f_x, y, x, domain=S.Complexes):
     r"""
     Reduce the complex valued equation ``f(x) = y`` to a set of equations
@@ -1703,18 +1664,39 @@ def solveset(f, symbol=None, domain=S.Complexes):
                     ).xreplace({r: symbol})
             except InconsistentAssumptions:
                 pass
-    # Abs has its own handling method which avoids the
-    # rewriting property that the first piece of abs(x)
-    # is for x >= 0 and the 2nd piece for x < 0 -- solutions
-    # can look better if the 2nd condition is x <= 0. Since
-    # the solution is a set, duplication of results is not
-    # an issue, e.g. {y, -y} when y is 0 will be {0}
-    f, mask = _masked(f, Abs)
-    f = f.rewrite(Piecewise) # everything that's not an Abs
-    for d, e in mask:
-        # everything *in* an Abs
-        e = e.func(e.args[0].rewrite(Piecewise))
-        f = f.xreplace({d: e})
+    # rewriting of Abs
+    _abs = list(ordered(f.atoms(Abs)))
+    if _abs:
+        count = 0
+        for i in range(len(_abs)):
+            for j in range(i + 1, len(_abs)):
+                if _abs[j].has(_abs[i]):
+                    break
+            else:
+                # not in any other arg
+                count += 1
+                if count > 1:
+                    # multiple Abs
+                    f = f.rewrite(Piecewise)
+                    break
+        else:
+            # special rewriting of single Abs
+            # (perhaps with nested Abs)
+            big_abs = _abs.pop()
+            # rewrite what is inside Abs
+            abs_pw = big_abs.func(big_abs.args[0].rewrite(Piecewise))
+            # rewrite expression without the Abs because
+            # Abs has its own handling method which avoids the
+            # rewriting property that the first piece of abs(x)
+            # is for x >= 0 and the 2nd piece for x < 0 -- solutions
+            # can look better if the 2nd condition is x <= 0. Since
+            # the solution is a set, duplication of results is not
+            # an issue, e.g. {y, -y} when y is 0 will be {0}
+            p = Dummy()
+            f = f.xreplace({big_abs: p}).rewrite(Piecewise)
+            # restore the Abs(piecewise rewritten interior)
+            f = f.xreplace({p: abs_pw})
+
     f = piecewise_fold(f)
 
     return _solveset(f, symbol, domain, _check=True)

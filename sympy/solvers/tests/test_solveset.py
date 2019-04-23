@@ -591,7 +591,8 @@ def test_solve_abs():
             ImageSet(Lambda(n, (-1)**n*pi/2 + n*pi), S.Integers)),
         Intersection(Interval(-oo, 0),
             ImageSet(Lambda(n, n*pi - (-1)**(-n)*pi/2), S.Integers)))
-
+    assert solveset(Abs(Abs(x) - 2) - 3, x, domain=S.Reals
+        ) == FiniteSet(-5, 5)
 
 
 def test_issue_9565():
