@@ -5,7 +5,7 @@ from sympy import (
     erfcinv, exp, im, log, pi, re, sec, sin,
     sinh, solve, solve_linear, sqrt, sstr, symbols, sympify, tan, tanh,
     root, simplify, atan2, arg, Mul, SparseMatrix, ask, Tuple, nsolve, oo,
-    E, cbrt, denom, Add, Piecewise, Union, Ge, Interval)
+    E, cbrt, denom, Add, Piecewise, Union, Ge, Le, Lt, Interval)
 
 from sympy.core.compatibility import range
 from sympy.core.function import nfloat
@@ -164,14 +164,38 @@ def test_solve_args():
     assert solve([(x + y)**2 - 4, x + y - 2]) == [{x: -y + 2}]
     # - linear
     assert solve((x + y - 2, 2*x + 2*y - 4)) == {x: -y + 2}
-    # When one or more args are Boolean
+
+    # - when one or more args is T/F but the rest are Eq
+    # or not relationals then assume T/F came from evaluated Eq
+    # and treat the equations as non-boolean
+    assert solve([True, x], [x]) == {x: 0}
+    assert solve([True, x], [x], dict=True) == [{x: 0}]
+    assert solve([True, x], [x], set=True) == ([x], {(0,)})
+    assert solve([False, x], [x]) == []
+
+    assert solve([True, Eq(x, 0)], [x]) == {x: 0}
+    assert solve([True, Eq(x, 0)], [x], set=True) == ([x], {(0,)})
     assert solve([True, Eq(x, 0)], [x], dict=True) == [{x: 0}]
-    assert solve([Eq(x, x), Eq(x, 0), Eq(x, x+1)], [x], dict=True) == []
-    assert not solve([Eq(x, x+1), x < 2], x)
-    assert solve([Eq(x, 0), x+1<2]) == Eq(x, 0)
-    assert solve([Eq(x, x), Eq(x, x+1)], x) == []
-    assert solve(True, x) == []
-    assert solve([x-1, False], [x], set=True) == ([], set())
+
+    # any directives will override system of booleans
+    assert solve(True) is S.true
+    assert solve(True, set=True) == []
+    assert solve(True, dict=True) == []
+    assert solve(False) is S.false
+    assert solve(False, set=True) == []
+    assert solve(False, dict=True) == []
+    # T/F system since these autoevaluate
+    assert solve([Eq(x, x), Eq(x, x + 1)], x) == False
+    assert solve([Eq(x, x), Eq(x, x + 1)], x, set=True) == []
+    assert solve([Eq(x, x), Eq(x, x + 1), x], [x]) == []
+
+    # any Relationals will cause system with Eq to be
+    # treated as boolean system
+    assert solve([Eq(x, 0), x + 1 < 2]) == Eq(x, 0)
+    assert solve([Eq(x, x + 1), x < 2], x) is S.false
+    assert solve([x < oo, True, Eq(x, 0)], [x]) == Eq(x, 0)
+    assert solve([Eq(x, x), Eq(x, 0), Eq(y, x + 1)], [x, y], dict=True
+        ) == [{x: 0, y: 1}]
 
 
 def test_solve_polynomial1():
@@ -566,32 +590,35 @@ def test_solve_undetermined_coeffs():
 
 def test_solve_inequalities():
     x = Symbol('x')
-    sol = And(S(0) < x, x < oo)
+    sol = (x <= oo) & (S(0) < x)
     assert solve(x + 1 > 1) == sol
     assert solve([x + 1 > 1]) == sol
     assert solve([x + 1 > 1], x) == sol
     assert solve([x + 1 > 1], [x]) == sol
+    assert solve(x + 1 > 1, simplify=True) == ((x <= oo) & (x > 0))
 
     system = [Lt(x**2 - 2, 0), Gt(x**2 - 1, 0)]
-    assert solve(system) == \
-        And(Or(And(Lt(-sqrt(2), x), Lt(x, -1)),
-               And(Lt(1, x), Lt(x, sqrt(2)))), Eq(0, 0))
+    assert solve(system, simplify=True) == Or(
+        And(Gt(x, 1), Lt(x, sqrt(2))),
+        And(Lt(x, -1), Gt(x, -sqrt(2))))
 
     x = Symbol('x', real=True)
     system = [Lt(x**2 - 2, 0), Gt(x**2 - 1, 0)]
-    assert solve(system) == \
+    assert solve(system, simplify=False) == \
         Or(And(Lt(-sqrt(2), x), Lt(x, -1)), And(Lt(1, x), Lt(x, sqrt(2))))
 
     # issues 6627, 3448
-    assert solve((x - 3)/(x - 2) < 0, x) == And(Lt(2, x), Lt(x, 3))
-    assert solve(x/(x + 1) > 1, x) == And(Lt(-oo, x), Lt(x, -1))
+    assert solve((x - 3)/(x - 2) < 0, x) == ((S(2) < x) & (x < 3))
+    assert solve(x/(x + 1) > 1, x) == ((-oo < x) & (x < -1))
 
     assert solve(sin(x) > S.Half) == And(pi/6 < x, x < 5*pi/6)
 
-    assert solve(Eq(False, x < 1)) == (S(1) <= x) & (x < oo)
-    assert solve(Eq(True, x < 1)) == (-oo < x) & (x < 1)
-    assert solve(Eq(x < 1, False)) == (S(1) <= x) & (x < oo)
-    assert solve(Eq(x < 1, True)) == (-oo < x) & (x < 1)
+    assert solve(Eq(False, x < 1)) == ((S(1) <= x) & (x <= oo))
+    assert solve(Eq(True, x < 1)) == ((-oo <= x) & (x < 1))
+    assert solve(Eq(x < 1, False)) == (S(1) <= x) & (x <= oo)
+    assert solve(Eq(x < 1, True)) == ((-oo <= x) & (x < 1))
+    nf = Symbol('x', finite=False)
+    assert solve(Eq(nf < 1, True)) == (-oo <= nf) & (nf < 1)
 
     assert solve(Eq(False, x)) == False
     assert solve(Eq(True, x)) == True
@@ -2115,22 +2142,25 @@ def test_piecewise_solve():
 
 
     # issue 10122
-    ans = solve(
+    eq = (
         Piecewise((x, x >= 0),(-x, True)) +
-        Piecewise((x - 1, x >= 1), (1 - x, True)) - 1 > 0, x)
+        Piecewise((x - 1, x >= 1), (1 - x, True)) - 1 > 0)
     # this answer could be simplified
+    ans = solve(eq, simplify=False)
     assert ans == Or(
-        And(Ge(x, 1), Lt(1, x), Lt(x, oo)),
-        And(Lt(-oo, x), Lt(x, 0), Lt(x, 1)))
-    assert ans.as_set() == Union(Interval.open(-oo, 0), Interval.open(1, oo))
+        And(Ge(x, 1), Lt(1, x), Le(x, oo)),
+        And(Le(-oo, x), Lt(x, 0), Lt(x, 1)))
+    simp = solve(eq)
+    assert simp == ((x >= -oo) & (x < 0)) | ((x <= oo) & (x > S(1)))
+    assert ans.as_set() == simp.as_set() == Union(
+        Interval.open(-oo, 0), Interval.open(1, oo))
 
     # issue 10255
-    assert solve(Piecewise((1, x < 1), (3, True)) > 1) == (x >= 1)
+    assert solve(Piecewise((1, x < 1), (3, True)) > 1) == (
+        (x >= 1) & (x <= oo))
     # XXX should return value for True and False input to solve be
     # the same value? i.e. treat it like a Boolean solution
     p = Piecewise((2, x < 1), (3, True)) > 1
-    assert p != True  # if p == True the answer will be []
     assert solve(p) == True
     p = Piecewise((2, x < 1), (-3, True)) > 5
-    assert p != False  # if p == False the answer will be []
     assert solve(p) == False

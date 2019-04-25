@@ -3,7 +3,7 @@
 from __future__ import print_function, division
 
 from sympy.core import Symbol, Dummy, sympify
-from sympy.core.compatibility import iterable
+from sympy.core.compatibility import iterable, ordered
 from sympy.core.exprtools import factor_terms
 from sympy.core.relational import Relational, Eq, Ge, Lt
 from sympy.sets import Interval
@@ -17,6 +17,34 @@ from sympy.polys import Poly, PolynomialError, parallel_poly_from_expr
 from sympy.polys.polyutils import _nsort
 from sympy.utilities.iterables import sift
 from sympy.utilities.misc import filldedent
+
+
+def _cleanoo(solution, *rats):
+    from sympy.core.relational import Le, Ge, Lt
+    # Intervals cannot include +/-oo but with
+    # relationals we can remove that restriction
+    # so x < oo -> x <= oo
+    irel = list(ordered([_ for _ in solution.atoms(Relational) if
+        '=' not in _.rel_op and any(
+        i.is_Number and i.is_infinite for i in _.args)]))
+    for i in irel:
+        if i.rhs.is_Number and i.rhs.is_infinite:
+            gen, inf = i.args
+        else:
+            gen, inf = i.reversed.args
+        try:
+            ok = all(gen not in _.free_symbols or
+                     _.subs(gen, inf) is S.true for _ in rats)
+        except TypeError:
+            ok = False
+        if ok:
+            if isinstance(i, Lt):
+                newi = Le(*i.args, evaluate=False)
+            else:
+                newi = Ge(*i.args, evaluate=False)
+            solution = solution.xreplace({i: newi})
+    return solution
+
 
 def solve_poly_inequality(poly, rel):
     """Solve a polynomial inequality with rational coefficients.
@@ -958,9 +986,8 @@ def reduce_inequalities(inequalities, symbols=[]):
             inequalities cannot contain symbols that are not real.
             '''))
 
-    # make vanilla symbol real
-    recast = {i: Dummy(i.name, real=True)
-        for i in gens if i.is_real is None}
+    # use vanilla reals for all symbols
+    recast = {i: Dummy(i.name, real=True) for i in gens}
     inequalities = [i.xreplace(recast) for i in inequalities]
     symbols = {i.xreplace(recast) for i in symbols}
 
@@ -985,5 +1012,16 @@ def reduce_inequalities(inequalities, symbols=[]):
     # solve system
     rv = _reduce_inequalities(inequalities, symbols)
 
-    # restore original symbols and return
-    return rv.xreplace({v: k for k, v in recast.items()})
+    # clean up oo
+    rv = _cleanoo(rv, *inequalities)
+
+    # restore original symbols but use unevaluated relationals
+    # to keep assumptions from simplifying them else a finite
+    # x in x < oo will evaluate to True
+    restore = {v: k for k, v in recast.items()}
+    rel = {}
+    for r in ordered(rv.atoms(Relational)):
+        rel[r] = r.func(*[i.xreplace(restore) for i in r.args])
+    rv = rv.xreplace(rel).xreplace(restore)
+
+    return rv

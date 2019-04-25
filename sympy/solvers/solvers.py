@@ -29,7 +29,7 @@ from sympy.core.numbers import ilcm, Float, Rational
 from sympy.core.relational import Relational, Ge
 from sympy.core.logic import fuzzy_not, fuzzy_and
 from sympy.core.power import integer_log
-from sympy.logic.boolalg import And, Or, BooleanAtom
+from sympy.logic.boolalg import And, Or, Boolean, BooleanAtom
 from sympy.core.basic import preorder_traversal
 
 from sympy.functions import (log, exp, LambertW, cos, sin, tan, acos, asin, atan,
@@ -47,7 +47,7 @@ from sympy.functions.elementary.piecewise import piecewise_fold, Piecewise
 
 from sympy.utilities.lambdify import lambdify
 from sympy.utilities.misc import filldedent
-from sympy.utilities.iterables import uniq, generate_bell, flatten
+from sympy.utilities.iterables import uniq, generate_bell, flatten, sift
 from sympy.utilities.decorator import conserve_mpmath_dps
 
 from mpmath import findroot
@@ -920,8 +920,6 @@ def solve(f, *symbols, **flags):
                        )
                       )
     f, symbols = (_sympified_list(w) for w in [f, symbols])
-    if isinstance(f, list):
-        f = [s for s in f if s is not S.true and s is not True]
     implicit = flags.get('implicit', False)
 
     # preprocess symbol(s)
@@ -954,68 +952,18 @@ def solve(f, *symbols, **flags):
 
     # preprocess equation(s)
     ###########################################################################
+    boolean = False
     for i, fi in enumerate(f):
-        if isinstance(fi, (Equality, Unequality)):
-            if 'ImmutableDenseMatrix' in [type(a).__name__ for a in fi.args]:
-                fi = fi.lhs - fi.rhs
-            else:
-                args = fi.args
-                if args[1] in (S.true, S.false):
-                    args = args[1], args[0]
-                L, R = args
-                if L in (S.false, S.true):
-                    if isinstance(fi, Unequality):
-                        L = ~L
-                    if R.is_Relational:
-                        fi = ~R if L is S.false else R
-                    elif R.is_Symbol:
-                        return L
-                    elif R.is_Boolean and (~R).is_Symbol:
-                        return ~L
-                    else:
-                        raise NotImplementedError(filldedent('''
-                            Unanticipated argument of Eq when other arg
-                            is True or False.
-                        '''))
-                else:
-                    fi = fi.rewrite(Add, evaluate=False)
-            f[i] = fi
+        if isinstance(fi, (Relational, Boolean)) and \
+                not isinstance(fi, Symbol):
+            boolean = True
+            break
 
-        if fi.is_Relational:
-            fi = piecewise_fold(fi)
-            if isinstance(fi, Relational):
-                return reduce_inequalities(f, symbols=symbols)
-            if isinstance(fi, BooleanAtom):
-                return fi
-            if isinstance(fi, Piecewise):
-                if any(isinstance(e, BooleanAtom) or
-                        isinstance(e, Relational)
-                        for e, _ in fi.args):
-                    cond_free = set()
-                    e_free = set()
-                    for e, c in fi.args:
-                        cond_free |= c.free_symbols
-                        e_free |= e.free_symbols
-                    if len(cond_free) > 1:
-                        raise NotImplementedError('multivariate conditions')
-                    have = e_free & set(symbols) or symbols
-                    if len(have) != 1:
-                        raise ValueError(filldedent('''
-                            must specify 1 symbol for which
-                            to solve'''))
-                    symbol = symbols.pop()
-                    or_args = []
-                    for i, (e, cond) in enumerate(fi.args):
-                        if e == False:
-                            continue # XXX or cond = ~cond?
-                        # the explicit condition for this expr is the
-                        # current cond and none of the previous conditions
-                        this = solve(e, symbol, **flags)
-                        if not isinstance(this, list):
-                            this = [this]
-                        args = [~c for _, c in fi.args[:i]] + [cond] + this
-                        or_args.append(And(*args))
-                    return Or(*or_args)
+        if fi.is_Piecewise and any(
+                isinstance(e, (Relational, BooleanAtom))
+                for e, _ in fi.args):
+            boolean = True
+            break
 
         if isinstance(fi, Poly):
             f[i] = fi.as_expr()
@@ -1042,12 +990,146 @@ def solve(f, *symbols, **flags):
                     bare_f = False
                 f[i: i + 1] = [fr, fi]
 
-    # real/imag handling -----------------------------
-    if any(isinstance(fi, (bool, BooleanAtom)) for fi in f):
-        if flags.get('set', False):
-            return [], set()
-        return []
+    if boolean:
+        # check to see if this is a system of Eqs
+        def key(i):
+            if isinstance(i, BooleanAtom):
+                return 1
+            elif isinstance(i, Equality):
+                return 2
+            elif isinstance(i, Relational):
+                return 3
+            return 4
+        sifted = sift(f, key)
+        assert sifted  # or we wouldn't have gotten here
+        tf = eq = rel = other = []
+        if 1 in sifted:
+            tf = sifted.pop(1)
+        if not sifted:
+            # all True/False
+            ans = S.true if False not in tf else S.false
+            if 'dict' in flags or 'set' in flags:
+                # return whatever is sent when there is
+                # no/inf solution
+                return solve(int(bool(ans)), symbols, **flags)
+            return ans
+        eq = sifted.get(2, eq)
+        rel = sifted.get(3, rel)
+        other = sifted.get(4, other)
+        if not rel and all(not (S.true in fi.args or S.false in fi.args)
+                for b in eq):
+            # none of the Eq contained True or False as an arg
+            if S.false in tf:
+                # send back whatever is sent when there
+                # is no solution
+                return solve(1, symbols, **flags)
+            for i, fi in enumerate(f):
+                if fi is S.true:
+                    fi = S.Zero
+                if 'ImmutableDenseMatrix' in [type(a).__name__ for a in fi.args]:
+                    fi = fi.lhs - fi.rhs
+                else:
+                    fi = fi.rewrite(Add, evaluate=False)
+                f[i] = fi
+            # retry without the True values; it shouldn't return here
+            if bare_f:
+                return solve(f[0], *symbols, **flags)
+            else:
+                return solve(f, symbols, **flags)
+        # a boolean system
+        if 'dict' in flags or 'set' in flags:
+            raise ValueError(filldedent('''
+                This is a Boolean set of equations and the `set` and
+                `dict` directives have no meaning in this context.
+                All results will be returned as a Boolean or
+                Relational.'''))
+        f = [piecewise_fold(fi) for fi in f]
+        # recast Eq/Ne with a True or False arg
+        for i, fi in enumerate(f):
+            if isinstance(fi, (Equality, Unequality)):
+                args = fi.args
+                if args[1] in (S.true, S.false):
+                    args = args[1], args[0]
+                L, R = args
+                if L in (S.false, S.true):
+                    if isinstance(fi, Unequality):
+                        L = ~L
+                    if R.is_Relational:
+                        f[i] = ~R if L is S.false else R
+                    elif R.is_Symbol:
+                        f[i] = L
+                    elif R.is_Boolean and (~R).is_Symbol:
+                        f[i] = ~L
+                    else:
+                        raise NotImplementedError(filldedent('''
+                            Unanticipated argument of Eq when other arg
+                            is True or False.
+                        '''))
+        if all(isinstance(fi, (Boolean, Relational)) for fi in f):
+            rv = reduce_inequalities(f, symbols=symbols)
+            if flags.get('simplify', False):
+                rv = rv.xreplace(dict([
+                    (r, r.canonical) for r in rv.atoms(Relational)]))
+            return rv
+        and_args = []
+        for fi in f:
+            _ = fi
+            if not fi.is_Atom and isinstance(fi, (Boolean, Relational)):
+                fi = reduce_inequalities(fi, symbols=symbols)
+            if isinstance(fi, BooleanAtom):
+                if fi is S.false:
+                    return fi
+                continue  # ignore True
+            if isinstance(fi, Boolean):
+                and_args.append(fi)
+                continue
+            if not isinstance(fi, Piecewise):
+                have = list(set(symbols) & fi.free_symbols)
+                if len(have) == 1:
+                    and_args.append(Or(*[Equality(symbols[0], i) for i in solve(fi, have[0], **flags)]))
+                    continue
+                raise TypeError(filldedent('''
+                    expecting Boolean, Relational, Piecewise or
+                    Expr (with 1 symbol given), not
+                    %s to be solve for %s''' % (fi, have)))
+            # Piecewise ----------------------------------------------
+            # check to see that conditions are univariate
+            cond_free = set()
+            e_free = set()
+            for e, c in fi.args:
+                cond_free |= c.free_symbols
+                e_free |= e.free_symbols
+            if len(cond_free) > 1:
+                raise NotImplementedError('multivariate conditions')
+            # check to see that expressions are univariate
+            # or supply a variable if there are not in the Piecewise
+            # expressions, e.g. they all reduced to True or False
+            have = e_free & set(symbols) or [
+                Dummy('`supplied for boolean solving`')]
+            if len(have) != 1:
+                raise ValueError(filldedent('''
+                    must specify 1 symbol for which
+                    to solve'''))
+            symbol = symbols.pop()
+            or_args = []
+            for i, (e, cond) in enumerate(fi.args):
+                # the explicit condition for this expr is the
+                # current cond and none of the previous conditions
+                this = [solve(e, symbol, **flags)]
+                args = [~c for _, c in fi.args[:i]] + [cond] + this
+                or_args.append(And(*args))
+            and_args.append(Or(*or_args))
+        rv = And(*and_args)
+        if flags.get('simplify', True):
+            free = rv.free_symbols
+            if len(free) == 1:
+                from sympy.solvers.inequalities import _cleanoo
+                rv = _cleanoo(rv.as_set().as_relational(free.pop()), *f)
+                rv = rv.xreplace(dict([
+                    (r, r.canonical) for r in rv.atoms(Relational)]))
+        return rv
 
+    # real/imag handling -----------------------------
     w = Dummy('w')
     piece = Lambda(w, Piecewise((w, Ge(w, 0)), (-w, True)))
     for i, fi in enumerate(f):
@@ -1528,6 +1610,7 @@ def _solve(f, *symbols, **flags):
                 result.add(Piecewise(
                     (candidate, v),
                     (S.NaN, True)))
+        print(result)
         # set flags for quick exit at end; solutions for each
         # piece were already checked and simplified
         check = False
