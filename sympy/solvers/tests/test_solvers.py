@@ -1625,6 +1625,20 @@ def test_other_lambert():
     assert set(solve(3**cos(x) - cos(x)**3)) == set(
         [acos(3), acos(-3*LambertW(-log(3)/3)/log(3))])
 
+@XFAIL
+def test_lambert_bivariate():
+    #tests to work on
+    assert solve(x**2 - y**2/exp(x), x, y, dict=True) == \
+                [{0: 0, x: 2*LambertW(y/2), x: 2*LambertW(-y/2)}]
+    assert solve((a/x + exp(x/2)).diff(x), x) == \
+            [4*LambertW(sqrt(2)*sqrt(a)/4), 4*LambertW(-sqrt(2)*sqrt(a)/4)]
+    assert solve(x*log(x) + 3*x + 1, x) == \
+            [exp(-3 + LambertW(-exp(3))), exp(-3 + LambertW(-exp(3), -1))]
+    assert solve((1/x + exp(x/2)).diff(x, 2), x) == \
+                [6*LambertW((-1)**(1/3)/3), 6*LambertW((-1)**(1/3)/3, -1)]
+    assert solve((1/x + exp(x/2)).diff(x), x) == \
+    [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
+
 
 def test_rewrite_trig():
     assert solve(sin(x) + tan(x)) == [0, -pi, pi, 2*pi]
