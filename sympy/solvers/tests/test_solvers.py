@@ -1620,14 +1620,14 @@ def test_lambert_bivariate():
         -S(3)/2 - LambertW(-4*log(2))/(2*log(2))]
     # check collection
     assert solve(3*log(a**(3*x + 5)) + b*log(a**(3*x + 5)) + a**(3*x + 5), x) == \
-        [log(-((b + 3)*LambertW(-1/(b + 3))/a**5)**(1/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(-1/(b + 3))/a**5)**(1/3)*(1 + sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3))/a**5)**(1/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3))/a**5)**(1/3)*(1 + sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(-1/(b + 3), -1)/a**5)**(1/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(-1/(b + 3), -1)/a**5)**(1/3)*(1 + sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3), -1)/a**5)**(1/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3), -1)/a**5)**(1/3)*(1 + sqrt(3)*I)/2)/log(a), \
+        [log(-((b + 3)*LambertW(-1/(b + 3))/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(-1/(b + 3))/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(1/(b + 3))/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(1/(b + 3))/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(-1/(b + 3), -1)/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(-1/(b + 3), -1)/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(1/(b + 3), -1)/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(1/(b + 3), -1)/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
         log((b + 3)*LambertW(-1/(b + 3))/a**5)/(3*log(a)), \
         log((b + 3)*LambertW(1/(b + 3))/a**5)/(3*log(a)), \
         log((b + 3)*LambertW(-1/(b + 3), -1)/a**5)/(3*log(a)), \
