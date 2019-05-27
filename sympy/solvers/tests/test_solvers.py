@@ -1550,6 +1550,7 @@ def test_issue_14607():
 @slow
 def test_lambert_multivariate():
     from sympy.abc import a, x, y
+    from sympy.solvers.bivariate import _filtered_gens, _lambert
     assert _filtered_gens(Poly(x + 1/x + exp(x) + y), x) == set([x, exp(x)])
     assert _lambert(x, x) == []
     assert solve((x**2 - 2*x + 1).subs(x, log(x) + 3*x)) == [LambertW(3*S.Exp1)/3]
@@ -1592,7 +1593,7 @@ def test_other_lambert():
 
 def test_lambert_bivariate():
     #tests passing current implementation
-    from sympy.solvers.bivariate import _filtered_gens, _lambert, _solve_lambert
+    from sympy.solvers.bivariate import _filtered_gens, _solve_lambert
     assert solve(a/x + exp(x/2), x) == [2*LambertW(-a/2), 2*LambertW(a/2)]
     assert solve((a/x + exp(x/2)).diff(x), x) == \
             [4*LambertW(-sqrt(2)*sqrt(a)/4), 4*LambertW(sqrt(2)*sqrt(a)/4)]
