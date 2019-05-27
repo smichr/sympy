@@ -197,7 +197,6 @@ def _solve_lambert(f, symbol, gens):
       a = -1, d = a*log(p), f = -log(d) - g*log(p)
     """
     from sympy.solvers.solvers import checksol
-    flags = dict()
 
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
@@ -306,7 +305,7 @@ def _solve_lambert(f, symbol, gens):
             'terms of LambertW' % f)
 
     soln = [s for s in soln if
-              checksol(f, {symbol: s}, **flags) is not False]
+              checksol(f, {symbol: s}) is not False]
 
     return list(ordered(soln))
 

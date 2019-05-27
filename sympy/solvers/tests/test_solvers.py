@@ -1592,7 +1592,7 @@ def test_other_lambert():
 
 
 def test_lambert_bivariate():
-    #tests passing current implementation
+    # tests passing current implementation
     from sympy.solvers.bivariate import _filtered_gens, _solve_lambert
     assert solve(a/x + exp(x/2), x) == [2*LambertW(-a/2), 2*LambertW(a/2)]
     assert solve((a/x + exp(x/2)).diff(x), x) == \
@@ -1638,9 +1638,9 @@ def test_lambert_bivariate():
 
 @XFAIL
 def test_lambert_bivariate_fail():
-    #test failing current implementation
-    #These tests are failing because checksol returns false but expected to return true
-    #Although _lambert is returning correct solutions of equation
+    # test failing current implementation
+    # These tests are failing because checksol returns false but expected to return true
+    # Although _lambert is returning correct solutions of equation
     assert solve((1/x + exp(x/2)).diff(x), x) == \
     [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
     assert solve(x**2 - 2**x, x) == [2, 4]
