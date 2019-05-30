@@ -1547,7 +1547,6 @@ def test_issue_14607():
         assert s[0][var].simplify() == knownsolution[var].simplify()
 
 
-@slow
 def test_lambert_multivariate():
     from sympy.abc import a, x, y
     from sympy.solvers.bivariate import _filtered_gens, _lambert
@@ -1562,17 +1561,6 @@ def test_lambert_multivariate():
     assert solve(eq) == [LambertW(3*exp(-LambertW(3)))]
     # coverage test
     raises(NotImplementedError, lambda: solve(x - sin(x)*log(y - x), x))
-
-    x0 = 1/log(a)
-    x1 = LambertW(S(1)/3)
-    x2 = a**(-5)
-    x3 = 3**(S(1)/3)
-    x4 = 3**(S(5)/6)*I
-    x5 = x1**(S(1)/3)*x2**(S(1)/3)/2
-    ans = solve(3*log(a**(3*x + 5)) + a**(3*x + 5), x)
-    assert ans == [
-        x0*log(3*x1*x2)/3, x0*log(-x5*(x3 - x4)), x0*log(-x5*(x3 + x4))]
-
     assert solve(x**3 - 3**x, x) == [3, -3*LambertW(-log(3)/3)/log(3)]
     assert solve(3**cos(x) - cos(x)**3) == [acos(3), acos(-3*LambertW(-log(3)/3)/log(3))]
     assert set(solve(3*log(x) - x*log(3))) == set(  # 2.478... and 3
@@ -1590,7 +1578,7 @@ def test_other_lambert():
     assert set(solve(3**cos(x) - cos(x)**3)) == set(
         [acos(3), acos(-3*LambertW(-log(3)/3)/log(3))])
 
-
+@slow
 def test_lambert_bivariate():
     # tests passing current implementation
     from sympy.solvers.bivariate import _filtered_gens, _solve_lambert
@@ -1633,8 +1621,23 @@ def test_lambert_bivariate():
         log((b + 3)*LambertW(1/(b + 3))/a**5)/(3*log(a)), \
         log((b + 3)*LambertW(-1/(b + 3), -1)/a**5)/(3*log(a)), \
         log((b + 3)*LambertW(1/(b + 3), -1)/a**5)/(3*log(a))]
+
+    x0 = 1/log(a)
+    x1 = LambertW(S(1)/3)
+    x2 = a**(-5)
+    x3 = 3**(S(1)/3)
+    x4 = 3**(S(5)/6)*I
+    x5 = x1**(S(1)/3)*x2**(S(1)/3)/2
+    ans = solve(3*log(a**(3*x + 5)) + a**(3*x + 5), x)
+    assert ans == [
+        x0*log(3*x1*x2)/3, x0*log(-x5*(x3 - x4)), x0*log(-x5*(x3 + x4))]
+        
     assert solve(x**2 - y**2/exp(x), x, y, dict=True) == \
                 [{x: 2*LambertW(-y/2)}, {x: 2*LambertW(y/2)}]
+    # coverage
+    assert solve(x**2 - y**2/exp(x), x, y, dict=True) != \
+            [{x: 2*LambertW(-y/2)}, {x: 2*LambertW(y/2)}, \
+            {x: 2*LambertW(-y/2, -1)}, {x: 2*LambertW(y/2, -1)}]
 
 @XFAIL
 def test_lambert_bivariate_fail():
