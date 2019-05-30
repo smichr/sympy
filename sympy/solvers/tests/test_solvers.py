@@ -1621,7 +1621,6 @@ def test_lambert_bivariate():
         log((b + 3)*LambertW(1/(b + 3))/a**5)/(3*log(a)), \
         log((b + 3)*LambertW(-1/(b + 3), -1)/a**5)/(3*log(a)), \
         log((b + 3)*LambertW(1/(b + 3), -1)/a**5)/(3*log(a))]
-
     x0 = 1/log(a)
     x1 = LambertW(S(1)/3)
     x2 = a**(-5)
@@ -1631,13 +1630,11 @@ def test_lambert_bivariate():
     ans = solve(3*log(a**(3*x + 5)) + a**(3*x + 5), x)
     assert ans == [
         x0*log(3*x1*x2)/3, x0*log(-x5*(x3 - x4)), x0*log(-x5*(x3 + x4))]
-        
     assert solve(x**2 - y**2/exp(x), x, y, dict=True) == \
                 [{x: 2*LambertW(-y/2)}, {x: 2*LambertW(y/2)}]
     # coverage
-    assert solve(x**2 - y**2/exp(x), x, y, dict=True) != \
-            [{x: 2*LambertW(-y/2)}, {x: 2*LambertW(y/2)}, \
-            {x: 2*LambertW(-y/2, -1)}, {x: 2*LambertW(y/2, -1)}]
+    assert solve(x**2 - y**2/exp(x), x, y, dict=True) != [{x: 2*LambertW(-y/2)}, \
+    {x: 2*LambertW(y/2)}, {x: 2*LambertW(-y/2, -1)}, {x: 2*LambertW(y/2, -1)}]
 
 @XFAIL
 def test_lambert_bivariate_fail():
