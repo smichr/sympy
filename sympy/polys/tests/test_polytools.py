@@ -58,6 +58,7 @@ from sympy import (
 from sympy.core.basic import _aresame
 from sympy.core.compatibility import iterable, PY3
 from sympy.core.mul import _keep_coeff
+from sympy.matrices.dense import Matrix, eye
 from sympy.utilities.pytest import raises, XFAIL
 from sympy.simplify import simplify
 
@@ -2972,11 +2973,26 @@ def test_cancel():
     assert cancel((x**2 - 1)/(x + 1)*p3) == (x - 1)*p4
     assert cancel((x**2 - 1)/(x + 1) + p3) == (x - 1) + p4
 
+    # issue 4077
+    m = Matrix([
+        [ 0, -1,  0,  0,  0,  0, -1,  0,  0],
+        [-1,  x, -1,  0,  0,  0,  0, -1,  0],
+        [ 0, -1,  x,  0,  0,  0,  0,  0, -1],
+        [ 0,  0,  0,  x, -1,  0, -1,  0,  0],
+        [ 0,  0,  0, -1,  x, -1,  0, -1,  0],
+        [ 0,  0,  0,  0, -1,  0,  0,  0, -1],
+        [-1,  0,  0, -1,  0,  0,  x, -1,  0],
+        [ 0, -1,  0,  0, -1,  0, -1,  0, -1],
+        [ 0,  0, -1,  0,  0, -1,  0, -1,  x]])
+    eq = m.row_join(eye(9)).rref()[0][0, 11]
+    assert cancel(eq) == -1/(2*x)  # this should return very quickly (< 1 sec)
+
     # issue 9363
     M = MatrixSymbol('M', 5, 5)
     assert cancel(M[0,0] + 7) == M[0,0] + 7
     expr = sin(M[1, 4] + M[2, 1] * 5 * M[4, 0]) - 5 * M[1, 2] / z
     assert cancel(expr) == (z*sin(M[1, 4] + M[2, 1] * 5 * M[4, 0]) - 5 * M[1, 2]) / z
+
 
 def test_reduced():
     f = 2*x**4 + y**2 - x**2 + y**3

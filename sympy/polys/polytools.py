@@ -6595,10 +6595,11 @@ def cancel(f, *gens, **args):
     sqrt(6)/2
     """
     from sympy.core.exprtools import factor_terms
+    from sympy.simplify.simplify import signsimp
     from sympy.functions.elementary.piecewise import Piecewise
     options.allowed_flags(args, ['polys'])
 
-    f = sympify(f)
+    f = signsimp(sympify(f))
 
     if not isinstance(f, (tuple, Tuple)):
         if f.is_Number or isinstance(f, Relational) or not isinstance(f, Expr):
