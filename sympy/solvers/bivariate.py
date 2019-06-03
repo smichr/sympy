@@ -149,19 +149,17 @@ def _lambert(eq, x):
     sol = []
     # check only real solutions:
     for k in [-1, 0]:
-        arg = d/(a*b)*exp(c*d/a/b)*exp(-f/a)
-        l1, l2 = map(lambda i: LambertW(i, k), (arg, -arg))
+        l = LambertW(d/(a*b)*exp(c*d/a/b)*exp(-f/a), k)
+        # if W's arg is between -1/e and 0 there is
+        # a -1 branch real solution, too.
+        if k and not l.is_real:
+            continue
+        rhs = -c/b + (a/d)*l
 
-        rhs1, rhs2 = map(lambda i: -c/b + (a/d)*i, (l1, l2))
         solns = solve(X1 - u, x)
-        for tmp in solns:
-            if not k:
-                sol += list(map(lambda i: tmp.subs(u, i), (rhs1, rhs2)))
-            else:
-                if tmp.subs(u, rhs1).is_real is not False:
-                    sol.append(tmp.subs(u, rhs1))
-                if tmp.subs(u, rhs2).is_real is not False:
-                    sol.append(tmp.subs(u, rhs2))
+        for i, tmp in enumerate(solns):
+            solns[i] = tmp.subs(u, rhs)
+            sol.append(solns[i])
     return sol
 
 
@@ -197,7 +195,6 @@ def _solve_lambert(f, symbol, gens):
       log(d) + (a*B + g)*log(p) - log(c + b*B) = 0
       a = -1, d = a*log(p), f = -log(d) - g*log(p)
     """
-    from sympy.solvers.solvers import checksol
 
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
@@ -304,9 +301,6 @@ def _solve_lambert(f, symbol, gens):
     if not soln:
         raise NotImplementedError('%s does not appear to have a solution in '
             'terms of LambertW' % f)
-
-    soln = [s for s in soln if
-              checksol(f, {symbol: s}) is not False]
 
     return list(ordered(soln))
 
