@@ -1582,7 +1582,6 @@ def test_other_lambert():
 def test_lambert_bivariate():
     # tests passing current implementation
     from sympy.solvers.bivariate import _filtered_gens, _solve_lambert
-    assert solve(a/x + exp(x/2), x) == [2*LambertW(-a/2), 2*LambertW(a/2)]
     assert solve((a/x + exp(x/2)).diff(x), x) == \
             [4*LambertW(-sqrt(2)*sqrt(a)/4), 4*LambertW(sqrt(2)*sqrt(a)/4)]
     assert solve(x*log(x) + 3*x + 1, x) == \
@@ -1644,6 +1643,10 @@ def test_lambert_bivariate_fail():
     assert solve((1/x + exp(x/2)).diff(x), x) == \
     [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
     assert solve(x**2 - 2**x, x) == [2, 4]
+    # checksol returns none i.e unable to check 2*LambertW(a/2) as not a
+    # solution of equation
+    assert solve(a/x + exp(x/2), x) == [2*LambertW(-a/2), 2*LambertW(a/2)]
+
 
 
 def test_rewrite_trig():
