@@ -155,7 +155,7 @@ def _lambert(eq, x):
         rhs1, rhs2 = map(lambda i: -c/b + (a/d)*i, (l1, l2))
         solns = solve(X1 - u, x)
         for tmp in solns:
-            if not k:
+            if k == 0:
                 sol += list(map(lambda i: tmp.subs(u, i), (rhs1, rhs2)))
             else:
                 if tmp.subs(u, rhs1).is_real is not False:
