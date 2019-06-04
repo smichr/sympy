@@ -197,6 +197,7 @@ def _solve_lambert(f, symbol, gens):
       log(d) + (a*B + g)*log(p) - log(c + b*B) = 0
       a = -1, d = a*log(p), f = -log(d) - g*log(p)
     """
+    from sympy.solvers.solvers import checksol
 
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
@@ -303,6 +304,9 @@ def _solve_lambert(f, symbol, gens):
     if not soln:
         raise NotImplementedError('%s does not appear to have a solution in '
             'terms of LambertW' % f)
+
+    soln = [s for s in soln if
+              checksol(f, {symbol: s}) is not False]
 
     return list(ordered(soln))
 
