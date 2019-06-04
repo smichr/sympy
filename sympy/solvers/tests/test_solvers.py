@@ -1602,10 +1602,6 @@ def test_lambert_bivariate():
         [Rational(1, 5) + LambertW(-21*exp(Rational(3, 5))/5)/7]
     assert solve((log(x) + x).subs(x, x**2 + 1)) == [
         -I*sqrt(-LambertW(1) + 1), sqrt(-1 + LambertW(1))]
-    p = symbols('p', positive=True)
-    eq = 4*2**(2*p + 3) - 2*p - 3
-    assert _solve_lambert(eq, p, _filtered_gens(Poly(eq), p)) == [
-        -S(3)/2 - LambertW(-4*log(2))/(2*log(2))]
     # check collection
     assert solve(3*log(a**(3*x + 5)) + b*log(a**(3*x + 5)) + a**(3*x + 5), x) == \
         [log(-((b + 3)*LambertW(-1/(b + 3))/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
@@ -1646,7 +1642,13 @@ def test_lambert_bivariate_fail():
     # checksol returns none i.e unable to check 2*LambertW(a/2) as not a
     # solution of equation
     assert solve(a/x + exp(x/2), x) == [2*LambertW(-a/2), 2*LambertW(a/2)]
-
+    # This test is placed here because _solve_lambert returns all the possible
+    # solutions and not all the correct solutions. Correct solutions come after
+    # checking possible solutions from checksol in solve.
+    p = symbols('p', positive=True)
+    eq = 4*2**(2*p + 3) - 2*p - 3
+    assert _solve_lambert(eq, p, _filtered_gens(Poly(eq), p)) == [
+        -S(3)/2 - LambertW(-4*log(2))/(2*log(2))]
 
 
 def test_rewrite_trig():
