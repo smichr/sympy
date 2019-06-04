@@ -51,6 +51,8 @@ class StrPrinter(Printer):
 
         PREC = precedence(expr)
         l = []
+        if len(terms) == 2 and str(terms[0])[0] == '-' and str(terms[1])[0] != '-':
+            terms.reverse()
         for term in terms:
             t = self._print(term)
             if t.startswith('-'):
