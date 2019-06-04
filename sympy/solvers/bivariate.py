@@ -149,17 +149,19 @@ def _lambert(eq, x):
     sol = []
     # check only real solutions:
     for k in [-1, 0]:
-        l = LambertW(d/(a*b)*exp(c*d/a/b)*exp(-f/a), k)
-        # if W's arg is between -1/e and 0 there is
-        # a -1 branch real solution, too.
-        if k and not l.is_real:
-            continue
-        rhs = -c/b + (a/d)*l
+        arg = d/(a*b)*exp(c*d/a/b)*exp(-f/a)
+        l1, l2 = map(lambda i: LambertW(i, k), (arg, -arg))
 
+        rhs1, rhs2 = map(lambda i: -c/b + (a/d)*i, (l1, l2))
         solns = solve(X1 - u, x)
-        for i, tmp in enumerate(solns):
-            solns[i] = tmp.subs(u, rhs)
-            sol.append(solns[i])
+        for tmp in solns:
+            if not k:
+                sol += list(map(lambda i: tmp.subs(u, i), (rhs1, rhs2)))
+            else:
+                if tmp.subs(u, rhs1).is_real is not False:
+                    sol.append(tmp.subs(u, rhs1))
+                if tmp.subs(u, rhs2).is_real is not False:
+                    sol.append(tmp.subs(u, rhs2))
     return sol
 
 
