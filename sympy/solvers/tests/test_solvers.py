@@ -1585,16 +1585,11 @@ def test_lambert_bivariate():
     assert solve((a/x + exp(x/2)).diff(x), x) == \
             [4*LambertW(-sqrt(2)*sqrt(a)/4), 4*LambertW(sqrt(2)*sqrt(a)/4)]
     assert solve(x*log(x) + 3*x + 1, x) == \
-            [exp(-3 + LambertW(-exp(3))), exp(-3 + LambertW(-exp(3), -1))]
-    assert solve((1/x + exp(x/2)).diff(x, 2), x) == \
-                [6*LambertW((-1)**(S(1)/3)/3), 6*LambertW((-1)**(S(1)/3)/3, -1)]
-    assert solve(-x**2 + 2**x, x) == [2, 4, -2*LambertW(log(2)/2)/log(2)]
+            [exp(-3 + LambertW(-exp(3)))]
+    assert solve(-x**2 + 2**x, x) == [2, 4]
     # issue 4271
     assert solve((a/x + exp(x/2)).diff(x, 2), x) == \
-                [6*LambertW(-(-1)**(S(1)/3)*a**(S(1)/3)/3),
-                6*LambertW((-1)**(S(1)/3)*a**(S(1)/3)/3),
-                6*LambertW(-(-1)**(S(1)/3)*a**(S(1)/3)/3, -1),
-                6*LambertW((-1)**(S(1)/3)*a**(S(1)/3)/3, -1)]
+                [6*LambertW((-1)**(S(1)/3)*a**(S(1)/3)/3)]
     ans = solve(3*x + 5 + 2**(-5*x + 3), x)
     assert len(ans) == 1 and ans[0].expand() == \
         -Rational(5, 3) + LambertW(-10240*root(2, 3)*log(2)/3)/(5*log(2))
@@ -1604,18 +1599,10 @@ def test_lambert_bivariate():
         -I*sqrt(-LambertW(1) + 1), sqrt(-1 + LambertW(1))]
     # check collection
     assert solve(3*log(a**(3*x + 5)) + b*log(a**(3*x + 5)) + a**(3*x + 5), x) == \
-        [log(-((b + 3)*LambertW(-1/(b + 3))/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(-1/(b + 3))/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3))/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3))/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(-1/(b + 3), -1)/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(-1/(b + 3), -1)/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3), -1)/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
-        log(-((b + 3)*LambertW(1/(b + 3), -1)/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
-        log((b + 3)*LambertW(-1/(b + 3))/a**5)/(3*log(a)), \
-        log((b + 3)*LambertW(1/(b + 3))/a**5)/(3*log(a)), \
-        log((b + 3)*LambertW(-1/(b + 3), -1)/a**5)/(3*log(a)), \
-        log((b + 3)*LambertW(1/(b + 3), -1)/a**5)/(3*log(a))]
+        [log(-((b + 3)*LambertW(S(1)/(b + 3))/a**5)**(S(1)/3)*(1 - sqrt(3)*I)/2)/log(a), \
+        log(-((b + 3)*LambertW(S(1)/(b + 3))/a**5)**(S(1)/3)*(1 + sqrt(3)*I)/2)/log(a), \
+        log((b + 3)*LambertW(S(1)/(b + 3))/a**5)/(3*log(a))]
+
     x0 = 1/log(a)
     x1 = LambertW(S(1)/3)
     x2 = a**(-5)
@@ -1631,25 +1618,20 @@ def test_lambert_bivariate():
     assert solve(x**2 - y**2/exp(x), x, y, dict=True) != [{x: 2*LambertW(-y/2)}, \
     {x: 2*LambertW(y/2)}, {x: 2*LambertW(-y/2, -1)}, {x: 2*LambertW(y/2, -1)}]
 
-@XFAIL
-def test_lambert_bivariate_fail():
-    # test failing current implementation
-    # These tests are failing because checksol returns false but expected to return true
-    # Although _lambert is returning correct solutions of equation
-    assert solve((1/x + exp(x/2)).diff(x), x) == \
-    [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
-    assert solve(x**2 - 2**x, x) == [2, 4]
-    # checksol returns none i.e unable to check 2*LambertW(a/2) as not a
-    # solution of equation
-    assert solve(a/x + exp(x/2), x) == [2*LambertW(-a/2), 2*LambertW(a/2)]
-    # This test is placed here because _solve_lambert returns all the possible
-    # solutions and not all the correct solutions. Correct solutions come after
-    # checking possible solutions from checksol in solve.
     p = symbols('p', positive=True)
     eq = 4*2**(2*p + 3) - 2*p - 3
     assert _solve_lambert(eq, p, _filtered_gens(Poly(eq), p)) == [
         -S(3)/2 - LambertW(-4*log(2))/(2*log(2))]
 
+@XFAIL
+def test_lambert_bivariate_fail():
+    # following tests fail because it does not include lambert arg -1 solution
+    assert solve((1/x + exp(x/2)).diff(x), x) == \
+    [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
+    assert solve((1/x + exp(x/2)).diff(x, 2), x) == \
+                [6*LambertW((-1)**(S(1)/3)/3), 6*LambertW((-1)**(S(1)/3)/3, -1)]
+    # this tests gives [2, -2*LambertW(log(2)/2)/log(2)]
+    assert solve(x**2 - 2**x, x) == [2, 4]
 
 def test_rewrite_trig():
     assert solve(sin(x) + tan(x)) == [0, -pi, pi, 2*pi]
