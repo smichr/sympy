@@ -3710,7 +3710,7 @@ def _n2dif(a, b):
     # use a re-evaluated number in the calculation of dif
     try:
         if a.is_comparable and b.is_comparable:
-            dif = (a - b).evalf(2, strict=True)
+            dif = (a - b).evalf(2)
             if dif.is_comparable:
                 return dif
     except PrecisionExhausted:
@@ -3737,7 +3737,8 @@ def _n2ri(n):
     from sympy.core.symbol import Symbol
     from sympy.core.evalf import pure_complex
     from sympy.core.function import AppliedUndef
-    if not n.atoms(Symbol) and n.args and not n.atoms(AppliedUndef):
+    from sympy.polys.rootoftools import CRootOf
+    if not n.atoms(Symbol) and n.args and not n.atoms(AppliedUndef, CRootOf):
         ri = pure_complex(n, or_real=True)
         if ri:
             if not all(i.is_Rational or i._prec != 1 for i in ri):

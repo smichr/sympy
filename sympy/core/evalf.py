@@ -128,6 +128,7 @@ def pure_complex(v, or_real=False):
     >>> pure_complex(I)
     (0, 1)
     """
+    print(v)
     if v in (S.NaN, S.Infinity, S.NegativeInfinity):
         return
     h, t = v.as_coeff_Add()
