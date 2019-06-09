@@ -850,10 +850,6 @@ def test_Add_is_negative_positive():
     assert (n + x).is_positive is None
     assert (n + x - k).is_positive is None
 
-    z = (-3 - sqrt(5) + (-sqrt(10)/2 - sqrt(2)/2)**2)
-    assert z.is_zero
-    z = sqrt(1 + sqrt(3)) + sqrt(3 + 3*sqrt(3)) - sqrt(10 + 6*sqrt(3))
-    assert z.is_zero
 
 def test_Add_is_nonpositive_nonnegative():
     x = Symbol('x', real=True)
@@ -2000,12 +1996,20 @@ def test_Mul_does_not_distribute_infinity():
 
 def test_issue_8247_8354():
     from sympy import tan
+
+    # these can be resolved with z.equals(0) but
+    # since this can be very slow and I don't know of
+    # a good way to know when it (minpoly) will be slow
+    # it's better not to include this in the _n2ri function
+    z = (-3 - sqrt(5) + (-sqrt(10)/2 - sqrt(2)/2)**2)
+    assert z.is_zero is None  # it's 0
     z = sqrt(1 + sqrt(3)) + sqrt(3 + 3*sqrt(3)) - sqrt(10 + 6*sqrt(3))
-    assert z.is_positive is False  # it's 0
+    assert z.is_positive is not True  # it's 0
+
     z = S('''-2**(1/3)*(3*sqrt(93) + 29)**2 - 4*(3*sqrt(93) + 29)**(4/3) +
         12*sqrt(93)*(3*sqrt(93) + 29)**(1/3) + 116*(3*sqrt(93) + 29)**(1/3) +
         174*2**(1/3)*sqrt(93) + 1678*2**(1/3)''')
-    assert z.is_positive is False  # it's 0
+    assert z.is_positive is not True  # it's 0
     z = 2*(-3*tan(19*pi/90) + sqrt(3))*cos(11*pi/90)*cos(19*pi/90) - \
         sqrt(3)*(-3 + 4*cos(19*pi/90)**2)
     assert z.is_positive is not True  # it's zero and it shouldn't hang
@@ -2014,7 +2018,7 @@ def test_issue_8247_8354():
         72*(3*sqrt(93) + 29)**(2/3)*(81*sqrt(93) + 783) + (162*sqrt(93) +
         1566)*((3*sqrt(93) + 29)**(1/3)*(-2**(2/3)*(3*sqrt(93) + 29)**(1/3) -
         2) - 2*2**(1/3))**2''')
-    assert z.is_positive is False  # it's 0 (and a single _mexpand isn't enough)
+    assert z.is_positive is not True  # it's 0 (and a single _mexpand isn't enough)
 
 
 def test_Add_is_zero():
@@ -2023,7 +2027,7 @@ def test_Add_is_zero():
 
     # Issue 15873
     e = -2*I + (1 + I)**2
-    assert e.is_zero is None
+    assert e.is_zero
 
 
 def test_issue_14392():
@@ -2034,3 +2038,29 @@ def test_divmod():
     assert divmod(x, y) == (x//y, x % y)
     assert divmod(x, 3) == (x//3, x % 3)
     assert divmod(3, x) == (3//x, 3 % x)
+
+
+def test_issue_12327_15283_12525():
+    # this is one of the coordinates from #15283; the full
+    # test takes longer but now gives EmptySet for the answer; the
+    # same is true for #12525
+    a = S('''
+        1013/54 - 40*sqrt(669/25 + 1476909/(1250*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3)) + 2*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3))/27 - 10*(-4 + sqrt(1338/25 -
+        2*(1757521827/125000 + 6561*sqrt(30812995)*I/12500)**(1/3) +
+        11664/(25*sqrt(669/25 + 1476909/(1250*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3)) + 2*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3))) -
+        1476909/(1250*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3)))/2 + sqrt(669/25 +
+        1476909/(1250*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3)) + 2*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3))/2)**2/27 - 40*sqrt(1338/25 -
+        2*(1757521827/125000 + 6561*sqrt(30812995)*I/12500)**(1/3) +
+        11664/(25*sqrt(669/25 + 1476909/(1250*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3)) + 2*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3))) -
+        1476909/(1250*(1757521827/125000 +
+        6561*sqrt(30812995)*I/12500)**(1/3)))/27''')
+    assert a.is_real is False

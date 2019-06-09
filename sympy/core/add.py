@@ -491,7 +491,11 @@ class Add(Expr, AssocOp):
         return all(term._eval_is_algebraic_expr(syms) for term in self.args)
 
     # assumption methods
-    _eval_is_real = lambda self: _fuzzy_group(
+    def _eval_is_real(self):
+        rv = Expr._eval_is_real(self)
+        if rv is not None:
+            return rv
+        return _fuzzy_group(
         (a.is_real for a in self.args), quick_exit=True)
     _eval_is_extended_real = lambda self: _fuzzy_group(
         (a.is_extended_real for a in self.args), quick_exit=True)
@@ -536,6 +540,9 @@ class Add(Expr, AssocOp):
             return False
 
     def _eval_is_zero(self):
+        rv = Expr._eval_is_zero(self)
+        if rv is not None:
+            return rv
         if self.is_commutative is False:
             # issue 10528: there is no way to know if a nc symbol
             # is zero or not

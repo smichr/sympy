@@ -3,7 +3,7 @@ from __future__ import print_function, division
 from .sympify import sympify, _sympify, SympifyError
 from .basic import Basic, Atom
 from .singleton import S
-from .evalf import EvalfMixin, pure_complex
+from .evalf import EvalfMixin, pure_complex, PrecisionExhausted
 from .decorators import _sympifyit, call_highest_priority
 from .cache import cacheit
 from .compatibility import reduce, as_int, default_sort_key, range, Iterable
@@ -336,7 +336,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2dif(self, other)
         if n2 is not None:
             return _sympify(n2 >= 0)
         if self.is_extended_real or other.is_extended_real:
@@ -357,7 +357,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2dif(self, other)
         if n2 is not None:
             return _sympify(n2 <= 0)
         if self.is_extended_real or other.is_extended_real:
@@ -378,7 +378,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2dif(self, other)
         if n2 is not None:
             return _sympify(n2 > 0)
         if self.is_extended_real or other.is_extended_real:
@@ -399,7 +399,7 @@ class Expr(Basic, EvalfMixin):
                 raise TypeError("Invalid comparison of complex %s" % me)
             if me is S.NaN:
                 raise TypeError("Invalid NaN comparison")
-        n2 = _n2(self, other)
+        n2 = _n2dif(self, other)
         if n2 is not None:
             return _sympify(n2 < 0)
         if self.is_extended_real or other.is_extended_real:
@@ -858,74 +858,28 @@ class Expr(Basic, EvalfMixin):
             return False
 
     def _eval_is_extended_positive(self):
-        from sympy.polys.numberfields import minimal_polynomial
-        from sympy.polys.polyerrors import NotAlgebraic
-        if self.is_number:
-            if self.is_extended_real is False:
+        ri = _n2ri(self)
+        if ri is not None:
+            if ri[1]:
                 return False
-
-            # check to see that we can get a value
-            try:
-                n2 = self._eval_evalf(2)
-            # XXX: This shouldn't be caught here
-            # Catches ValueError: hypsum() failed to converge to the requested
-            # 34 bits of accuracy
-            except ValueError:
-                return None
-            if n2 is None:
-                return None
-            if getattr(n2, '_prec', 1) == 1:  # no significance
-                return None
-            if n2 == S.NaN:
-                return None
-
-            r, i = self.evalf(2).as_real_imag()
-            if not i.is_Number or not r.is_Number:
-                return False
-            if r._prec != 1 and i._prec != 1:
-                return bool(not i and r > 0)
-            elif r._prec == 1 and (not i or i._prec == 1) and \
-                    self.is_algebraic and not self.has(Function):
-                try:
-                    if minimal_polynomial(self).is_Symbol:
-                        return False
-                except (NotAlgebraic, NotImplementedError):
-                    pass
+            return bool(ri[0] > 0)
 
     def _eval_is_extended_negative(self):
-        from sympy.polys.numberfields import minimal_polynomial
-        from sympy.polys.polyerrors import NotAlgebraic
-        if self.is_number:
-            if self.is_extended_real is False:
+        ri = _n2ri(self)
+        if ri is not None:
+            if ri[1]:
                 return False
+            return bool(ri[0] < 0)
 
-            # check to see that we can get a value
-            try:
-                n2 = self._eval_evalf(2)
-            # XXX: This shouldn't be caught here
-            # Catches ValueError: hypsum() failed to converge to the requested
-            # 34 bits of accuracy
-            except ValueError:
-                return None
-            if n2 is None:
-                return None
-            if getattr(n2, '_prec', 1) == 1:  # no significance
-                return None
-            if n2 == S.NaN:
-                return None
+    def _eval_is_real(self):
+        ri = _n2ri(self)
+        if ri is not None:
+            return not ri[1]
 
-            r, i = self.evalf(2).as_real_imag()
-            if not i.is_Number or not r.is_Number:
-                return False
-            if r._prec != 1 and i._prec != 1:
-                return bool(not i and r < 0)
-            elif r._prec == 1 and (not i or i._prec == 1) and \
-                    self.is_algebraic and not self.has(Function):
-                try:
-                    if minimal_polynomial(self).is_Symbol:
-                        return False
-                except (NotAlgebraic, NotImplementedError):
-                    pass
+    def _eval_is_zero(self):
+        ri = _n2ri(self)
+        if ri is not None:
+            return not ri[1] and not ri[0]
 
     def _eval_interval(self, x, a, b):
         """
@@ -3748,16 +3702,89 @@ class UnevaluatedExpr(Expr):
             return self.args[0]
 
 
-def _n2(a, b):
+def _n2dif(a, b):
     """Return (a - b).evalf(2) if a and b are comparable, else None.
     This should only be used when a and b are already sympified.
     """
     # /!\ it is very important (see issue 8245) not to
     # use a re-evaluated number in the calculation of dif
-    if a.is_comparable and b.is_comparable:
-        dif = (a - b).evalf(2)
-        if dif.is_comparable:
-            return dif
+    try:
+        if a.is_comparable and b.is_comparable:
+            dif = (a - b).evalf(2, strict=True)
+            if dif.is_comparable:
+                return dif
+    except PrecisionExhausted:
+        pass
+
+def _n2(e):
+    """Return ``e`` evaluated to a Number with 2 significant
+    digits, else None."""
+    try:
+        rv = e.evalf(2, strict=True)
+        if rv.is_Number:
+            return rv
+    except PrecisionExhausted:
+        pass
+
+
+def _n2ri(n):
+    """Return the real and imaginary parts of n, if it is numerical
+    expression with arguments, evaluated to a precision of 2; if n is
+    a simple +/-Number return it unevaluated as n, 0 or 0, n; return
+    None if expr is not a number.
+    """
+    from sympy.core.basic import Basic
+    from sympy.core.symbol import Symbol
+    from sympy.core.evalf import pure_complex
+    from sympy.core.function import AppliedUndef
+    if not n.atoms(Symbol) and n.args and not n.atoms(AppliedUndef):
+        ri = pure_complex(n, or_real=True)
+        if ri:
+            if not all(i.is_Rational or i._prec != 1 for i in ri):
+                return
+        else:
+            print(n)
+            try:
+                n2 = n.n(2, strict=True)
+                if n2 == n:
+                    return  # e.g. re(erfcinv(erfc(2))).n() is unchanged
+                ri = pure_complex(n2, True)
+                if ri is None or any(i._prec == 1 for i in ri):
+                    # e.g. the imaginary part has _prec = 1 in
+                    # >>> (I**(I + 2)).n(2,strict=True)
+                    # -0.21 + 0.e-8*I
+                    raise PrecisionExhausted
+            except PrecisionExhausted:
+                try:
+                    if 1:
+                        from sympy.core.power import Pow
+                        from sympy.core.function import Function
+                        from sympy.solvers.solvers import denoms
+                        if any(_n2ri(d) is None for d in denoms(n)):
+                            return
+                        if not n.has(S.ImaginaryUnit) and all(
+                                p.exp.is_Integer for p in n.atoms(Pow)
+                                ) and not n.atoms(Function):
+                            return
+                    ri = [pure_complex(
+                        i.n(2, strict=True).expand(),
+                        or_real=True)
+                        for i in n.as_real_imag()]
+                    if None in ri:
+                        print(n, n.as_real_imag())
+                        input()
+                        return
+                    ri = [i[0] for i in ri]
+                    if any(i._prec == 1 for i in ri):
+                        return
+                except PrecisionExhausted:
+                    # this will work but it can be much more expensive
+                    # than evaluation -- let user decide whether to
+                    # simplify or not
+                    # if n.equals(0):
+                    #    return (S.Zero, S.Zero)
+                    return
+        return ri
 
 
 def unchanged(func, *args):

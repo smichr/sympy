@@ -2046,3 +2046,8 @@ def test_issue_15731():
 def test_issue_10933():
     assert solve(x**4 + y*(x + 0.1), x)  # doesn't fail
     assert solve(I*x**4 + x**3 + x**2 + 1.)  # doesn't fail
+
+
+def test_issue_12561():
+    x = Dummy('x', real=True)
+    assert all(i.is_real for i in solve(x ** 3 - x + 1, x))

@@ -6,7 +6,6 @@ from .sympify import _sympify
 from .cache import cacheit
 from .singleton import S
 from .expr import Expr
-from .evalf import PrecisionExhausted
 from .function import (_coeff_isneg, expand_complex, expand_multinomial,
     expand_mul)
 from .logic import fuzzy_bool, fuzzy_not, fuzzy_and
@@ -318,6 +317,7 @@ class Pow(Expr):
 
     def _eval_power(self, other):
         from sympy import Abs, arg, exp, floor, im, log, re, sign
+        from sympy.core.expr import _n2
         b, e = self.as_base_exp()
         if b is S.NaN:
             return (b**e)**other  # let __new__ handle it
@@ -337,15 +337,6 @@ class Pow(Expr):
                 n, d = e.as_numer_denom()
                 if n.is_integer and d == 2:
                     return True
-            def _n2(e):
-                """Return ``e`` evaluated to a Number with 2 significant
-                digits, else None."""
-                try:
-                    rv = e.evalf(2, strict=True)
-                    if rv.is_Number:
-                        return rv
-                except PrecisionExhausted:
-                    pass
             # ===================================================
             if e.is_extended_real:
                 # we need _half(other) with constant floor or

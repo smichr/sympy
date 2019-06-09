@@ -113,8 +113,8 @@ def fastlog(x):
 
 def pure_complex(v, or_real=False):
     """Return a and b if v matches a + I*b where b is not zero and
-    a and b are Numbers, else None. If `or_real` is True then 0 will
-    be returned for `b` if `v` is a real number.
+    a and b are real Numbers, else None. If `or_real` is True then 0
+    will be returned for `b` if `v` is a real number.
 
     >>> from sympy.core.evalf import pure_complex
     >>> from sympy import sqrt, I, S
@@ -128,6 +128,8 @@ def pure_complex(v, or_real=False):
     >>> pure_complex(I)
     (0, 1)
     """
+    if v in (S.NaN, S.Infinity, S.NegativeInfinity):
+        return
     h, t = v.as_coeff_Add()
     if not t:
         if or_real:

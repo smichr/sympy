@@ -1798,21 +1798,17 @@ def test_nth_linear_constant_coeff_homogeneous_rootof():
     # One real root, two complex conjugate pairs
     eq = f(x).diff(x, 5) + 11*f(x).diff(x) - 2*f(x)
     r1, r2, r3, r4, r5 = [rootof(x**5 + 11*x - 2, n) for n in range(5)]
-    sol = Eq(f(x),
-            C5*exp(r1*x)
-            + exp(re(r2)*x) * (C1*sin(im(r2)*x) + C2*cos(im(r2)*x))
-            + exp(re(r4)*x) * (C3*sin(im(r4)*x) + C4*cos(im(r4)*x))
-            )
+    sol = Eq(f(x), C5*exp(r1*x) + (C1*sin(x*Abs(im(r2))) +
+        C2*cos(x*im(r2)))*exp(x*re(r2)) + (C3*sin(x*Abs(im(r4))) +
+        C4*cos(x*im(r4)))*exp(x*re(r4)))
     assert dsolve(eq) == sol
     # FIXME: assert checkodesol(eq, sol) == (True, [0])  # Hangs...
 
     # Three real roots, one complex conjugate pair
     eq = f(x).diff(x,5) - 3*f(x).diff(x) + f(x)
     r1, r2, r3, r4, r5 = [rootof(x**5 - 3*x + 1, n) for n in range(5)]
-    sol = Eq(f(x),
-            C3*exp(r1*x) + C4*exp(r2*x) + C5*exp(r3*x)
-            + exp(re(r4)*x) * (C1*sin(im(r4)*x) + C2*cos(im(r4)*x))
-            )
+    sol = Eq(f(x), C3*exp(r1*x) + C4*exp(r2*x) + C5*exp(r3*x) +
+        (C1*sin(x*Abs(im(r4))) + C2*cos(x*im(r4)))*exp(x*re(r4)))
     assert dsolve(eq) == sol
     # FIXME: assert checkodesol(eq, sol) == (True, [0])  # Hangs...
 
@@ -1826,23 +1822,18 @@ def test_nth_linear_constant_coeff_homogeneous_rootof():
     # Rational root and unsolvable quintic
     eq = f(x).diff(x, 6) - 6*f(x).diff(x, 5) + 5*f(x).diff(x, 4) + 10*f(x).diff(x) - 50 * f(x)
     r2, r3, r4, r5, r6 = [rootof(x**5 - x**4 + 10, n) for n in range(5)]
-    sol = Eq(f(x),
-          C5*exp(5*x)
-        + C6*exp(x*r2)
-        + exp(re(r3)*x) * (C1*sin(im(r3)*x) + C2*cos(im(r3)*x))
-        + exp(re(r5)*x) * (C3*sin(im(r5)*x) + C4*cos(im(r5)*x))
-            )
+    sol = Eq(f(x), C5*exp(5*x) + C6*exp(r1*x) + (C1*sin(x*Abs(im(r2))) +
+        C2*cos(x*im(r2)))*exp(x*re(r2)) + (C3*sin(x*Abs(im(r4))) +
+        C4*cos(x*im(r4)))*exp(x*re(r4)))
     assert dsolve(eq) == sol
     # FIXME: assert checkodesol(eq, sol) == (True, [0])  # Hangs...
 
     # Five double roots (this is (x**5 - x + 1)**2)
     eq = f(x).diff(x, 10) - 2*f(x).diff(x, 6) + 2*f(x).diff(x, 5) + f(x).diff(x, 2) - 2*f(x).diff(x, 1) + f(x)
     r1, r2, r3, r4, r5 = [rootof(x**5 - x + 1, n) for n in range(5)]
-    sol = Eq(f(x),
-              (C1 + C2 *x)*exp(r1*x)
-            + exp(re(r2)*x) * ((C3 + C4*x)*sin(im(r2)*x) + (C5 + C6 *x)*cos(im(r2)*x))
-            + exp(re(r4)*x) * ((C7 + C8*x)*sin(im(r4)*x) + (C9 + C10*x)*cos(im(r4)*x))
-            )
+    sol = Eq(f(x), (C1 + C2*x)*exp(r1*x) + ((C3 + C4*x)*sin(x*Abs(im(r2))) + (C5
+        + C6*x)*cos(x*im(r2)))*exp(x*re(r2)) + ((C7 + C8*x)*sin(x*Abs(im(r4)))
+        + (C10*x + C9)*cos(x*im(r4)))*exp(x*re(r4)))
     assert dsolve(eq) == sol
     # FIXME: assert checkodesol(eq, sol) == (True, [0])  # Hangs...
 
