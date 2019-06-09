@@ -41,7 +41,7 @@ from sympy.simplify import (simplify, collect, powsimp, posify, powdenest,
 from sympy.simplify.sqrtdenest import sqrt_depth
 from sympy.simplify.fu import TR1
 from sympy.matrices import Matrix, zeros
-from sympy.polys import roots, cancel, factor, Poly, degree
+from sympy.polys import roots, cancel, factor, Poly, degree, degree_list
 from sympy.polys.polyerrors import GeneratorsNeeded, PolynomialError
 from sympy.functions.elementary.piecewise import piecewise_fold, Piecewise
 
