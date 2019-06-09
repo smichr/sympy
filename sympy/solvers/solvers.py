@@ -2740,9 +2740,20 @@ def _tsolve(eq, sym, **flags):
                 return list(ordered(set(sol)))
 
         elif lhs.is_Mul and rhs.is_positive:
-            llhs = expand_log(log(lhs))
+            even_degrees = [i for i in degree_list(lhs) if i%2 == 0]
+            t = Dummy('t', positive=True)
+            lhs_1 = lhs
+            if len(even_degrees) != 0:
+                for i in even_degrees:
+                    lhs_1 = lhs_1.xreplace({sym**i: t**i})
+            llhs = expand_log(log(lhs_1))
             if llhs.is_Add:
-                return _solve(llhs - log(rhs), sym, **flags)
+                if llhs.has(t):
+                    llhs1, llhs2 = map(lambda i: llhs.xreplace({t: i}), (sym, -sym))
+                    sol1, sol2 = map(lambda i: _solve(i - log(rhs), sym, **flags), (llhs1, llhs2))
+                    return sol1 + sol2
+                else:
+                    return _solve(llhs - log(rhs), sym, **flags)
 
         elif lhs.is_Function and len(lhs.args) == 1:
             if lhs.func in multi_inverses:
