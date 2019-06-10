@@ -876,6 +876,11 @@ class Expr(Basic, EvalfMixin):
         if ri is not None:
             return not ri[1]
 
+    def _eval_is_extended_real(self):
+        if self is S.Infinity or self is S.NegativeInfinity:
+            return True
+        return self.is_real
+
     def _eval_is_zero(self):
         ri = _n2ri(self)
         if ri is not None:
@@ -3744,7 +3749,6 @@ def _n2ri(n):
             if not all(i.is_Rational or i._prec != 1 for i in ri):
                 return
         else:
-            print(n)
             try:
                 n2 = n.n(2, strict=True)
                 if n2 == n:
@@ -3767,13 +3771,13 @@ def _n2ri(n):
                                 p.exp.is_Integer for p in n.atoms(Pow)
                                 ) and not n.atoms(Function):
                             return
+                    ri = r, i = n.as_real_imag()
+                    if isinstance(r, re) or isinstance(i, im):
+                        return
                     ri = [pure_complex(
                         i.n(2, strict=True).expand(),
-                        or_real=True)
-                        for i in n.as_real_imag()]
+                        or_real=True) for i in ri]
                     if None in ri:
-                        print(n, n.as_real_imag())
-                        input()
                         return
                     ri = [i[0] for i in ri]
                     if any(i._prec == 1 for i in ri):
