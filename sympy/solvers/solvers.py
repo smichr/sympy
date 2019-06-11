@@ -2741,7 +2741,7 @@ def _tsolve(eq, sym, **flags):
 
         elif lhs.is_Mul and rhs.is_positive:
             llhs = expand_log(log(lhs))
-            if lhs.is_Add:
+            if llhs.is_Add:
                 return _solve(lhs - rhs, sym, **flags)
 
         elif lhs.is_Function and len(lhs.args) == 1:
