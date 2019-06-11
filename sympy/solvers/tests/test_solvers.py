@@ -1584,9 +1584,12 @@ def test_lambert_bivariate():
     from sympy.solvers.bivariate import _filtered_gens, _solve_lambert
     assert solve((a/x + exp(x/2)).diff(x), x) == \
             [4*LambertW(-sqrt(2)*sqrt(a)/4), 4*LambertW(sqrt(2)*sqrt(a)/4)]
+    assert solve((1/x + exp(x/2)).diff(x), x) == \
+    [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
     assert solve(x*log(x) + 3*x + 1, x) == \
             [exp(-3 + LambertW(-exp(3)))]
     assert solve(-x**2 + 2**x, x) == [2, 4]
+    assert solve(x**2 - 2**x, x) == [2, 4]
     # issue 4271
     assert solve((a/x + exp(x/2)).diff(x, 2), x) == \
                 [6*LambertW((-1)**(S(1)/3)*a**(S(1)/3)/3)]
@@ -1626,12 +1629,9 @@ def test_lambert_bivariate():
 @XFAIL
 def test_lambert_bivariate_fail():
     # following tests fail because it does not include lambert arg -1 solution
-    assert solve((1/x + exp(x/2)).diff(x), x) == \
-    [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
     assert solve((1/x + exp(x/2)).diff(x, 2), x) == \
                 [6*LambertW((-1)**(S(1)/3)/3), 6*LambertW((-1)**(S(1)/3)/3, -1)]
-    # this tests gives [2, -2*LambertW(log(2)/2)/log(2)]
-    assert solve(x**2 - 2**x, x) == [2, 4]
+
 
 def test_rewrite_trig():
     assert solve(sin(x) + tan(x)) == [0, -pi, pi, 2*pi]
