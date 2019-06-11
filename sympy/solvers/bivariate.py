@@ -8,7 +8,7 @@ from sympy.core.singleton import S
 from sympy.core.symbol import Dummy
 from sympy.functions.elementary.exponential import (LambertW, exp, log)
 from sympy.functions.elementary.miscellaneous import root
-from sympy.polys.polytools import Poly, factor
+from sympy.polys.polytools import Poly, factor, degree_list
 from sympy.core.function import _mexpand
 from sympy.simplify.simplify import separatevars
 from sympy.simplify.radsimp import collect
@@ -199,6 +199,12 @@ def _solve_lambert(f, symbol, gens):
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
 
+    even_degrees = [i for i in degree_list(lhs) if i%2 == 0]
+    t = Dummy('t', **symbol.assumptions0)
+    if len(even_degrees) != 0:
+        for i in even_degrees:
+            lhs = lhs.xreplace({symbol**i: t**i})
+
     lamcheck = [tmp for tmp in gens
                 if (tmp.func in [exp, log] or
                 (tmp.is_Pow and symbol in tmp.exp.free_symbols))]
@@ -208,8 +214,16 @@ def _solve_lambert(f, symbol, gens):
     if lhs.is_Mul:
         lhs = expand_log(log(lhs))
         rhs = log(rhs)
+        if lhs.is_Add and lhs.has(t):
+            llhs1, llhs2 = map(lambda i: lhs.xreplace({t: i}), (symbol, -symbol))
+            sol1, sol2 = map(lambda i: _solve_lambert(i - rhs, symbol, gens), (llhs1, llhs2))
+            return list((set(sol1 + sol2)))
+
+    if lhs.has(t):
+        lhs = lhs.xreplace({t: symbol})
 
     lhs = factor(lhs, deep=True)
+
     # make sure we have inverted as completely as possible
     r = Dummy()
     i, lhs = _invert(lhs - r, symbol)
