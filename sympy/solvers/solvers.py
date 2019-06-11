@@ -41,7 +41,7 @@ from sympy.simplify import (simplify, collect, powsimp, posify, powdenest,
 from sympy.simplify.sqrtdenest import sqrt_depth
 from sympy.simplify.fu import TR1
 from sympy.matrices import Matrix, zeros
-from sympy.polys import roots, cancel, factor, Poly, degree, degree_list
+from sympy.polys import roots, cancel, factor, Poly, degree
 from sympy.polys.polyerrors import GeneratorsNeeded, PolynomialError
 from sympy.functions.elementary.piecewise import piecewise_fold, Piecewise
 
@@ -2740,20 +2740,9 @@ def _tsolve(eq, sym, **flags):
                 return list(ordered(set(sol)))
 
         elif lhs.is_Mul and rhs.is_positive:
-            even_degrees = [i for i in degree_list(lhs) if i%2 == 0]
-            t = Dummy('t', positive=True)
-            lhs_1 = lhs
-            if len(even_degrees) != 0:
-                for i in even_degrees:
-                    lhs_1 = lhs_1.xreplace({sym**i: t**i})
-            llhs = expand_log(log(lhs_1))
-            if llhs.is_Add:
-                if llhs.has(t):
-                    llhs1, llhs2 = map(lambda i: llhs.xreplace({t: i}), (sym, -sym))
-                    sol1, sol2 = map(lambda i: _solve(i - log(rhs), sym, **flags), (llhs1, llhs2))
-                    return sol1 + sol2
-                else:
-                    return _solve(llhs - log(rhs), sym, **flags)
+            llhs = expand_log(log(lhs))
+            if lhs.is_Add:
+                return _solve(lhs - rhs, sym, **flags)
 
         elif lhs.is_Function and len(lhs.args) == 1:
             if lhs.func in multi_inverses:
