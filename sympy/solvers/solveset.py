@@ -1433,10 +1433,10 @@ def _transolve(f, symbol, domain):
     {------------------}
      -2*log(3) + log(2)
     >>> pprint(tsolve(f, x), use_unicode=False)
-         /   3     \
-         | --------|
-         | log(2/9)|
-    [-log\2         /]
+        /    3    \
+        | --------|
+        | log(9/2)|
+    [log\2        /]
 
     2) Extensible
 
