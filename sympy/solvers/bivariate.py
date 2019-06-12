@@ -211,6 +211,15 @@ def _solve_lambert(f, symbol, gens):
     if not lamcheck:
         raise NotImplementedError()
 
+    if lhs.is_Add and lhs.has(t) and len(even_degrees) == 1:
+        other = lhs.subs(t, 0)
+        t_term = lhs - other
+        rhs = rhs - other
+        diff = expand_log(log(t_term) - log(rhs))
+        llhs1, llhs2 = map(lambda i: diff.xreplace({t: i}), (symbol, -symbol))
+        sol1, sol2 = map(lambda i: _solve_lambert(i, symbol, gens), (llhs1, llhs2))
+        return list((set(sol1 + sol2)))
+
     if lhs.is_Mul:
         lhs = expand_log(log(lhs))
         rhs = log(rhs)
