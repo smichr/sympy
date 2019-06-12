@@ -1575,8 +1575,6 @@ def test_other_lambert():
     a = S(6)/5
     assert set(solve(x**a - a**x)) == set(
         [a, -a*LambertW(-log(a)/a)/log(a)])
-    assert set(solve(3**cos(x) - cos(x)**3)) == set(
-        [acos(3), acos(-3*LambertW(-log(3)/3)/log(3))])
 
 @slow
 def test_lambert_bivariate():
@@ -1588,8 +1586,8 @@ def test_lambert_bivariate():
     [4*LambertW(-sqrt(2)/4), 4*LambertW(sqrt(2)/4), 4*LambertW(-sqrt(2)/4, -1)]
     assert solve(x*log(x) + 3*x + 1, x) == \
             [exp(-3 + LambertW(-exp(3)))]
-    assert solve(-x**2 + 2**x, x) == [2, 4]
-    assert solve(x**2 - 2**x, x) == [2, 4]
+    assert solve(-x**2 + 2**x, x) == [2, 4, -2*LambertW(log(2)/2)/log(2)]
+    assert solve(x**2 - 2**x, x) == [2, 4, -2*LambertW(log(2)/2)/log(2)]
     # issue 4271
     assert solve((a/x + exp(x/2)).diff(x, 2), x) == \
                 [6*LambertW((-1)**(S(1)/3)*a**(S(1)/3)/3)]
@@ -1625,6 +1623,8 @@ def test_lambert_bivariate():
     eq = 4*2**(2*p + 3) - 2*p - 3
     assert _solve_lambert(eq, p, _filtered_gens(Poly(eq), p)) == [
         -S(3)/2 - LambertW(-4*log(2))/(2*log(2))]
+    assert set(solve(3**cos(x) - cos(x)**3)) == set(
+        [acos(3), acos(-3*LambertW(-log(3)/3)/log(3))])
 
 @XFAIL
 def test_lambert_bivariate_fail():
