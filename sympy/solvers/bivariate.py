@@ -218,7 +218,7 @@ def _solve_lambert(f, symbol, gens):
         diff = expand_log(log(t_term) - log(rhs))
         llhs1, llhs2 = map(lambda i: diff.xreplace({t: i}), (symbol, -symbol))
         sol1, sol2 = map(lambda i: _solve_lambert(i, symbol, gens), (llhs1, llhs2))
-        return list((set(sol1 + sol2)))
+        return list(set(sol1 + sol2))
 
     if lhs.is_Mul:
         lhs = expand_log(log(lhs))
@@ -226,7 +226,7 @@ def _solve_lambert(f, symbol, gens):
         if lhs.is_Add and lhs.has(t):
             llhs1, llhs2 = map(lambda i: lhs.xreplace({t: i}), (symbol, -symbol))
             sol1, sol2 = map(lambda i: _solve_lambert(i - rhs, symbol, gens), (llhs1, llhs2))
-            return list((set(sol1 + sol2)))
+            return list(set(sol1 + sol2))
 
     if lhs.has(t):
         lhs = lhs.xreplace({t: symbol})
