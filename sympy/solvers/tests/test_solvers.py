@@ -1562,7 +1562,6 @@ def test_lambert_multivariate():
     # coverage test
     raises(NotImplementedError, lambda: solve(x - sin(x)*log(y - x), x))
     assert solve(x**3 - 3**x, x) == [3, -3*LambertW(-log(3)/3)/log(3)]
-    assert solve(3**cos(x) - cos(x)**3) == [acos(3), acos(-3*LambertW(-log(3)/3)/log(3))]
     assert set(solve(3*log(x) - x*log(3))) == set(  # 2.478... and 3
         [3, -3*LambertW(-log(3)/3)/log(3)])
     assert solve(LambertW(2*x) - y, x) == [y*exp(y)/2]
