@@ -201,9 +201,6 @@ def _solve_lambert(f, symbol, gens):
 
     even_degrees = [i for i in degree_list(lhs) if i%2 == 0]
     t = Dummy('t', **symbol.assumptions0)
-    if len(even_degrees) != 0:
-        for i in even_degrees:
-            lhs = lhs.xreplace({symbol**i: t**i})
 
     lamcheck = [tmp for tmp in gens
                 if (tmp.func in [exp, log] or
@@ -211,25 +208,48 @@ def _solve_lambert(f, symbol, gens):
     if not lamcheck:
         raise NotImplementedError()
 
-    if lhs.is_Add and lhs.has(t) and len(even_degrees) == 1:
-        other = lhs.subs(t, 0)
-        t_term = lhs - other
-        rhs = rhs - other
-        diff = expand_log(log(t_term) - log(rhs))
+    def solve_even_degree_branches(diff, symbol, t, gens):
+        """
+        Helper function to consider even degree branches of lambert
+        equation if exists.
+
+        For example:
+        Equation (a/x + exp(x/2)).diff(x) = 0 is represented
+        in logform as both of the below equations.
+        1. 2*log(x) + x/2 - log(a) = 0
+        2. 2*log(-x) + x/2 - log(a) = 0
+
+        Input: diff, symbol, t, gens
+        diff - Includes a dummy variable t which can be replaced
+        with +symbol and -symbol.
+
+        Output: Returns combined solution after considering all
+        even degree branches of original equation.
+        """
         llhs1, llhs2 = map(lambda i: diff.xreplace({t: i}), (symbol, -symbol))
-        sol1, sol2 = map(lambda i: _solve_lambert(i, symbol, gens), (llhs1, llhs2))
-        return list(set(sol1 + sol2))
+        if llhs1 == llhs2:
+            return _solve_lambert(llhs1, symbol, gens)
+        else:
+            sol1, sol2 = map(lambda i: _solve_lambert(i, symbol, gens), (llhs1, llhs2))
+            return list(set(sol1 + sol2))
+
+    if lhs.is_Add and len(even_degrees) == 1:
+        lhs = lhs.xreplace({symbol**even_degrees[0]: t**even_degrees[0]})
+        if lhs.has(t):
+            other = lhs.subs(t, 0)
+            t_term = lhs - other
+            rhs = rhs - other
+            diff = expand_log(log(t_term) - log(rhs))
+            return solve_even_degree_branches(diff, symbol, t, gens)
 
     if lhs.is_Mul:
+        if len(even_degrees) != 0:
+            for i in even_degrees:
+                lhs = lhs.xreplace({symbol**i: t**i})
         lhs = expand_log(log(lhs))
         rhs = log(rhs)
         if lhs.is_Add and lhs.has(t):
-            llhs1, llhs2 = map(lambda i: lhs.xreplace({t: i}), (symbol, -symbol))
-            sol1, sol2 = map(lambda i: _solve_lambert(i - rhs, symbol, gens), (llhs1, llhs2))
-            return list(set(sol1 + sol2))
-
-    if lhs.has(t):
-        lhs = lhs.xreplace({t: symbol})
+            return solve_even_degree_branches(lhs - rhs, symbol, t, gens)
 
     lhs = factor(lhs, deep=True)
 
