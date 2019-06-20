@@ -208,7 +208,7 @@ def _solve_lambert(f, symbol, gens):
     if not lamcheck:
         raise NotImplementedError()
 
-    def solve_even_degree_branches(diff, symbol, t, gens):
+    def _solve_even_degree_branches(diff, symbol, t, gens):
         """
         Helper function to consider even degree branches of lambert
         equation if exists.
@@ -240,7 +240,7 @@ def _solve_lambert(f, symbol, gens):
             t_term = lhs - other
             rhs = rhs - other
             diff = expand_log(log(t_term) - log(rhs))
-            return solve_even_degree_branches(diff, symbol, t, gens)
+            return _solve_even_degree_branches(diff, symbol, t, gens)
 
     if lhs.is_Mul:
         if len(even_degrees) != 0:
@@ -249,7 +249,7 @@ def _solve_lambert(f, symbol, gens):
         lhs = expand_log(log(lhs))
         rhs = log(rhs)
         if lhs.is_Add and lhs.has(t):
-            return solve_even_degree_branches(lhs - rhs, symbol, t, gens)
+            return _solve_even_degree_branches(lhs - rhs, symbol, t, gens)
 
     lhs = factor(lhs, deep=True)
 
