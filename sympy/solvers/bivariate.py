@@ -8,7 +8,8 @@ from sympy.core.singleton import S
 from sympy.core.symbol import Dummy
 from sympy.functions.elementary.exponential import (LambertW, exp, log)
 from sympy.functions.elementary.miscellaneous import root
-from sympy.polys.polytools import Poly, factor, degree_list
+from sympy.polys.polytools import Poly, factor, poly_from_expr
+from sympy.polys.polyerrors import PolificationFailed, ComputationFailed
 from sympy.core.function import _mexpand
 from sympy.simplify.simplify import separatevars
 from sympy.simplify.radsimp import collect
@@ -113,6 +114,28 @@ def _linab(arg, symbol):
         x = -x
     return a, b, x
 
+def power_list(f, *gens, **args):
+    """
+    Helper function to return all powers of variables
+    present in f.
+    Examples
+    ========
+    >>> from sympy.abc import x, y
+    >>> from sympy.solvers.bivariate import power_list
+    >>> power_list(x**2 + x*y + 1)
+    [0, 1, 2]
+    """
+    power = []
+    try:
+        if f != 0:
+            F, opt = poly_from_expr(f, *gens, **args)
+            for i in F.monoms():
+                power += list(i)
+            power = (list(set(power)))
+    except PolificationFailed as exc:
+        raise ComputationFailed('power_list', 1, exc)
+    return power
+
 
 def _lambert(eq, x):
     """
@@ -199,7 +222,7 @@ def _solve_lambert(f, symbol, gens):
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
 
-    even_degrees = [i for i in degree_list(lhs) if i%2 == 0]
+    even_degrees = [i for i in power_list(lhs) if i%2 == 0 and i != 0]
     t = Dummy('t', **symbol.assumptions0)
 
     lamcheck = [tmp for tmp in gens
