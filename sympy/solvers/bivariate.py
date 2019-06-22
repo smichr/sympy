@@ -131,7 +131,7 @@ def power_list(f, *gens, **args):
             F, opt = poly_from_expr(f, *gens, **args)
             for i in F.monoms():
                 power += list(i)
-            power = (list(set(power)))
+            power = (list(ordered(set(power))))
     except PolificationFailed as exc:
         raise ComputationFailed('power_list', 1, exc)
     return power
