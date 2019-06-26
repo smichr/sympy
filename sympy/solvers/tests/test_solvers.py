@@ -1549,7 +1549,7 @@ def test_issue_14607():
 
 def test_lambert_multivariate():
     from sympy.abc import a, x, y
-    from sympy.solvers.bivariate import _filtered_gens, _lambert
+    from sympy.solvers.bivariate import _filtered_gens, _lambert, power_list
     assert _filtered_gens(Poly(x + 1/x + exp(x) + y), x) == set([x, exp(x)])
     assert _lambert(x, x) == []
     assert solve((x**2 - 2*x + 1).subs(x, log(x) + 3*x)) == [LambertW(3*S.Exp1)/3]
@@ -1565,6 +1565,13 @@ def test_lambert_multivariate():
     assert set(solve(3*log(x) - x*log(3))) == set(  # 2.478... and 3
         [3, -3*LambertW(-log(3)/3)/log(3)])
     assert solve(LambertW(2*x) - y, x) == [y*exp(y)/2]
+    # Helper function power_list
+    assert power_list(x, x) == [(1,)]
+    assert power_list(x, y) == []
+    assert power_list(x**2 + x*y + 1, x) == [(2,), (1,)]
+    assert power_list(x**2 + x*y + 1, x, y) == [(2,), (1,), (1,)]
+    assert power_list(x**4 + exp(x**5 + x + 1), x) == [(4,), (1,), (5,)]
+    assert power_list(sin(x**2 + 1) + cos(x**3 + x), x) == [(1,), (3,), (2,)]
 
 
 @XFAIL
