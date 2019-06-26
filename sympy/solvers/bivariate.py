@@ -6,6 +6,7 @@ from sympy.core.function import expand_log
 from sympy.core.power import Pow
 from sympy.core.singleton import S
 from sympy.core.symbol import Dummy
+from sympy.functions import sin, cos, sec, csc, tan, cot, Abs
 from sympy.functions.elementary.exponential import (LambertW, exp, log)
 from sympy.functions.elementary.miscellaneous import root
 from sympy.polys.polytools import Poly, factor, poly_from_expr
@@ -14,6 +15,10 @@ from sympy.core.function import _mexpand
 from sympy.simplify.simplify import separatevars
 from sympy.simplify.radsimp import collect
 from sympy.solvers.solvers import solve, _invert
+from sympy.solvers.solveset import _term_factors as tf
+from sympy.utilities.iterables import flatten
+
+trigs = (sin, cos, sec, csc, tan, cot)
 
 
 def _filtered_gens(poly, symbol):
@@ -114,27 +119,44 @@ def _linab(arg, symbol):
         x = -x
     return a, b, x
 
-def power_list(f, *gens, **args):
+
+def power_list(f, *symbols):
     """
-    Helper function to return all powers of variables
-    present in f.
+    Helper function to return powers of variables
+    present in f in dictionary.
+
+    Parameters
+    ==========
+
+    f : Expr
+        The function whose powers list is to be returned.
+
+    symbols : Symbol
+        The symbols whose powers are to be returned.
+
+    Returns
+    =======
+
+    Powers of symbols in f in dictionary form.
+
     Examples
     ========
+
     >>> from sympy.abc import x, y
     >>> from sympy.solvers.bivariate import power_list
-    >>> power_list(x**2 + x*y + 1)
-    [0, 1, 2]
+    >>> power_list(x**2 + x*y + 1, x)
+    [(2,), (1,)]
+    >>> power_list(x**2 + x*y + 1, x, y)
+    [(2,), (1,), (1,)]
     """
-    power = []
-    try:
-        if f != 0:
-            F, opt = poly_from_expr(f, *gens, **args)
-            for i in F.monoms():
-                power += list(i)
-            power = (list(ordered(set(power))))
-    except PolificationFailed as exc:
-        raise ComputationFailed('power_list', 1, exc)
-    return power
+    result = []
+    for t in tf(f):
+        if isinstance(t, (trigs, Abs, log, exp)):
+            result += power_list(t.args[0], *symbols)
+        elif t.has(*symbols):
+            p = t.as_poly()
+            result += p.monoms()
+    return result
 
 
 def _lambert(eq, x):
@@ -222,7 +244,8 @@ def _solve_lambert(f, symbol, gens):
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
 
-    even_degrees = [i for i in power_list(lhs) if i%2 == 0 and i != 0]
+    even_degrees = [i for i in list(set(flatten(power_list(lhs, symbol)))) \
+                    if i%2 == 0 and i != 0]
     t = Dummy('t', **symbol.assumptions0)
 
     lamcheck = [tmp for tmp in gens
