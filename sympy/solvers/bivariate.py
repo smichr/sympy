@@ -15,7 +15,7 @@ from sympy.core.function import _mexpand
 from sympy.simplify.simplify import separatevars
 from sympy.simplify.radsimp import collect
 from sympy.solvers.solvers import solve, _invert
-from sympy.solvers.solveset import _term_factors as tf
+from sympy.solvers.solveset import _term_factors as term_factors
 from sympy.utilities.iterables import flatten
 
 trigs = (sin, cos, sec, csc, tan, cot)
@@ -120,16 +120,16 @@ def _linab(arg, symbol):
     return a, b, x
 
 
-def power_list(f, *symbols):
+def _power_list(f, *symbols):
     """
     Helper function to return powers of variables
-    present in f in dictionary.
+    present in f in list of dictionaries.
 
     Parameters
     ==========
 
     f : Expr
-        The function whose powers list is to be returned.
+        The expression in which powers of symbols present is to be returned.
 
     symbols : Symbol
         The symbols whose powers are to be returned.
@@ -137,22 +137,22 @@ def power_list(f, *symbols):
     Returns
     =======
 
-    Powers of symbols in f in dictionary form.
+    Powers of symbols in f in list of dictionaries form.
 
     Examples
     ========
 
     >>> from sympy.abc import x, y
-    >>> from sympy.solvers.bivariate import power_list
-    >>> power_list(x**2 + x*y + 1, x)
+    >>> from sympy.solvers.bivariate import _power_list as pl
+    >>> pl(x**2 + x*y + 1, x)
     [(2,), (1,)]
-    >>> power_list(x**2 + x*y + 1, x, y)
+    >>> pl(x**2 + x*y + 1, x, y)
     [(2,), (1,), (1,)]
     """
     result = []
-    for t in tf(f):
+    for t in term_factors(f):
         if isinstance(t, (trigs, Abs, log, exp)):
-            result += power_list(t.args[0], *symbols)
+            result += _power_list(t.args[0], *symbols)
         elif t.has(*symbols):
             p = t.as_poly()
             result += p.monoms()
@@ -241,23 +241,10 @@ def _solve_lambert(f, symbol, gens):
       a = -1, d = a*log(p), f = -log(d) - g*log(p)
     """
 
-    nrhs, lhs = f.as_independent(symbol, as_Add=True)
-    rhs = -nrhs
-
-    even_degrees = [i for i in list(set(flatten(power_list(lhs, symbol)))) \
-                    if i%2 == 0 and i != 0]
-    t = Dummy('t', **symbol.assumptions0)
-
-    lamcheck = [tmp for tmp in gens
-                if (tmp.func in [exp, log] or
-                (tmp.is_Pow and symbol in tmp.exp.free_symbols))]
-    if not lamcheck:
-        raise NotImplementedError()
-
-    def _solve_even_degree_branches(diff, symbol, t, gens):
+    def _solve_even_degree_expr(expr, symbol):
         """
-        Helper function to consider even degree branches of lambert
-        equation if exists.
+        Helper function to consider two equations obtained if even degree
+        of symbol is present in the expr..
 
         For example:
         Equation (a/x + exp(x/2)).diff(x) = 0 is represented
@@ -272,12 +259,25 @@ def _solve_lambert(f, symbol, gens):
         Output: Returns combined solution after considering all
         even degree branches of original equation.
         """
-        llhs1, llhs2 = map(lambda i: diff.xreplace({t: i}), (symbol, -symbol))
+        llhs1, llhs2 = map(lambda i: expr.xreplace({t: i}), (symbol, -symbol))
         if llhs1 == llhs2:
             return _solve_lambert(llhs1, symbol, gens)
         else:
             sol1, sol2 = map(lambda i: _solve_lambert(i, symbol, gens), (llhs1, llhs2))
             return list(set(sol1 + sol2))
+
+    nrhs, lhs = f.as_independent(symbol, as_Add=True)
+    rhs = -nrhs
+
+    even_degrees = [i for i in list(set(flatten(_power_list(lhs, symbol)))) \
+                    if i%2 == 0 and i != 0]
+    t = Dummy('t', **symbol.assumptions0)
+
+    lamcheck = [tmp for tmp in gens
+                if (tmp.func in [exp, log] or
+                (tmp.is_Pow and symbol in tmp.exp.free_symbols))]
+    if not lamcheck:
+        raise NotImplementedError()
 
     if lhs.is_Add and len(even_degrees) == 1:
         lhs = lhs.xreplace({symbol**even_degrees[0]: t**even_degrees[0]})
@@ -286,16 +286,15 @@ def _solve_lambert(f, symbol, gens):
             t_term = lhs - other
             rhs = rhs - other
             diff = expand_log(log(t_term) - log(rhs))
-            return _solve_even_degree_branches(diff, symbol, t, gens)
+            return _solve_even_degree_expr(diff, symbol)
 
     if lhs.is_Mul:
         if len(even_degrees) != 0:
-            for i in even_degrees:
-                lhs = lhs.xreplace({symbol**i: t**i})
+            lhs = lhs.xreplace({symbol**i: t**i} for i in even_degrees)
         lhs = expand_log(log(lhs))
         rhs = log(rhs)
         if lhs.is_Add and lhs.has(t):
-            return _solve_even_degree_branches(lhs - rhs, symbol, t, gens)
+            return _solve_even_degree_expr(lhs - rhs, symbol)
 
     lhs = factor(lhs, deep=True)
 
