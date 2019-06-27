@@ -300,7 +300,8 @@ def _solve_lambert(f, symbol, gens):
 
     if lhs.is_Mul:
         if len(even_degrees) != 0:
-            lhs = lhs.xreplace({symbol**i: t**i} for i in even_degrees)
+            for i in even_degrees:
+                lhs = lhs.xreplace({symbol**i: t**i})
         lhs = expand_log(log(lhs))
         rhs = log(rhs)
         if lhs.is_Add and lhs.has(t):
