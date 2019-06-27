@@ -252,12 +252,22 @@ def _solve_lambert(f, symbol, gens):
         1. 2*log(x) + x/2 - log(a) = 0
         2. 2*log(-x) + x/2 - log(a) = 0
 
-        Input: diff, symbol, t, gens
-        diff - Includes a dummy variable t which can be replaced
-        with +symbol and -symbol.
+        Parameters
+        ==========
 
-        Output: Returns combined solution after considering all
-        even degree branches of original equation.
+        expr : Expr
+            The expression which includes a dummy variable t which can be
+            replaced with +symbol and -symbol.
+
+        symbol : Symbol
+            The symbol concerned in expr.
+
+        Returns
+        =======
+
+        Combined solution after considering all even degree branches of
+        original equation.
+
         """
         llhs1, llhs2 = map(lambda i: expr.xreplace({t: i}), (symbol, -symbol))
         if llhs1 == llhs2:
