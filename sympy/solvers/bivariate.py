@@ -326,7 +326,9 @@ def _solve_lambert(f, symbol, gens):
     t = Dummy('t', **symbol.assumptions0)
 
     # replacing all even_degrees of symbol with dummy variable t.
-    if len(even_degrees) != 0:
+    # lhs can also be different from Mul and Add which doesn't need
+    # to be processed.
+    if len(even_degrees) != 0 and (lhs.is_Add or lhs.is_Mul):
         lhs = lhs.xreplace({symbol**i: t**i for i in even_degrees})
 
     # check if lhs has the replaced dummy variable t
