@@ -1566,12 +1566,12 @@ def test_lambert_multivariate():
         [3, -3*LambertW(-log(3)/3)/log(3)])
     assert solve(LambertW(2*x) - y, x) == [y*exp(y)/2]
     # Helper function power_list
-    assert _power_list(x, x) == [(1,)]
-    assert _power_list(x, y) == []
-    assert _power_list(x**2 + x*y + 1, x) == [(2,), (1,)]
-    assert _power_list(x**2 + x*y + 1, x, y) == [(2,), (1,), (1,)]
-    assert _power_list(x**4 + exp(x**5 + x + 1), x) == [(4,), (1,), (5,)]
-    assert _power_list(sin(x**2 + 1) + cos(x**3 + x), x) == [(1,), (3,), (2,)]
+    assert _power_list(x, x) == {x: [1]}
+    assert _power_list(x, y) == {}
+    assert _power_list(x**2 + x*y + 1, x) == {x: [2, 1]}
+    assert _power_list(x**2 + x*y + 1, x, y) == {x: [2, 1], y: [1]}
+    assert _power_list(x**4 + exp(x**5 + x + 1), x) == {x: [1, 4, 5]}
+    assert _power_list(sin(x**2 + 1) + cos(x**3 + x), x) == {x: [1, 2, 3]}
 
 
 @XFAIL
