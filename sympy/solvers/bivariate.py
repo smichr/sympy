@@ -336,8 +336,7 @@ def _solve_lambert(f, symbol, gens):
     if lhs.is_Add and lhs.has(t):
         t_term = lhs - lhs.subs(t, 0)
         rhs = rhs - lhs.subs(t, 0)
-        diff = expand_log(log(t_term) - log(rhs))
-        return _solve_even_degree_expr(diff, symbol)
+        return _solve_even_degree_expr(expand_log(log(t_term) - log(rhs)), symbol)
 
     # check if lhs.is_Mul and if it has replaced t variable
     # then solve it with _solve_even_degree_expr otherwise go further.
