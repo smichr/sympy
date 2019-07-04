@@ -120,81 +120,6 @@ def _linab(arg, symbol):
     return a, b, x
 
 
-def _power_list(f, *symbols):
-    """
-    Helper function to return powers of symbols
-    present in f in dictionary.
-
-    Parameters
-    ==========
-
-    f : Expr
-        The expression in which powers of symbols present is to be returned.
-
-    symbols : Symbol
-        The symbols whose powers are to be returned.
-
-    Returns
-    =======
-
-    Powers of symbols in f in dictionary form.
-
-    Examples
-    ========
-
-    >>> from sympy.abc import x, y
-    >>> from sympy.solvers.bivariate import _power_list as pl
-    >>> pl(x**2 + x*y + 1, x)
-    {x: [2, 1]}
-    >>> pl(x**2 + x*y + 1, x, y)
-    {x: [2, 1], y: [1]}
-    """
-
-    def _merge_two_dict_results(a, b):
-        """
-        Helper function two merge two dictionary results.
-
-        For example:
-        a = {x: [2], y: [1]}, b = {x: [1]}
-        merged_dict = {x: [1, 2], y: [1]}
-
-        Parameters
-        ==========
-
-        a, b : dict
-            The dictionaries to be merged.
-
-        Returns
-        =======
-
-        merged_dict : dict
-            Merged dictionary of a and b.
-
-        """
-        merged_dict = a.copy()
-        for key, value in b.items():
-            if key not in merged_dict.keys():
-                merged_dict[key] = value
-            else:
-                merged_dict[key] += value
-                merged_dict[key] = list(set(merged_dict[key]))
-        return merged_dict
-
-    result = {}
-    for t in term_factors(f):
-        if isinstance(t, (trigs, Abs, log, exp)):
-            result = _merge_two_dict_results(result, _power_list(t.args[0], *symbols))
-        elif t.has(*symbols):
-            p = t.as_poly()
-            for sym in symbols:
-                if sym in p.gens:
-                    if sym not in result.keys():
-                        result[sym] = flatten(p.monoms())
-                    else:
-                        result[sym] += flatten(set(p.monoms()))
-    return result
-
-
 def _lambert(eq, x):
     """
     Given an expression assumed to be in the form
@@ -305,7 +230,7 @@ def _solve_lambert(f, symbol, gens):
         with positive and negative symbol.
 
         """
-        plhs, nlhs = map(lambda sym: expr.xreplace({t: sym}), (symbol, -symbol))
+        plhs, nlhs = (expr.xreplace({t: s*symbol}) for s in (1, -1))
         if plhs == nlhs:
             return _solve_lambert(plhs, symbol, gens)
         else:
@@ -320,26 +245,21 @@ def _solve_lambert(f, symbol, gens):
                 (tmp.is_Pow and symbol in tmp.exp.free_symbols))]
     if not lamcheck:
         raise NotImplementedError()
-
-    even_degrees = [i for i in _power_list(lhs, symbol).get(symbol, []) \
-                    if i%2 == 0 and i != 0]
+        
     t = Dummy('t', **symbol.assumptions0)
+    if lhs.is_Add or lhs.is_Mul:
+        lhs = lhs.replace(lambda i:i.is_Pow and i.base == symbol and \
+                i.exp % 2 == 0, lambda i: t**i.exp)
 
-    # replacing all even_degrees of symbol with dummy variable t.
-    # lhs can also be different from Mul and Add which doesn't need
-    # to be processed.
-    if len(even_degrees) != 0 and (lhs.is_Add or lhs.is_Mul):
-        lhs = lhs.xreplace({symbol**i: t**i for i in even_degrees})
-
-    # check if lhs has the replaced dummy variable t
-    #  and Add for further manipulation.
     if lhs.is_Add and lhs.has(t):
-        t_term = lhs - lhs.subs(t, 0)
-        rhs = rhs - lhs.subs(t, 0)
+        t_indep = lhs.subs(t, 0)
+        t_term = lhs - t_indep
+        rhs -= t_indep
         return _solve_even_degree_expr(expand_log(log(t_term) - log(rhs)), symbol)
 
-    # check if lhs.is_Mul and if it has replaced t variable
-    # then solve it with _solve_even_degree_expr otherwise go further.
+    # check if lhs.is_Mul and lhs and rhs are needed to be expanded with log
+    # and further if it has replaced t variable then solve it with
+    # _solve_even_degree_expr otherwise go further.
     if lhs.is_Mul:
         lhs = expand_log(log(lhs))
         rhs = log(rhs)
