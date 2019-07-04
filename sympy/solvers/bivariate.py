@@ -245,12 +245,17 @@ def _solve_lambert(f, symbol, gens):
                 (tmp.is_Pow and symbol in tmp.exp.free_symbols))]
     if not lamcheck:
         raise NotImplementedError()
-        
+
+    # replacing all even_degrees of symbol with dummy variable t.
+    # lhs can also be different from Mul and Add which doesn't need
+    # to be processed.
     t = Dummy('t', **symbol.assumptions0)
     if lhs.is_Add or lhs.is_Mul:
         lhs = lhs.replace(lambda i:i.is_Pow and i.base == symbol and \
                 i.exp % 2 == 0, lambda i: t**i.exp)
 
+    # check if lhs has the replaced dummy variable t
+    #  and Add for further manipulation.
     if lhs.is_Add and lhs.has(t):
         t_indep = lhs.subs(t, 0)
         t_term = lhs - t_indep
