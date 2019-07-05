@@ -16,7 +16,7 @@ from sympy.simplify.simplify import separatevars
 from sympy.simplify.radsimp import collect
 from sympy.solvers.solvers import solve, _invert
 from sympy.solvers.solveset import _term_factors as term_factors
-from sympy.utilities.iterables import flatten
+from sympy.utilities.iterables import flatten, uniq
 
 trigs = (sin, cos, sec, csc, tan, cot)
 
@@ -234,8 +234,8 @@ def _solve_lambert(f, symbol, gens):
         if plhs == nlhs:
             return _solve_lambert(plhs, symbol, gens)
         else:
-            psol, nsol = map(lambda f: _solve_lambert(f, symbol, gens), (plhs, nlhs))
-            return list(set(psol + nsol))
+            sols = [_solve_lambert(f, symbol, gens) for f in (nlhs, plhs)]
+            return list(uniq(flatten(sols)))
 
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
