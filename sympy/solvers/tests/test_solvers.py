@@ -1629,7 +1629,7 @@ def test_lambert_bivariate():
 def test_lambert_bivariate_fail():
     # following tests fail because it does not include lambert arg -1 solution
     assert solve((1/x + exp(x/2)).diff(x, 2), x) == \
-                [6*LambertW((-1)**(S(1)/3)/3), 6*LambertW((-1)**(S(1)/3)/3, -1)]
+                [6*LambertW(-1/3), 6*LambertW(-1/3, -1)]
 
 
 def test_rewrite_trig():
