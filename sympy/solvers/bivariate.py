@@ -6,19 +6,16 @@ from sympy.core.function import expand_log
 from sympy.core.power import Pow
 from sympy.core.singleton import S
 from sympy.core.symbol import Dummy
-from sympy.functions import sin, cos, sec, csc, tan, cot, Abs
+from sympy.functions import Abs
 from sympy.functions.elementary.exponential import (LambertW, exp, log)
 from sympy.functions.elementary.miscellaneous import root
-from sympy.polys.polytools import Poly, factor, poly_from_expr
-from sympy.polys.polyerrors import PolificationFailed, ComputationFailed
+from sympy.polys.polytools import Poly, factor
 from sympy.core.function import _mexpand
 from sympy.simplify.simplify import separatevars
 from sympy.simplify.radsimp import collect
 from sympy.solvers.solvers import solve, _invert
-from sympy.solvers.solveset import _term_factors as term_factors
 from sympy.utilities.iterables import flatten, uniq
 
-trigs = (sin, cos, sec, csc, tan, cot)
 
 
 def _filtered_gens(poly, symbol):
