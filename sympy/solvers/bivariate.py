@@ -6,7 +6,6 @@ from sympy.core.function import expand_log
 from sympy.core.power import Pow
 from sympy.core.singleton import S
 from sympy.core.symbol import Dummy
-from sympy.functions import Abs
 from sympy.functions.elementary.exponential import (LambertW, exp, log)
 from sympy.functions.elementary.miscellaneous import root
 from sympy.polys.polytools import Poly, factor
@@ -230,9 +229,8 @@ def _solve_lambert(f, symbol, gens):
         plhs, nlhs = (expr.xreplace({t: s*symbol}) for s in (1, -1))
         if plhs == nlhs:
             return _solve_lambert(plhs, symbol, gens)
-        else:
-            sols = [_solve_lambert(f, symbol, gens) for f in (nlhs, plhs)]
-            return list(uniq(flatten(sols)))
+        sols = [_solve_lambert(f, symbol, gens) for f in (nlhs, plhs)]
+        return list(uniq(flatten(sols)))
 
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
     rhs = -nrhs
