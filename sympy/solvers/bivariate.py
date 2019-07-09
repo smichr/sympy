@@ -226,7 +226,7 @@ def _solve_lambert(f, symbol, gens):
         with positive and negative symbol.
 
         """
-        plhs, nlhs = (expr.xreplace({t: s*symbol}) for s in (1, -1))
+        plhs, nlhs = (expr.xreplace({t: sgn*symbol}) for sgn in (1, -1))
         if plhs == nlhs:
             return _solve_lambert(plhs, symbol, gens)
         sols = [_solve_lambert(f, symbol, gens) for f in (nlhs, plhs)]
@@ -267,7 +267,7 @@ def _solve_lambert(f, symbol, gens):
                     # it expanded from Mul to Add
                     return _solve_even_degree_expr(lhs - rhs, symbol)
                 # restore t -> symbol
-                lhs = lhs.xreplace({t: symbol])
+                lhs = lhs.xreplace({t: symbol})
 
     lhs = factor(lhs, deep=True)
 
