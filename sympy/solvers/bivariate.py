@@ -200,20 +200,29 @@ def _solve_lambert(f, symbol, gens):
 
     def _solve_even_degree_expr(expr, symbol):
         """
-        Helper function to solve an expr containing dummy variable t at even
-        degree places to replace them with +symbol and -symbol.
+        Helper routine to replace ``t`` with ``+/- symbol`` in ``expr`` to
+        return a list of solutions from the two ``expr`` generated.
 
-        For example:
-        Equation 2*log(t) + x/2 - log(a) = 0 will return solutions
-        of both of these equations.
-        1. 2*log(x) + x/2 - log(a) = 0
-        2. 2*log(-x) + x/2 - log(a) = 0
+        For example, if ``expr = 2*log(t) + x/2` then solutions for
+        ``2*log(x) + x/2 = 0`` and ``2*log(-x) + x/2 = 0`` would be returned.
+
+        For an expression like ``eq = x**2*g(x) = 1``, if we take the log of
+        both sides we obtain ``log(x**2) + log(g(x)) = 0``. If x is positive
+        then this simplifies to ``2*log(x) + log(g(x)) = 0``;
+        the Lambert-solving routines will return solutions for this, but we
+        must also consider the solutions for  ``2*log(-x) + log(g(x))`` since 
+        those must also be a solution of ``eq`` which has the same value
+        whether the ``x`` in ``x**2`` is negated. If `g(x)` does not have even
+        powers of symbol then we don't want to replace the ``x`` there
+        with ``-x``. So the role of the ``t`` in the expression received by
+        this function is to mark where ``+/-x`` should be inserted before
+        obtaining the Lambert solutions.
 
         Parameters
         ==========
 
         expr : Expr
-            The expression which includes a dummy variable t which can be
+            The expression which includes a dummy variable t to be
             replaced with +symbol and -symbol.
 
         symbol : Symbol
