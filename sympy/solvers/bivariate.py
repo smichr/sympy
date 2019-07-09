@@ -241,30 +241,33 @@ def _solve_lambert(f, symbol, gens):
     if not lamcheck:
         raise NotImplementedError()
 
-    # replacing all even_degrees of symbol with dummy variable t.
-    # lhs can also be different from Mul and Add which doesn't need
-    # to be processed.
-    t = Dummy('t', **symbol.assumptions0)
     if lhs.is_Add or lhs.is_Mul:
-        lhs = lhs.replace(lambda i:i.is_Pow and i.base == symbol and \
-                i.exp % 2 == 0, lambda i: t**i.exp)
+        # replacing all even_degrees of symbol with dummy variable t
+        # since these will need special handling; non-Add/Mul do not
+        # need this handling
+        t = Dummy('t', **symbol.assumptions0)
+        lhs = lhs.replace(
+            lambda i:  # find symbol**even
+                i.is_Pow and i.base == symbol and i.exp % 2 == 0,
+            lambda i:  # replace symbol with t
+                t**i.exp)
 
-    # check if lhs has the replaced dummy variable t
-    #  and Add for further manipulation.
-    if lhs.is_Add and lhs.has(t):
-        t_indep = lhs.subs(t, 0)
-        t_term = lhs - t_indep
-        rhs -= t_indep
-        return _solve_even_degree_expr(expand_log(log(t_term) - log(rhs)), symbol)
-
-    # check if lhs.is_Mul and lhs and rhs are needed to be expanded with log
-    # and further if it has replaced t variable then solve it with
-    # _solve_even_degree_expr otherwise go further.
-    if lhs.is_Mul:
-        lhs = expand_log(log(lhs))
-        rhs = log(rhs)
         if lhs.is_Add and lhs.has(t):
-            return _solve_even_degree_expr(lhs - rhs, symbol)
+            t_indep = lhs.subs(t, 0)
+            t_term = lhs - t_indep
+            rhs -= t_indep
+            return _solve_even_degree_expr(expand_log(log(t_term) - log(rhs)), symbol)
+
+        if lhs.is_Mul:
+            # this needs to happen whether t is present or not
+            lhs = expand_log(log(lhs))
+            rhs = log(rhs)
+            if lhs.has(t):
+                if lhs.is_Add:
+                    # it expanded from Mul to Add
+                    return _solve_even_degree_expr(lhs - rhs, symbol)
+                # restore t -> symbol
+                lhs = lhs.xreplace({t: symbol])
 
     lhs = factor(lhs, deep=True)
 
