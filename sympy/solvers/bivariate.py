@@ -210,7 +210,7 @@ def _solve_lambert(f, symbol, gens):
         both sides we obtain ``log(x**2) + log(g(x)) = 0``. If x is positive
         then this simplifies to ``2*log(x) + log(g(x)) = 0``;
         the Lambert-solving routines will return solutions for this, but we
-        must also consider the solutions for  ``2*log(-x) + log(g(x))`` since 
+        must also consider the solutions for  ``2*log(-x) + log(g(x))`` since
         those must also be a solution of ``eq`` which has the same value
         whether the ``x`` in ``x**2`` is negated. If `g(x)` does not have even
         powers of symbol then we don't want to replace the ``x`` there
@@ -238,7 +238,8 @@ def _solve_lambert(f, symbol, gens):
         plhs, nlhs = (expr.xreplace({t: sgn*symbol}) for sgn in (1, -1))
         if plhs == nlhs:
             return _solve_lambert(plhs, symbol, gens)
-        sols = [_solve_lambert(f, symbol, gens) for f in (nlhs, plhs)]
+        sols = [_solve_lambert(signed_lhs, symbol, gens) for signed_lhs in \
+                (nlhs, plhs)]
         return list(uniq(flatten(sols)))
 
     nrhs, lhs = f.as_independent(symbol, as_Add=True)
