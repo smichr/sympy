@@ -261,9 +261,11 @@ def _solve_lambert(f, symbol, gens):
 
         def is_sub_expr_has_even_power_symbol(sub_expr):
             """Check if the expression has even exponent with base as symbol"""
-            has_even_power = sub_expr.is_Pow and sub_expr.exp.is_even
-            base_is_symbol = sub_expr.is_Pow and sub_expr.base == symbol
-            return has_even_power and base_is_symbol
+            if sub_expr.is_Pow:
+                has_even_power = sub_expr.exp.is_even
+                base_is_symbol = sub_expr.base == symbol
+                return has_even_power and base_is_symbol
+            return False
 
         def replace_symbol_with_dummy_var(sub_expr):
             """Replaces sub expression with dummy variable `t` with same power as symbol"""
