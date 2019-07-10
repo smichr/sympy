@@ -201,7 +201,7 @@ def _solve_lambert(f, symbol, gens):
     def _solve_even_degree_expr(expr, symbol):
         """
         Helper routine to replace ``t`` with ``+/- symbol`` in ``expr`` to
-        return a list of solutions from the two ``expr`` generated.
+        return a list of solutions from the solution of those two expressions.
 
         For example, if ``expr = 2*log(t) + x/2` then solutions for
         ``2*log(x) + x/2 = 0`` and ``2*log(-x) + x/2 = 0`` would be returned.
