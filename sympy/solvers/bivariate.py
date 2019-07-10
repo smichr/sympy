@@ -203,8 +203,20 @@ def _solve_lambert(f, symbol, gens):
         Helper routine to replace ``t`` with ``+/- symbol`` in ``expr`` to
         return a list of solutions from the solution of those two expressions.
 
-        For example, if ``expr = 2*log(t) + x/2` then solutions for
-        ``2*log(x) + x/2 = 0`` and ``2*log(-x) + x/2 = 0`` would be returned.
+        Parameters
+        ==========
+
+        expr : Expr
+            The expression which includes a dummy variable t to be
+            replaced with +symbol and -symbol.
+
+        symbol : Symbol
+            The symbol concerned in expr.
+
+        For example, for equation like ``x**2*exp(x/2) = 0`` to be solved in
+        ``_solve_lambert`` the expression that will enter this routine is
+        ``expr = 2*log(t) + x/2`` then solutions for ``2*log(x) + x/2 = 0``
+        and ``2*log(-x) + x/2 = 0`` would be returned.
 
         For an expression like ``eq = x**2*g(x) = 1``, if we take the log of
         both sides we obtain ``log(x**2) + log(g(x)) = 0``. If x is positive
@@ -217,16 +229,6 @@ def _solve_lambert(f, symbol, gens):
         with ``-x``. So the role of the ``t`` in the expression received by
         this function is to mark where ``+/-x`` should be inserted before
         obtaining the Lambert solutions.
-
-        Parameters
-        ==========
-
-        expr : Expr
-            The expression which includes a dummy variable t to be
-            replaced with +symbol and -symbol.
-
-        symbol : Symbol
-            The symbol concerned in expr.
 
         Returns
         =======
@@ -256,11 +258,18 @@ def _solve_lambert(f, symbol, gens):
         # since these will need special handling; non-Add/Mul do not
         # need this handling
         t = Dummy('t', **symbol.assumptions0)
-        lhs = lhs.replace(
-            lambda i:  # find symbol**even
-                i.is_Pow and i.base == symbol and i.exp % 2 == 0,
-            lambda i:  # replace symbol with t
-                t**i.exp)
+
+        def is_sub_expr_has_even_power_symbol(sub_expr):
+            """Check if the expression has even exponent with base as symbol"""
+            has_even_power = sub_expr.is_Pow and sub_expr.exp.is_even
+            base_is_symbol = sub_expr.is_Pow and sub_expr.base == symbol
+            return has_even_power and base_is_symbol
+
+        def replace_symbol_with_dummy_var(sub_expr):
+            """Replaces sub expression with dummy variable `t` with same power as symbol"""
+            return t**sub_expr.exp
+
+        lhs = lhs.replace(is_sub_expr_has_even_power_symbol, replace_symbol_with_dummy_var)
 
         if lhs.is_Add and lhs.has(t):
             t_indep = lhs.subs(t, 0)
