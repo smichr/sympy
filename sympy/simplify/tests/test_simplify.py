@@ -9,9 +9,10 @@ from sympy import (
     sinc, sinh, solve, sqrt, Sum, Symbol, symbols, sympify, tan, tanh,
     zoo)
 from sympy.core.mul import _keep_coeff
+from sympy.core.expr import unchanged
 from sympy.simplify.simplify import nthroot, inversecombine
-from sympy.utilities.pytest import XFAIL, slow
-from sympy.core.compatibility import range
+from sympy.utilities.pytest import XFAIL, slow, raises
+from sympy.core.compatibility import range, PY3
 
 from sympy.abc import x, y, z, t, a, b, c, d, e, f, g, h, i, k
 
@@ -724,6 +725,8 @@ def test_simplify_function_inverse():
     assert simplify(f(g(x)), inverse=True) == x
     assert simplify(f(g(sin(x)**2 + cos(x)**2)), inverse=True) == 1
     assert simplify(f(g(x, y)), inverse=True) == f(g(x, y))
+    assert unchanged(asin, sin(x))
+    assert simplify(asin(sin(x))) == asin(sin(x))
     assert simplify(2*asin(sin(3*x)), inverse=True) == 6*x
     assert simplify(log(exp(x))) == log(exp(x))
     assert simplify(log(exp(x)), inverse=True) == x
@@ -806,3 +809,30 @@ def test_issue_15965():
     assert simplify(A + B) == anew + bnew
     assert simplify(A) == anew
     assert simplify(B) == bnew
+
+
+def test_issue_17137():
+    assert simplify(cos(x)**I) == cos(x)**I
+    assert simplify(cos(x)**(2 + 3*I)) == cos(x)**(2 + 3*I)
+
+
+def test_issue_7971():
+    z = Integral(x, (x, 1, 1))
+    assert z != 0
+    assert simplify(z) is S.Zero
+
+
+def test_issue_17141():
+    # Check that there is no RecursionError
+    assert simplify(x**(1 / acos(I))) == x**(2/(pi - 2*I*log(1 + sqrt(2))))
+    assert simplify(acos(-I)**2*acos(I)**2) == \
+           log(1 + sqrt(2))**4 + pi**2*log(1 + sqrt(2))**2/2 + pi**4/16
+    assert simplify(2**acos(I)**2) == 2**((pi - 2*I*log(1 + sqrt(2)))**2/4)
+
+    # However, for a complex number it still happens
+    if PY3:
+        raises(RecursionError, lambda: simplify(2**acos(I+1)**2))
+        raises(RecursionError, lambda: simplify((2**acos(I+1)**2).rewrite('log')))
+    else:
+        raises(RuntimeError, lambda: simplify(2**acos(I+1)**2))
+        raises(RuntimeError, lambda: simplify((2**acos(I+1)**2).rewrite('log')))

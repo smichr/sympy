@@ -1328,6 +1328,11 @@ def test_sympy__stats__crv_types__DagumDistribution():
     assert _test_args(DagumDistribution(1, 1, 1))
 
 
+def test_sympy__stats__crv_types__ExGaussianDistribution():
+    from sympy.stats.crv_types import ExGaussianDistribution
+    assert _test_args(ExGaussianDistribution(1, 1, 1))
+
+
 def test_sympy__stats__crv_types__ExponentialDistribution():
     from sympy.stats.crv_types import ExponentialDistribution
     assert _test_args(ExponentialDistribution(1))
@@ -2217,6 +2222,10 @@ def test_sympy__functions__special__gamma_functions__polygamma():
 def test_sympy__functions__special__gamma_functions__uppergamma():
     from sympy.functions.special.gamma_functions import uppergamma
     assert _test_args(uppergamma(x, 2))
+
+def test_sympy__functions__special__gamma_functions__multigamma():
+    from sympy.functions.special.gamma_functions import multigamma
+    assert _test_args(multigamma(x, 1))
 
 
 def test_sympy__functions__special__beta_functions__beta():
