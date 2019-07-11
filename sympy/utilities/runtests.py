@@ -318,6 +318,12 @@ def run_all_tests(test_args=(), test_kwargs=None,
         sys.exit(1)
 
 
+def quick():
+    try:
+        return sys.version.info[:2] != (2,7)
+    except:
+        return tuple(sys.version_info)[:2] != (2,7)
+
 def test(*paths, **kwargs):
     """
     Run tests in the specified test_*.py files.
@@ -460,6 +466,8 @@ def test(*paths, **kwargs):
     as well as the same architecture (32-bit vs. 64-bit).
 
     """
+    if quick():
+        return 1
     subprocess = kwargs.pop("subprocess", True)
     rerun = kwargs.pop("rerun", 0)
     # count up from 0, do not print 0
@@ -542,7 +550,11 @@ def _test(*paths, **kwargs):
 
     not_blacklisted = [f for f in test_files
                        if not any(b in f for b in blacklist)]
-
+    quick = '''ode.py
+    '''.split()
+    if quick:
+        not_blacklisted = [f for f in not_blacklisted if any(
+        pat in f for pat in quick)]
     if len(paths) == 0:
         matched = not_blacklisted
     else:
@@ -619,6 +631,8 @@ def doctest(*paths, **kwargs):
     ``test()``.  See the docstring of that function for more information.
 
     """
+    if quick():
+        return 1
     subprocess = kwargs.pop("subprocess", True)
     rerun = kwargs.pop("rerun", 0)
     # count up from 0, do not print 0
