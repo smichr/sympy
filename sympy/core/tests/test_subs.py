@@ -834,7 +834,13 @@ def test_issue_6976():
 
 
 def test_issue_17225():
-    old = (x+y)/z
+    old = (x + y)/z
     eq = (1 + 2*old)*old
     assert eq.subs(2*old, 2) == Mul(3, 1/z, x + y, evaluate=False)
     assert eq.subs(old, 2) == 10
+    expr = 4*x*(x**2 + y**2)*(7*(-1 + (2*x**2 + 2*y**2)/z**2)**2 + 8 - (14*x**2 +
+        14*y**2)/z**2)/z**4 + (x**2 + y**2)**2*(56*x*(-1 + (2*x**2 +
+        2*y**2)/z**2)/z**2 - 28*x/z**2)/z**4
+    assert expr.subs((x**2 + y**2)/z**2, 1) == 32*x/z**2
+    # help Add, too
+    assert (2*(x + y)).subs(x + y, 2) == 4
