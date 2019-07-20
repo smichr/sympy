@@ -1384,9 +1384,15 @@ class Mul(Expr, AssocOp):
         from sympy.ntheory.factor_ import multiplicity
         from sympy.simplify.powsimp import powdenest
         from sympy.simplify.radsimp import fraction
+        from sympy.simplify.simplify import _mexpand
+        from sympy.calculus.util import AccumBounds
         from .exprtools import factor_terms
         from .symbol import Dummy
 
+        if isinstance(new, AccumBounds):
+            exself = _mexpand(self, recursive=True)
+            if exself != self:
+                return exself._subs(old, new)
         if not old.is_Mul:
             old = factor_terms(old)
             if not old.is_Mul:
