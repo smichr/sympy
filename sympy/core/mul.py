@@ -1384,11 +1384,16 @@ class Mul(Expr, AssocOp):
         from sympy.ntheory.factor_ import multiplicity
         from sympy.simplify.powsimp import powdenest
         from sympy.simplify.radsimp import fraction
-        from sympy.core.exprtools import factor_terms
+        from .exprtools import factor_terms
+        from .symbol import Dummy
 
-        old = factor_terms(old)
         if not old.is_Mul:
-            return None
+            old = factor_terms(old)
+            if not old.is_Mul:
+                return None
+        reps = dict([(i, Dummy()) for i in old.args if i.is_Add])
+        if reps:
+            return self._eval_subs(old.xreplace(reps), new).xreplace({v: k for k, v in reps})
 
         # try keep replacement literal so -2*x doesn't replace 4*x
         if old.args[0].is_Number and old.args[0] < 0:
@@ -1452,7 +1457,7 @@ class Mul(Expr, AssocOp):
         n, d = fraction(self)
         self2 = self
         if d is not S.One:
-            self2 = factor_terms(n._subs(old, new)/d._subs(old, new))
+            self2 = n._subs(old, new)/d._subs(old, new)
             if not self2.is_Mul:
                 return self2._subs(old, new)
             if self2 != self:
