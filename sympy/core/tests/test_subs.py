@@ -831,3 +831,10 @@ def test_issue_6976():
     assert (x**4 + x**3 + x**2 + x + sqrt(x)).subs(x**2, y) == \
         y**(S(1)/4) + y**(S(3)/2) + sqrt(y) + y**2 + y
     assert x.subs(x**3, y) == y**(S(1)/3)
+
+
+def test_issue_17225():
+    old = (x+y)/z
+    eq = (1 + 2*old)*old
+    assert eq.subs(2*old, 2) == Mul(3, 1/z, x + y, evaluate=False)
+    assert eq.subs(old, 2) == 10

@@ -1384,7 +1384,9 @@ class Mul(Expr, AssocOp):
         from sympy.ntheory.factor_ import multiplicity
         from sympy.simplify.powsimp import powdenest
         from sympy.simplify.radsimp import fraction
+        from sympy.core.exprtools import factor_terms
 
+        old = factor_terms(old)
         if not old.is_Mul:
             return None
 
@@ -1450,7 +1452,7 @@ class Mul(Expr, AssocOp):
         n, d = fraction(self)
         self2 = self
         if d is not S.One:
-            self2 = n._subs(old, new)/d._subs(old, new)
+            self2 = factor_terms(n._subs(old, new)/d._subs(old, new))
             if not self2.is_Mul:
                 return self2._subs(old, new)
             if self2 != self:
