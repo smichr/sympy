@@ -45,8 +45,10 @@ def test_subs_AccumBounds():
     assert e == AccumBounds(2, 6)
 
     e = x + x**2
-    e = e.subs(x, AccumBounds(-1, 1))
-    assert e == AccumBounds(-1, 1)*(1 + AccumBounds(-1, 1))
+    a = AccumBound(-1, 1)
+    ans = AccumBounds(-1, 2)
+    assert e.subs(x, a) == ans
+    assert factor(e).subs(x, a) == ans
 
 
 def test_trigonometric():
