@@ -747,7 +747,7 @@ class Add(Expr, AssocOp):
         from sympy.core.exprtools import factor_terms
         f = factor_terms(self)
         if not f.is_Add:
-            return f.subs(old, new)
+            return f._subs(old, new)
         if not old.is_Add:
             if old is S.Infinity and -old in self.args:
                 # foo - oo is foo + (-oo) internally

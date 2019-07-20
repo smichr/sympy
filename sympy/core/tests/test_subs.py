@@ -46,7 +46,7 @@ def test_subs_AccumBounds():
 
     e = x + x**2
     e = e.subs(x, AccumBounds(-1, 1))
-    assert e == AccumBounds(-1, 2)
+    assert e == AccumBounds(-1, 1)*(1 + AccumBounds(-1, 1))
 
 
 def test_trigonometric():
@@ -337,7 +337,7 @@ def test_subs_noncommutative():
     assert (x**(4*someint + 1)).subs(x**(3*someint), L) == L * x**(someint + 1)
 
     assert (x**(2*alpha)).subs(x**alpha, L) == x**(2*alpha)
-    assert (x**(2*alpha + 2)).subs(x**2, L) == x**(2*alpha + 2)
+    assert (x**(2*alpha + 2)).subs(x**2, L) == x**Mul(2, alpha + 1, evaluate=False)
     assert ((2*z)**alpha).subs(z**alpha, y) == (2*z)**alpha
     assert (x**(2*someint*alpha)).subs(x**someint, L) == x**(2*someint*alpha)
     assert (x**(2*someint + alpha)).subs(x**someint, L) == x**(2*someint + alpha)
