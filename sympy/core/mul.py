@@ -1395,11 +1395,11 @@ class Mul(Expr, AssocOp):
                 return exself._subs(old, new)
         if not old.is_Mul:
             old = factor_terms(old)
-            if not old.is_Mul:
+            if not (old.is_Mul or len(old.args) == 2 and old.args[0].is_Rational):
                 return None
         reps = dict([(i, Dummy()) for i in old.args if i.is_Add])
         if reps:
-            return self._eval_subs(old.xreplace(reps), new).xreplace({v: k for k, v in reps})
+            return self._subs(old.xreplace(reps), new).xreplace({v: k for k, v in reps})
 
         # try keep replacement literal so -2*x doesn't replace 4*x
         if old.args[0].is_Number and old.args[0] < 0:
