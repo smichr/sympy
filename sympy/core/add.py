@@ -891,8 +891,45 @@ class Add(Expr, AssocOp):
     def _eval_transpose(self):
         return self.func(*[t.transpose() for t in self.args])
 
-    def __neg__(self):
-        return self*(-1)
+    @property
+    def neg(self):
+        """Return self with all args negated taking care to
+        not return any unevaluated `number*Add` args.
+
+        Examples
+        ========
+
+        >>> from sympy import Add
+        >>> from sympy.abc import x, y, z
+        >>> Add(x + y, z, evaluate=False).neg
+        -x - y - z
+        >>> Add(x, -x, evaluate=False).neg
+        0
+        """
+        d = self.as_coefficients_dict()
+        hit = True
+        while hit:
+            hit = False
+            for k in tuple(d.keys()):
+                if k.is_Add:
+                    hit = True
+                    v = d.pop(k)
+                    for i in k.args:
+                        d[i] += i.as_coeff_mul()[0]*v
+        args = []
+        for k, v in d.items():
+            if not v:
+                continue
+            if v is S.One:
+                args.append(-k)
+            elif v is S.NegativeOne:
+                args.append(k)
+            else:
+                args.append(-v*k)
+        # negated args are not always in the same
+        # order as the original so they must be sorted
+        _addsort(args)
+        return Add._from_args(args)
 
     def _sage_(self):
         s = 0

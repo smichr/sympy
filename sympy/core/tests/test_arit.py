@@ -2035,3 +2035,10 @@ def test_divmod():
     assert divmod(x, y) == (x//y, x % y)
     assert divmod(x, 3) == (x//3, x % 3)
     assert divmod(3, x) == (3//x, 3 % x)
+
+
+def test_neg():
+    eq = Mul(-2, x + y, evaluate=False) - 1
+    assert eq.neg == 2*x + 2*y + 1
+    assert Add(x + y, z, evaluate=False).neg == -x - y - z
+    assert Add(x, -x, evaluate=False).neg == 0
