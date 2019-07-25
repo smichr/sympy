@@ -12,7 +12,7 @@ class _global_function(list):
 
 
 global_evaluate = _global_function([True])
-global_distribute = _global_function([True])
+global_distribute = _global_function([False])
 
 
 @contextmanager
