@@ -159,6 +159,21 @@ class Expr(Basic, EvalfMixin):
     def __pos__(self):
         return self
 
+    @property
+    def neg(self):
+        with distribute(True):
+            return -self
+
+    def sub(self, other):
+        args = Add.make_args(self)
+        with distribute(True):
+            o = Add.make_args(-other)
+        args += o
+        return Add(*args)
+
+    def mul(self, other):
+        return self*other
+
     def __neg__(self):
         # Mul has its own __neg__ routine, so we just
         # create a 2-args Mul with the -1 in the canonical

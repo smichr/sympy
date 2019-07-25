@@ -1421,11 +1421,11 @@ class Basic(with_metaclass(ManagedProperties)):
         >>> (x**(1 + y)).replace(x**(1 + a), lambda a: x**-a, exact=False)
         1
         >>> (x**(1 + y)).replace(x**(1 + a), lambda a: x**-a, exact=True)
-        x**(-x - y + 1)
+        x**(-(x + y - 1))
         >>> (x**y).replace(x**(1 + a), lambda a: x**-a, exact=False)
         1
         >>> (x**y).replace(x**(1 + a), lambda a: x**-a, exact=True)
-        x**(1 - y)
+        x**(-(y - 1))
 
         It is probably better to use a different form of the query
         that describes the target expression more precisely:

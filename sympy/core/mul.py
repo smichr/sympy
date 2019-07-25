@@ -118,36 +118,22 @@ class Mul(Expr, AssocOp):
             * In an expression like ``a*b*c``, python process this through sympy
               as ``Mul(Mul(a, b), c)``. This can have undesirable consequences.
 
-              -  Sometimes terms are not combined as one would like:
-                 {c.f. https://github.com/sympy/sympy/issues/4596}
+              -  Powers with compound bases may not find a single base to
+                 combine with unless all arguments are processed at once.
+                 Post-processing may be necessary in such cases.
+                 {c.f. https://github.com/sympy/sympy/issues/5728}
 
-                >>> from sympy import Mul, sqrt
-                >>> from sympy.abc import x, y, z
-                >>> 2*(x + 1) # this is the 2-arg Mul behavior
-                2*x + 2
-                >>> y*(x + 1)*2
-                2*y*(x + 1)
-                >>> 2*(x + 1)*y # 2-arg result will be obtained first
-                y*(2*x + 2)
-                >>> Mul(2, x + 1, y) # all 3 args simultaneously processed
-                2*y*(x + 1)
-                >>> 2*((x + 1)*y) # parentheses can control this behavior
-                2*y*(x + 1)
-
-                Powers with compound bases may not find a single base to
-                combine with unless all arguments are processed at once.
-                Post-processing may be necessary in such cases.
-                {c.f. https://github.com/sympy/sympy/issues/5728}
-
-                >>> a = sqrt(x*sqrt(y))
-                >>> a**3
-                (x*sqrt(y))**(3/2)
-                >>> Mul(a,a,a)
-                (x*sqrt(y))**(3/2)
-                >>> a*a*a
-                x*sqrt(y)*sqrt(x*sqrt(y))
-                >>> _.subs(a.base, z).subs(z, a.base)
-                (x*sqrt(y))**(3/2)
+                 >>> from sympy import Mul, sqrt
+                 >>> from sympy.abc import x, y, z
+                 >>> a = sqrt(x*sqrt(y))
+                 >>> a**3
+                 (x*sqrt(y))**(3/2)
+                 >>> Mul(a, a, a)
+                 (x*sqrt(y))**(3/2)
+                 >>> a*a*a
+                 x*sqrt(y)*sqrt(x*sqrt(y))
+                 >>> _.subs(a.base, z).subs(z, a.base)
+                 (x*sqrt(y))**(3/2)
 
               -  If more than two terms are being multiplied then all the
                  previous terms will be re-processed for each new argument.
@@ -1793,7 +1779,7 @@ def _keep_coeff(coeff, factors, clear=True, sign=False):
     if coeff is S.One:
         return factors
     elif coeff is S.NegativeOne and not sign:
-        return -factors
+        return factors.mul(-1)
     elif factors.is_Add:
         if not clear and coeff.is_Rational and coeff.q != 1:
             q = S(coeff.q)
@@ -1801,7 +1787,7 @@ def _keep_coeff(coeff, factors, clear=True, sign=False):
                 c, t = i.as_coeff_Mul()
                 r = c/q
                 if r == int(r):
-                    return coeff*factors
+                    return factors.mul(coeff)
         return Mul(coeff, factors, evaluate=False)
     elif factors.is_Mul:
         margs = list(factors.args)

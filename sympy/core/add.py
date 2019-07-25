@@ -76,6 +76,9 @@ class Add(Expr, AssocOp):
 
     is_Add = True
 
+    def mul(self, other):
+        return _unevaluated_Add(*[other*i for i in self.args])
+
     @classmethod
     def flatten(cls, seq):
         """

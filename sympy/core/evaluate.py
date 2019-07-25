@@ -58,11 +58,11 @@ def distribute(x):
 
     >>> from sympy.abc import x
     >>> from sympy.core.evaluate import distribute
-    >>> print(2*(x + 1))
-    2*x + 2
-    >>> with distribute(False):
-    ...     print(2*(x + 1))
+    >>> 2*(x + 1)
     2*(x + 1)
+    >>> with distribute(True):
+    ...     print(2*(x + 1))
+    2*x + 2
     """
 
     old = global_distribute[0]
