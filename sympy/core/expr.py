@@ -168,8 +168,8 @@ class Expr(Basic, EvalfMixin):
         # create a 2-args Mul with the -1 in the canonical
         # slot 0.
         from sympy.core.evaluate import global_distribute
-        if self.is_Add and global_distribute[0]:
-            return self.neg
+        #if self.is_Add and global_distribute[0]:
+        #    return self.neg
         c = self.is_commutative
         return Mul._from_args((S.NegativeOne, self), c)
 
@@ -2266,7 +2266,9 @@ class Expr(Basic, EvalfMixin):
                 newargs.append(newarg)
             # args should be in same order so use unevaluated return
             if cs is not S.One:
-                return Add._from_args([cs*t for t in newargs])
+                rv = Add._from_args([cs*t for t in newargs])
+                assert rv.args == Add(*rv.args).args
+                return rv
             else:
                 return Add._from_args(newargs)
         elif self.is_Mul:

@@ -906,30 +906,11 @@ class Add(Expr, AssocOp):
         >>> Add(x, -x, evaluate=False).neg
         0
         """
-        d = self.as_coefficients_dict()
-        hit = True
-        while hit:
-            hit = False
-            for k in tuple(d.keys()):
-                if k.is_Add:
-                    hit = True
-                    v = d.pop(k)
-                    for i in k.args:
-                        d[i] += i.as_coeff_mul()[0]*v
-        args = []
-        for k, v in d.items():
-            if not v:
-                continue
-            if v is S.One:
-                args.append(-k)
-            elif v is S.NegativeOne:
-                args.append(k)
-            else:
-                args.append(-v*k)
-        # negated args are not always in the same
-        # order as the original so they must be sorted
-        _addsort(args)
-        return Add._from_args(args)
+        # remove nesting and collect similar args
+        e = Add(*self.args)
+        if not e.is_Add:
+            return e
+        return _unevaluated_Add(*[-i for i in e.args])
 
     def _sage_(self):
         s = 0

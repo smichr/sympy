@@ -482,7 +482,8 @@ class Abs(Function):
                     known.append(tnew)
             known = Mul(*known)
             unk = cls(Mul(*unk), evaluate=False) if unk else S.One
-            return known*unk
+            rv = known*unk
+            return None if rv == arg else rv
         if arg is S.NaN:
             return S.NaN
         if arg is S.ComplexInfinity:

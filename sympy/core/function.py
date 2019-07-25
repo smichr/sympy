@@ -274,7 +274,6 @@ class Application(with_metaclass(FunctionClass, Basic)):
             raise ValueError("Unknown options: %s" % options)
 
         if evaluate:
-            print(cls, args)
             evaluated = cls.eval(*args)
             if evaluated is not None:
                 return evaluated
