@@ -2,6 +2,7 @@
 opportunities.
 """
 from __future__ import print_function, division
+from sympy.core.evaluate import _distribute
 
 from sympy.core import Add, Basic, Mul
 from sympy.core.basic import preorder_traversal
@@ -9,6 +10,7 @@ from sympy.core.singleton import S
 from sympy.utilities.iterables import default_sort_key
 
 
+@_distribute(True)
 def sub_pre(e):
     """ Replace y - x with -(x - y) if -1 can be extracted from y - x.
     """
@@ -30,14 +32,14 @@ def sub_pre(e):
 
 
 def sub_post(e):
-    """ Replace 1*-1*x with -x.
+    """ Replace 1*-1*x with x.
     """
     replacements = []
     for node in preorder_traversal(e):
-        if isinstance(node, Mul) and \
-            node.args[0] is S.One and node.args[1] is S.NegativeOne:
-            replacements.append((node, -Mul._from_args(node.args[2:])))
+        if (isinstance(node, Mul) and
+            node.args[0] is S.One and
+            node.args[1] is S.NegativeOne):
+            replacements.append((node, Mul._from_args(node.args[2:]).neg))
     for node, replacement in replacements:
         e = e.xreplace({node: replacement})
-
     return e

@@ -161,10 +161,21 @@ class Expr(Basic, EvalfMixin):
 
     @property
     def neg(self):
+        """
+        >>> from sympy.abc import x, y
+        >>> (x + y).neg
+        -x - y
+        """
+        from sympy.core.evaluate import distribute
         with distribute(True):
             return -self
 
     def sub(self, other):
+        """
+        >>> from sympy.abc import x, y, z
+        >>> x.subs(y + z)
+        x - y - z
+        """
         args = Add.make_args(self)
         with distribute(True):
             o = Add.make_args(-other)
@@ -172,6 +183,11 @@ class Expr(Basic, EvalfMixin):
         return Add(*args)
 
     def mul(self, other):
+        """
+        >>> from sympy.abc import x, y
+        >>> (x + y).mul(2)
+        2*x + 2*y
+        """
         return self*other
 
     def __neg__(self):

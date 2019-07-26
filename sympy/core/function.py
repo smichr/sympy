@@ -30,6 +30,7 @@ There are three types of functions implemented in SymPy:
 
 """
 from __future__ import print_function, division
+from sympy.core.evaluate import _distribute
 
 from .add import Add
 from .assumptions import ManagedProperties, _assume_defined
@@ -2883,6 +2884,7 @@ def expand_power_exp(expr, deep=True):
     log=False, mul=False, power_exp=True, power_base=False, multinomial=False)
 
 
+@_distribute(True)
 def count_ops(expr, visual=False):
     """
     Return a representation (integer or expression) of the operations in expr.
@@ -3080,6 +3082,7 @@ def count_ops(expr, visual=False):
     return sum(int((a.args or [1])[0]) for a in Add.make_args(ops))
 
 
+@_distribute(True)
 def nfloat(expr, n=15, exponent=False, dkeys=False):
     """Make all Rationals in expr Floats except those in exponents
     (unless the exponents flag is set to True). When processing

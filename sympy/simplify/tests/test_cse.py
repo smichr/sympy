@@ -118,7 +118,7 @@ def test_subtraction_opt():
     substs, reduced = cse(
         [e], optimizations=[(cse_opts.sub_pre, cse_opts.sub_post)])
     assert substs == [(x0, (x - y)*(y - z))]
-    assert reduced == [-x0 + exp(-x0)]
+    assert reduced == [-(x0 - exp(-x0))]
     e = -(x - y)*(z - y) + exp(-(x - y)*(z - y))
     substs, reduced = cse(
         [e], optimizations=[(cse_opts.sub_pre, cse_opts.sub_post)])

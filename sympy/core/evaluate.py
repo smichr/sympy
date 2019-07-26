@@ -70,3 +70,16 @@ def distribute(x):
     global_distribute[0] = x
     yield
     global_distribute[0] = old
+
+
+@contextmanager
+def _distribute(x):
+    # same as distribute but named with underscore to keep
+    # distinct so it will be clear which version is needed
+    # for the transition away from auto-evaluation of
+    # 2-arg mul
+    old = global_distribute[0]
+
+    global_distribute[0] = x
+    yield
+    global_distribute[0] = old

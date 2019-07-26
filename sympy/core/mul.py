@@ -1392,7 +1392,7 @@ class Mul(Expr, AssocOp):
         if old.args[0].is_Number and old.args[0] < 0:
             if self.args[0].is_Number:
                 if self.args[0] < 0:
-                    return self._subs(-old, -new)
+                    return self._subs(old.neg, new.neg)
                 return None
 
         def base_exp(a):

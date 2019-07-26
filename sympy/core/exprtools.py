@@ -1,6 +1,7 @@
 """Tools for manipulating of large commutative expressions. """
 
 from __future__ import print_function, division
+from sympy.core.evaluate import _distribute
 
 from sympy.core.add import Add
 from sympy.core.compatibility import iterable, is_sequence, SYMPY_INTS, range
@@ -28,6 +29,7 @@ def _isnumber(i):
     return isinstance(i, (SYMPY_INTS, float)) or i.is_Number
 
 
+@_distribute(True)
 def _monotonic_sign(self):
     """Return the value closest to 0 that ``self`` may have if all symbols
     are signed and the result is uniformly the same sign for all values of symbols.
@@ -211,6 +213,7 @@ def _monotonic_sign(self):
             return rv.subs(_eps, 0)
 
 
+@_distribute(True)
 def decompose_power(expr):
     """
     Decompose power into symbolic base and integer exponent.
@@ -926,6 +929,7 @@ class Term(object):
         return not self == other
 
 
+@_distribute(True)
 def _gcd_terms(terms, isprimitive=False, fraction=True):
     """Helper function for :func:`gcd_terms`.
 
@@ -986,6 +990,7 @@ def _gcd_terms(terms, isprimitive=False, fraction=True):
     return cont, numer, denom
 
 
+@_distribute(True)
 def gcd_terms(terms, isprimitive=False, clear=True, fraction=True):
     """Compute the GCD of ``terms`` and put them together.
 
@@ -1104,6 +1109,7 @@ def gcd_terms(terms, isprimitive=False, clear=True, fraction=True):
     return terms.func(*[handle(i) for i in terms.args])
 
 
+@_distribute(True)
 def _factor_sum_int(expr, **kwargs):
     """Return Sum or Integral object with factors that are not
     in the wrt variables removed. In cases where there are additive
@@ -1152,6 +1158,7 @@ def _factor_sum_int(expr, **kwargs):
         return i * expr.func(d, *limits)
 
 
+@_distribute(True)
 def factor_terms(expr, radical=False, clear=False, fraction=False, sign=True):
     """Remove common factors from terms in all arguments without
     changing the underlying structure of the expr. No expansion or
@@ -1258,6 +1265,7 @@ def factor_terms(expr, radical=False, clear=False, fraction=False, sign=True):
     return do(expr)
 
 
+@_distribute(True)
 def _mask_nc(eq, name=None):
     """
     Return ``eq`` with non-commutative objects replaced with Dummy
@@ -1393,6 +1401,7 @@ def _mask_nc(eq, name=None):
     return expr, {v: k for k, v in rep}, nc_syms
 
 
+@_distribute(True)
 def factor_nc(expr):
     """Return the factored form of ``expr`` while handling non-commutative
     expressions.

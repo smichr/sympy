@@ -507,8 +507,8 @@ class Equality(Relational):
         evaluate = kwargs.get('evaluate', True)
         if evaluate:
             # allow cancellation of args
-            return L - R
-        args = Add.make_args(L) + Add.make_args(-R)
+            return L + R.neg
+        args = Add.make_args(L) + Add.make_args(R.neg)
         if evaluate is None:
             # no cancellation, but canonical
             return _unevaluated_Add(*args)

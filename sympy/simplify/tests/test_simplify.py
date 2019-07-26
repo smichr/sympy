@@ -589,6 +589,11 @@ def test_signsimp():
     assert Abs(x - 1) == Abs(1 - x)
     assert signsimp(y - x) == y - x
     assert signsimp(y - x, evaluate=False) == Mul(-1, x - y, evaluate=False)
+    e = exp(y - x)
+    assert signsimp(e) == e
+    e = -(x + 2*y + z - (x + 2*y))
+    assert e != -z and signsimp(e) == -z
+    assert signsimp(e, evaluate=False) == e
 
 
 def test_besselsimp():

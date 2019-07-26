@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from sympy.core.evaluate import _distribute
 
 from collections import defaultdict
 
@@ -33,6 +34,7 @@ import mpmath
 
 
 
+@_distribute(True)
 def separatevars(expr, symbols=[], dict=False, force=False):
     """
     Separates variables in an expression, if possible.  By
@@ -104,6 +106,7 @@ def separatevars(expr, symbols=[], dict=False, force=False):
         return _separatevars(expr, force)
 
 
+@_distribute(True)
 def _separatevars(expr, force):
     if len(expr.free_symbols) == 1:
         return expr
@@ -158,6 +161,7 @@ def _separatevars(expr, force):
     return commonc*nonsepar
 
 
+@_distribute(True)
 def _separatevars_dict(expr, symbols):
     if symbols:
         if not all((t.is_Atom for t in symbols)):
@@ -190,6 +194,7 @@ def _separatevars_dict(expr, symbols):
     return ret
 
 
+@_distribute(True)
 def _is_sum_surds(p):
     args = p.args if p.is_Add else [p]
     for y in args:
@@ -198,6 +203,7 @@ def _is_sum_surds(p):
     return True
 
 
+@_distribute(True)
 def posify(eq):
     """Return eq (with generic symbols made positive) and a
     dictionary containing the mapping between the old and new
@@ -256,6 +262,7 @@ def posify(eq):
     return eq, {r: s for s, r in reps.items()}
 
 
+@_distribute(True)
 def hypersimp(f, k):
     """Given combinatorial term f(k) simplify its consecutive term ratio
        i.e. f(k+1)/f(k).  The input term can be composed of functions and
@@ -297,6 +304,7 @@ def hypersimp(f, k):
         return None
 
 
+@_distribute(True)
 def hypersimilar(f, g, k):
     """Returns True if 'f' and 'g' are hyper-similar.
 
@@ -371,12 +379,60 @@ def signsimp(expr, evaluate=None):
     if not isinstance(e, Expr) or e.is_Atom:
         return e
     if e.is_Add:
-        return e.func(*[signsimp(a, evaluate) for a in e.args])
+        e = e.func(*[signsimp(a, evaluate) for a in e.args])
     if evaluate:
-        e = e.xreplace({m: -(-m) for m in e.atoms(Mul) if -(-m) != m})
+        # sub_post doesn't handle these; these are the
+        # hollow muls to which nothing in their context
+        # made them go away
+        reps = {}
+        for m in e.atoms(Mul):
+            if (len(m.args) == 2 and
+                    m.args[0] is S.NegativeOne and
+                    m.args[1].is_Add):
+                reps[m] = m.args[1].neg
+        e = e.xreplace(reps)
+        # check for simple negated args
+        e = touch(e)
     return e
 
 
+def touch(e):
+    """Return ``e`` so that ``-(-e) == e``; this will remove
+    args in a negated term in a sum which appear as a term
+    elsewhere in the sum.
+
+    Examples
+    ========
+
+    >>> from symyp.simplify.simplify import touch
+    >>> from sympy.abc import x, y, z
+    >>> x - (x + y)
+    x - (x + y)
+    >>> touch(_)
+    -y
+    >>> -(x + 2*y + z - (x + 2*y))
+    -(x + 2*y + z - (x + 2*y))
+    >>> touch(_)
+    -z
+
+    There is no effect if there is no negated term:
+
+    >>> x - 2*(x + y)
+    x - 2*(x + y)
+    >>> touch(_)
+    x - 2*(x + y)
+    >>> _.expand()
+    x + 2*y
+    """
+    # allow negated args in Add to cancel
+    e = sympify(e)
+    was = None
+    while was != e:
+        was = e
+        e = e.neg.neg
+    return e
+
+@_distribute(True)
 def simplify(expr, ratio=1.7, measure=count_ops, rational=False, inverse=False, doit=True, **kwargs):
     """Simplifies the given expression.
 
@@ -646,7 +702,7 @@ def simplify(expr, ratio=1.7, measure=count_ops, rational=False, inverse=False, 
     if expr.could_extract_minus_sign():
         n, d = fraction(expr)
         if d != 0:
-            expr = signsimp(-n/(-d))
+            expr = signsimp(n.neg/d.neg)
 
     if measure(expr) > ratio*measure(original_expr):
         expr = original_expr
@@ -658,6 +714,7 @@ def simplify(expr, ratio=1.7, measure=count_ops, rational=False, inverse=False, 
     return done(expr)
 
 
+@_distribute(True)
 def sum_simplify(s, **kwargs):
     """Main function for Sum simplification"""
     from sympy.concrete.summations import Sum
@@ -688,6 +745,7 @@ def sum_simplify(s, **kwargs):
     return result
 
 
+@_distribute(True)
 def sum_combine(s_t):
     """Helper function for Sum simplification
 
@@ -717,6 +775,7 @@ def sum_combine(s_t):
     return result
 
 
+@_distribute(True)
 def factor_sum(self, limits=None, radical=False, clear=False, fraction=False, sign=True):
     """Return Sum with constant factors extracted.
 
@@ -743,6 +802,7 @@ def factor_sum(self, limits=None, radical=False, clear=False, fraction=False, si
     return factor_terms(expr, **kwargs)
 
 
+@_distribute(True)
 def sum_add(self, other, method=0):
     """Helper function for Sum simplification"""
     from sympy.concrete.summations import Sum
@@ -790,6 +850,7 @@ def sum_add(self, other, method=0):
     return Add(self, other)
 
 
+@_distribute(True)
 def product_simplify(s):
     """Main function for Product simplification"""
     from sympy.concrete.products import Product
@@ -824,6 +885,7 @@ def product_simplify(s):
     return result
 
 
+@_distribute(True)
 def product_mul(self, other, method=0):
     """Helper function for Product simplification"""
     from sympy.concrete.products import Product
@@ -851,6 +913,7 @@ def product_mul(self, other, method=0):
     return Mul(self, other)
 
 
+@_distribute(True)
 def _nthroot_solve(p, n, prec):
     """
      helper function for ``nthroot``
@@ -876,6 +939,7 @@ def _nthroot_solve(p, n, prec):
                 return sol
 
 
+@_distribute(True)
 def logcombine(expr, force=False):
     """
     Takes logarithms and combines them using the following rules:
@@ -1020,6 +1084,7 @@ def logcombine(expr, force=False):
     return bottom_up(expr, f)
 
 
+@_distribute(True)
 def inversecombine(expr):
     """Simplify the composition of a function and its inverse.
 
@@ -1049,6 +1114,7 @@ def inversecombine(expr):
     return bottom_up(expr, f)
 
 
+@_distribute(True)
 def walk(e, *target):
     """iterate through the args that are the given types (target) and
     return a list of the args that were traversed; arguments
@@ -1077,6 +1143,7 @@ def walk(e, *target):
                 yield w
 
 
+@_distribute(True)
 def bottom_up(rv, F, atoms=False, nonbasic=False):
     """Apply ``F`` to all expressions in an expression tree from the
     bottom up. If ``atoms`` is True, apply ``F`` even if there are no args;
@@ -1101,6 +1168,7 @@ def bottom_up(rv, F, atoms=False, nonbasic=False):
     return rv
 
 
+@_distribute(True)
 def besselsimp(expr):
     """
     Simplify bessel-type functions.
@@ -1189,6 +1257,7 @@ def besselsimp(expr):
     return expr
 
 
+@_distribute(True)
 def nthroot(expr, n, max_len=4, prec=15):
     """
     compute a real nth-root of a sum of surds
@@ -1249,6 +1318,7 @@ def nthroot(expr, n, max_len=4, prec=15):
     return expr
 
 
+@_distribute(True)
 def nsimplify(expr, constants=(), tolerance=None, full=False, rational=None,
     rational_conversion='base10'):
     """
@@ -1385,6 +1455,7 @@ def nsimplify(expr, constants=(), tolerance=None, full=False, rational=None,
     return _real_to_rational(expr, rational_conversion=rational_conversion)
 
 
+@_distribute(True)
 def _real_to_rational(expr, tolerance=None, rational_conversion='base10'):
     """
     Replace all reals in expr with rationals.
@@ -1451,6 +1522,7 @@ def _real_to_rational(expr, tolerance=None, rational_conversion='base10'):
     return p.subs(reps, simultaneous=True)
 
 
+@_distribute(True)
 def clear_coefficients(expr, rhs=S.Zero):
     """Return `p, r` where `p` is the expression obtained when Rational
     additive and multiplicative coefficients of `expr` have been stripped
@@ -1497,6 +1569,7 @@ def clear_coefficients(expr, rhs=S.Zero):
         rhs = -rhs
     return expr, rhs
 
+@_distribute(True)
 def nc_simplify(expr, deep=True):
     '''
     Simplify a non-commutative expression composed of multiplication
