@@ -193,37 +193,6 @@ class Add(Expr, AssocOp):
             else:
                 terms[s] = c
 
-        # remove args of negated Add when present in terms
-        from sympy.core.function import _coeff_isneg
-        for k, v in list(terms.items()):
-            if v == -1 and k.is_Add:
-                noma = []
-                for i in k.args:
-                    if i.is_Number:
-                        coeff -= i
-                    elif i in terms:
-                        terms[i] -= 1
-                    elif -i in terms:
-                        terms[-i] += 1
-                    else:
-                        c, m = i.as_coeff_Mul()
-                        if m in terms:
-                            terms[m] -= c
-                        else:
-                            noma.append(i)
-                if len(noma) != len(k.args):
-                    v = terms.pop(k)
-                    if noma:
-                        n = _unevaluated_Add(*noma)
-                        if n.is_Number:
-                            coeff += n*v
-                        else:
-                            c, n = n.as_coeff_Mul()
-                            v *= c
-                            if n not in terms:
-                                terms[n] = 0
-                            terms[n] += v
-
         # now let's construct new args:
         # [2*x**2, x**3, 7*x**4, pi, ...]
         newseq = []
