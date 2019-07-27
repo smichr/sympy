@@ -2,8 +2,7 @@ from sympy import (Symbol, exp, Integer, Float, sin, cos, log, Poly, Lambda,
     Function, I, S, N, sqrt, srepr, Rational, Tuple, Matrix, Interval, Add, Mul,
     Pow, Or, true, false, Abs, pi, Range, Xor)
 from sympy.abc import x, y
-from sympy.core.sympify import (sympify, _sympify, SympifyError, kernS,
-    CantSympify)
+from sympy.core.sympify import (sympify, _sympify, SympifyError, CantSympify)
 from sympy.core.decorators import _sympifyit
 from sympy.external import import_module
 from sympy.utilities.pytest import raises, XFAIL, skip
@@ -477,9 +476,8 @@ def test_geometry():
 
 
 def test_kernS():
+    kernS = sympify
     s =   '-1 - 2*(-(-x + 1/x)/(x*(x - 1/x)**2) - 1/(x*(x - 1/x)))'
-    # when 1497 is fixed, this no longer should pass: the expression
-    # should be unchanged
     assert -1 - 2*(-(-x + 1/x)/(x*(x - 1/x)**2) - 1/(x*(x - 1/x))) == -1
     # sympification should not allow the constant to enter a Mul
     # or else the structure can change dramatically

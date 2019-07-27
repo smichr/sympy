@@ -164,9 +164,7 @@ def test_xreplace():
     raises(TypeError, lambda: b1.xreplace([b1, b2]))
     for f in (exp, Function('f')):
         assert f.xreplace({}) == f
-        assert f.xreplace({}, hack2=True) == f
         assert f.xreplace({f: b1}) == b1
-        assert f.xreplace({f: b1}, hack2=True) == b1
 
 
 def test_preorder_traversal():

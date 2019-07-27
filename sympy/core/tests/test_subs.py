@@ -674,19 +674,17 @@ def test_issue_6923():
     assert (-2*x*sqrt(2)).subs(2*x, y) == -sqrt(2)*y
 
 
-def test_2arg_hack():
+def test_2arg_hackfree():
     N = Symbol('N', commutative=False)
     ans = Mul(2, y + 1, evaluate=False)
-    assert (2*x*(y + 1)).subs(x, 1, hack2=True) == ans
-    assert (2*(y + 1 + N)).subs(N, 0, hack2=True) == ans
+    assert (2*x*(y + 1)).subs(x, 1) == ans
+    assert (2*(y + 1 + N)).subs(N, 0) == ans
 
 
 @XFAIL
 def test_mul2():
     """When this fails, remove things labelled "2-arg hack"
-    1) remove special handling in the fallback of subs that
-    was added in the same commit as this test
-    2) remove the special handling in Mul.flatten
+    remove the special handling in Mul.flatten
     """
     assert (2*(x + 1)).is_Mul
 
