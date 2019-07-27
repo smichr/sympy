@@ -1108,6 +1108,22 @@ class Basic(with_metaclass(ManagedProperties)):
         """
         return None
 
+    def xneg(self):
+        return self.replace(
+            lambda x: x.is_Mul and
+            len(x.args) == 2 and
+            x.args[0] is S.NegativeOne and
+            x.args[1].is_Add,
+            lambda x: x.args[1].neg)
+
+    def xnum(self, float=False):
+        return self.replace(
+            lambda x: x.is_Mul and
+            len(x.args) == 2 and
+            (x.args[0].is_Rational or float and x.args[0].is_Float) and
+            x.args[1].is_Add,
+            lambda x: x.args[1].func(*[x.args[0]*i for i in x.args[1].args]))
+
     def xreplace(self, rule):
         """
         Replace occurrences of objects within the expression.

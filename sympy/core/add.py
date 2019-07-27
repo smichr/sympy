@@ -76,6 +76,10 @@ class Add(Expr, AssocOp):
 
     is_Add = True
 
+    @property
+    def neg(self):
+        return _unevaluated_Add(*[-i for i in self.args])
+
     @classmethod
     def flatten(cls, seq):
         """
@@ -757,7 +761,7 @@ class Add(Expr, AssocOp):
         if coeff_self.is_Rational and coeff_old.is_Rational:
             if terms_self == terms_old:   # (2 + a).subs( 3 + a, y) -> -1 + y
                 return self.func(new, coeff_self, -coeff_old)
-            if terms_self == -terms_old:  # (2 + a).subs(-3 - a, y) -> -1 - y
+            if terms_self == terms_old.neg:  # (2 + a).subs(-3 - a, y) -> -1 - y
                 return self.func(-new, coeff_self, coeff_old)
 
         if coeff_self.is_Rational and coeff_old.is_Rational \
@@ -774,7 +778,7 @@ class Add(Expr, AssocOp):
                                *[s._subs(old, new) for s in ret_set])
 
                 args_old = self.func.make_args(
-                    -terms_old)     # (a+b+c+d).subs(-b-c,x) -> a-x+d
+                    terms_old.neg)     # (a+b+c+d).subs(-b-c,x) -> a-x+d
                 old_set = set(args_old)
                 if old_set < self_set:
                     ret_set = self_set - old_set

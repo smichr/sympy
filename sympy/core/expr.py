@@ -32,6 +32,10 @@ class Expr(Basic, EvalfMixin):
     is_scalar = True  # self derivative is 1
 
     @property
+    def neg(self):
+        return -self
+
+    @property
     def _diff_wrt(self):
         """Return True if one can differentiate with respect to this
         object, else False.
