@@ -1139,3 +1139,8 @@ def test_issue_16579():
 
     assert x.is_infinite
     assert y.is_finite
+
+
+def test_issue_17453():
+    i = Symbol('i', integer=True)
+    assert (1/i).is_real is None

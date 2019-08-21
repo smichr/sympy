@@ -1068,6 +1068,7 @@ def test_powers_Integer():
     assert S(2) ** S.Infinity == S.Infinity
     assert S(-2)** S.Infinity == S.Infinity + S.Infinity * S.ImaginaryUnit
     assert S(0) ** S.Infinity == 0
+    assert S(0) ** S.NegativeInfinity == S.ComplexInfinity
 
     # check Nan
     assert S(1) ** S.NaN == S.NaN
