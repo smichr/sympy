@@ -65,7 +65,7 @@ class Product(ExprWithIntLimits):
     ========
 
     >>> from sympy.abc import a, b, i, k, m, n, x
-    >>> from sympy import Product, factorial, oo
+    >>> from sympy import Product, factorial, oo, symbols
     >>> Product(k, (k, 1, m))
     Product(k, (k, 1, m))
     >>> Product(k, (k, 1, m)).doit()
@@ -149,7 +149,7 @@ class Product(ExprWithIntLimits):
     >>> P1 = Product(x, (i, a, b)).doit()
     >>> P1
     x**(-a + b + 1)
-    >>> P2 = Product(x, (i, b+1, a-1)).doit()
+    >>> P2 = Product(x, (i, b + 1, a - 1)).doit()
     >>> P2
     x**(a - b - 1)
     >>> simplify(P1 * P2)
@@ -160,12 +160,26 @@ class Product(ExprWithIntLimits):
     >>> P1 = Product(i, (i, b, a)).doit()
     >>> P1
     RisingFactorial(b, a - b + 1)
-    >>> P2 = Product(i, (i, a+1, b-1)).doit()
+    >>> P2 = Product(i, (i, a + 1, b - 1)).doit()
     >>> P2
     RisingFactorial(a + 1, -a + b - 1)
-    >>> P1 * P2
-    RisingFactorial(b, a - b + 1)*RisingFactorial(a + 1, -a + b - 1)
-    >>> simplify(P1 * P2)
+
+    Note: in this case the assumptions do not allow the product
+    to be simplified to 1:
+
+    >>> P12 = (P1*P2).simplify()
+    >>> P12 == P1*P2
+    True
+
+    We can demonstrate that it is 1 by substituting arbitrary values
+    for the limits. In the substitution below we assume only that the
+    limits have the same sign:
+
+    >>> i, j = symbols('i j', integer=True, positive=True)
+    >>> P12.subs(a, i).subs(b, j).simplify()
+    1
+    >>> i, j = symbols('i j', integer=True, negative=True)
+    >>> P12.subs(a, i).subs(b, j).simplify()
     1
 
     See Also
@@ -479,19 +493,8 @@ class Product(ExprWithIntLimits):
         >>> from sympy import Product, simplify, RisingFactorial, gamma, Sum
         >>> from sympy.abc import x, y, a, b, c, d
         >>> P = Product(x, (x, a, b))
-        >>> Pr = P.reverse_order(x)
-        >>> Pr
+        >>> P.reverse_order(x)
         Product(1/x, (x, b + 1, a - 1))
-        >>> Pr = Pr.doit()
-        >>> Pr
-        1/RisingFactorial(b + 1, a - b - 1)
-        >>> simplify(Pr)
-        gamma(b + 1)/gamma(a)
-        >>> P = P.doit()
-        >>> P
-        RisingFactorial(a, -a + b + 1)
-        >>> simplify(P)
-        gamma(b + 1)/gamma(a)
 
         While one should prefer variable names when specifying which limits
         to reverse, the index counting notation comes in handy in case there
