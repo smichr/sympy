@@ -1,7 +1,7 @@
 from sympy import (S, Symbol, symbols, factorial, factorial2, Float, binomial,
-                   rf, ff, gamma, polygamma, EulerGamma, O, pi, nan,
+                   rf, ff, gamma, polygamma, EulerGamma, O, Or, pi, nan,
                    oo, zoo, simplify, expand_func, Product, Mul, Piecewise,
-                   Mod, Eq, sqrt, Poly, Dummy, I, Rational)
+                   Mod, Eq, Ne, floor, sqrt, Poly, Dummy, I, Rational)
 from sympy.core.expr import unchanged
 from sympy.core.function import ArgumentIndexError
 from sympy.functions.combinatorial.factorials import subfactorial
@@ -67,10 +67,22 @@ def test_rf_eval_apply():
     assert rf(n, m + pi).is_integer is False
     assert rf(pi, m).is_integer is False
 
+    def check(x, k, o, n):
+        a, b = Dummy(), Dummy()
+        r = lambda x, k: o(a, b).rewrite(n).subs({a:x,b:k})
+        for i in range(-5,5):
+          for j in range(-5,5):
+              assert o(i, j) == r(i, j), (o, n, i, j)
+    check(x, k, rf, ff)
+    check(x, k, rf, binomial)
+    check(n, k, rf, factorial)
+    check(x, y, rf, factorial)
+    check(x, y, rf, binomial)
     assert rf(x, k).rewrite(ff) == ff(x + k - 1, k)
     assert rf(x, k).rewrite(binomial) == factorial(k)*binomial(x + k - 1, k)
-    assert rf(n, k).rewrite(factorial) == \
-        factorial(n + k - 1) / factorial(n - 1)
+    assert rf(n, k).rewrite(factorial) == Piecewise(
+        (factorial(k + n - 1)/factorial(n - 1), k + n - 1 >= 0),
+        ((-1)**k*factorial(-n)/factorial(-k - n), True))
     assert rf(x, y).rewrite(factorial) == rf(x, y)
     assert rf(x, y).rewrite(binomial) == rf(x, y)
 
@@ -135,10 +147,26 @@ def test_ff_eval_apply():
     assert isinstance(ff(x, x), ff)
     assert ff(n, n) == factorial(n)
 
+    def check(x, k, o, n):
+        a, b = Dummy(), Dummy()
+        r = lambda x, k: o(a, b).rewrite(n).subs({a:x,b:k})
+        for i in range(-5,5):
+          for j in range(-5,5):
+              assert o(i, j) == r(i, j), (o, n)
+    check(x, k, ff, rf)
+    check(x, k, ff, gamma)
+    check(n, k, ff, factorial)
+    check(x, k, ff, binomial)
+    check(x, y, ff, factorial)
+    check(x, y, ff, binomial)
     assert ff(x, k).rewrite(rf) == rf(x - k + 1, k)
-    assert ff(x, k).rewrite(gamma) == Piecewise((gamma(x + 1)/gamma(-k + x + 1), x >= 0), ((-1)**k*gamma(k - x)/gamma(-x), True))
-    assert ff(5, k).rewrite(gamma) == 120/gamma(6 - k)
-    assert ff(n, k).rewrite(factorial) == factorial(n) / factorial(n - k)
+    assert ff(x, k).rewrite(gamma) == Piecewise(
+        (gamma(x + 1)/gamma(-k + x + 1), Or((x >= 0), Ne(x, floor(x)))
+        ), ((-1)**k*gamma(k - x)/gamma(-x), True))
+
+    assert ff(n, k).rewrite(factorial) == Piecewise(
+        (factorial(n)/factorial(-k + n), n >= 0),
+        ((-1)**k*factorial(k - n - 1)/factorial(-n - 1), True))
     assert ff(x, k).rewrite(binomial) == factorial(k) * binomial(x, k)
     assert ff(x, y).rewrite(factorial) == ff(x, y)
     assert ff(x, y).rewrite(binomial) == ff(x, y)
