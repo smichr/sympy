@@ -8,7 +8,7 @@ from sympy.core.compatibility import reduce, HAS_GMPY
 from sympy.core.function import Function, ArgumentIndexError
 from sympy.core.logic import fuzzy_and
 from sympy.core.numbers import Integer, pi
-from sympy.core.relational import Eq, Ge
+from sympy.core.relational import Eq
 from sympy.ntheory import sieve
 from sympy.polys.polytools import Poly
 
@@ -616,7 +616,7 @@ class RisingFactorial(CombinatorialFunction):
                 return S.Zero
 
     def _eval_rewrite_as_gamma(self, x, k, **kwargs):
-        from sympy import gamma, Piecewise, And, Eq, floor
+        from sympy import gamma, And, Eq, floor
         # this is done here instead of returning
         # self.rewrite(FallingFactorial).rewrite(gamma)
         # so the x + k can be combined on the lhs of the
@@ -764,7 +764,7 @@ class FallingFactorial(CombinatorialFunction):
                                             range(1, abs(int(k)) + 1), 1)
 
     def _eval_rewrite_as_gamma(self, x, k, **kwargs):
-        from sympy import gamma, Piecewise, And, Eq, floor
+        from sympy import gamma, And, Eq, floor
         cond = And(x - k <= 0, x < 0, Eq(k, floor(k)), Eq(x, floor(x)))
         if cond:
             return S.NegativeOne**k*gamma(k - x)/gamma(-x)
@@ -779,7 +779,7 @@ class FallingFactorial(CombinatorialFunction):
             return factorial(k) * binomial(x, k)
 
     def _eval_rewrite_as_factorial(self, x, k, **kwargs):
-        from sympy import gamma, Piecewise, And, Eq, floor
+        from sympy import Piecewise, And
         if x.is_integer and k.is_integer:
             return Piecewise(
                 (S.NegativeOne**k*factorial(k - x - 1)/factorial(-x - 1),
