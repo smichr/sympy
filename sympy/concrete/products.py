@@ -88,7 +88,8 @@ class Product(ExprWithIntLimits):
 
     But we can approach the infinite product by a limit of finite products:
 
-    >>> from sympy import limit
+    >>> from sympy import limit, Symbol
+    >>> n = Symbol('n', integer=True)
     >>> W2 = Product(2*i/(2*i-1)*2*i/(2*i+1), (i, 1, n))
     >>> W2
     Product(4*i**2/((2*i - 1)*(2*i + 1)), (i, 1, n))

@@ -624,3 +624,24 @@ def test_subfactorial():
     assert subfactorial(tt).is_odd is None
     assert subfactorial(te).is_odd is True
     assert subfactorial(to).is_even is True
+
+
+def test_issue_18686():
+    k = symbols('k')
+    for i in (-2, 2):
+        r = rf(i, k).rewrite(gamma)
+        f = ff(i, k).rewrite(gamma)
+        for j in (-2, -1, 1, 2):
+            assert r.subs(k, j) == rf(i, j)
+            assert f.subs(k, j) == ff(i, j)
+        r = rf(i, k).rewrite(factorial)
+        f = ff(i, k).rewrite(factorial)
+        for j in (-2, -1, 1, 2):
+            assert r.subs(k, j) == rf(i, j)
+            assert f.subs(k, j) == ff(i, j)
+
+
+@XFAIL
+def test_issue_18686f():
+    f = ff(-2, 1.1)
+    assert f.n() == f.rewrite(gamma) == zoo

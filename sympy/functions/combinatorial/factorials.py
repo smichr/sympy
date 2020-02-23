@@ -616,8 +616,16 @@ class RisingFactorial(CombinatorialFunction):
                 return S.Zero
 
     def _eval_rewrite_as_gamma(self, x, k, **kwargs):
-        from sympy import gamma
-        return self.rewrite(FallingFactorial).rewrite(gamma)
+        from sympy import gamma, Piecewise, And, Eq, floor
+        # this is done here instead of returning
+        # self.rewrite(FallingFactorial).rewrite(gamma)
+        # so the x + k can be combined on the lhs of the
+        # relational to improve simplification
+        return Piecewise(
+            (S.NegativeOne**k*gamma(1 - x)/gamma(1 - k - x),
+                And(x <= 1, x + k - 1 < 0, Eq(k, floor(k)), Eq(x, floor(x)))),
+            (gamma(x + k)/gamma(x),
+                True))
 
     def _eval_rewrite_as_FallingFactorial(self, x, k, **kwargs):
         return FallingFactorial(x + k - 1, k)
@@ -756,15 +764,12 @@ class FallingFactorial(CombinatorialFunction):
                                             range(1, abs(int(k)) + 1), 1)
 
     def _eval_rewrite_as_gamma(self, x, k, **kwargs):
-        from sympy import gamma, Piecewise, Or, Ne, floor
-        if (x - k).is_integer is False:
-            return gamma(x + 1)/gamma(-k + x + 1)
-        # if we aren't sure of the condition we need the Piecewise;
-        # this is the same expression as in _eval_rewrite_as_factorial
-        # below except gamma(x) -> (x - 1)!
+        from sympy import gamma, Piecewise, And, Eq, floor
         return Piecewise(
-            (gamma(x + 1)/gamma(-k + x + 1), Or(Ne(floor(x), x), x >= 0)),
-            ((-1)**k*gamma(k - x)/gamma(-x), True))
+            (S.NegativeOne**k*gamma(k - x)/gamma(-x),
+                And(x - k <= 0, x < 0, Eq(k, floor(k)), Eq(x, floor(x)))),
+            (gamma(x + 1)/gamma(-k + x + 1),
+                True))
 
     def _eval_rewrite_as_RisingFactorial(self, x, k, **kwargs):
         return rf(x - k + 1, k)
@@ -774,11 +779,13 @@ class FallingFactorial(CombinatorialFunction):
             return factorial(k) * binomial(x, k)
 
     def _eval_rewrite_as_factorial(self, x, k, **kwargs):
-        from sympy import Piecewise, Or, Ne, floor
+        from sympy import gamma, Piecewise, And, Eq, floor
         if x.is_integer and k.is_integer:
             return Piecewise(
-                (factorial(x)/factorial(-k + x), Or(Ne(floor(x), x), x >= 0)),
-                ((-1)**k*factorial(k - x - 1)/factorial(-x - 1), True))
+                (S.NegativeOne**k*factorial(k - x - 1)/factorial(-x - 1),
+                    And(x - k <= 0, x < 0)),
+                (factorial(x)/factorial(-k + x),
+                    True))
 
     def _eval_is_integer(self):
         return fuzzy_and((self.args[0].is_integer, self.args[1].is_integer,
