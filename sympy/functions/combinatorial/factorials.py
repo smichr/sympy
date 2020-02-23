@@ -621,11 +621,11 @@ class RisingFactorial(CombinatorialFunction):
         # self.rewrite(FallingFactorial).rewrite(gamma)
         # so the x + k can be combined on the lhs of the
         # relational to improve simplification
-        return Piecewise(
-            (S.NegativeOne**k*gamma(1 - x)/gamma(1 - k - x),
-                And(x <= 1, x + k - 1 < 0, Eq(k, floor(k)), Eq(x, floor(x)))),
-            (gamma(x + k)/gamma(x),
-                True))
+        cond = And(x <= 1, x + k - 1 < 0, Eq(k, floor(k)), Eq(x, floor(x)))
+        if cond:
+            return S.NegativeOne**k*gamma(1 - x)/gamma(1 - k - x)
+        elif cond is not None:
+            return gamma(x + k)/gamma(x)
 
     def _eval_rewrite_as_FallingFactorial(self, x, k, **kwargs):
         return FallingFactorial(x + k - 1, k)
@@ -765,11 +765,11 @@ class FallingFactorial(CombinatorialFunction):
 
     def _eval_rewrite_as_gamma(self, x, k, **kwargs):
         from sympy import gamma, Piecewise, And, Eq, floor
-        return Piecewise(
-            (S.NegativeOne**k*gamma(k - x)/gamma(-x),
-                And(x - k <= 0, x < 0, Eq(k, floor(k)), Eq(x, floor(x)))),
-            (gamma(x + 1)/gamma(-k + x + 1),
-                True))
+        cond = And(x - k <= 0, x < 0, Eq(k, floor(k)), Eq(x, floor(x)))
+        if cond:
+            return S.NegativeOne**k*gamma(k - x)/gamma(-x)
+        elif cond is not None:
+            return gamma(x + 1)/gamma(-k + x + 1)
 
     def _eval_rewrite_as_RisingFactorial(self, x, k, **kwargs):
         return rf(x - k + 1, k)

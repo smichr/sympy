@@ -476,12 +476,14 @@ def test_simple_products():
 
 def test_rational_products():
     assert simplify(product(1 + 1/n, (n, a, b))) == (1 + b)/a
-    assert simplify(product(n + 1, (n, a, b))) == gamma(2 + b)/gamma(1 + a)
-    assert simplify(product((n + 1)/(n - 1), (n, a, b))) == b*(1 + b)/(a*(a - 1))
-    assert simplify(product(n/(n + 1)/(n + 2), (n, a, b))) == \
-        a*gamma(a + 2)/(b + 1)/gamma(b + 3)
-    assert simplify(product(n*(n + 1)/(n - 1)/(n - 2), (n, a, b))) == \
-        b**2*(b - 1)*(1 + b)/(a - 1)**2/(a*(a - 2))
+    assert simplify(product(n + 1, (n, a, b))
+        ) == RisingFactorial(a + 1, -a + b + 1)
+    assert simplify(product((n + 1)/(n - 1), (n, a, b))
+        ) == b*(1 + b)/(a*(a - 1))
+    assert simplify(product(n/(n + 1)/(n + 2), (n, a, b))
+        ) == -(-1)**(a - b)*a*gamma(-b - 2)/((b + 1)*gamma(-a - 1))
+    assert simplify(product(n*(n + 1)/(n - 1)/(n - 2), (n, a, b))
+        ) == b**2*(b - 1)*(b + 1)/(a*(a - 2)*(a - 1)**2)
 
 
 def test_wallis_product():
