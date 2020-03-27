@@ -477,7 +477,7 @@ def interactive_traversal(expr):
     return _interactive_traversal(expr, 0)
 
 
-def ibin(n, bits, str=False):
+def ibin(n, bits=None, str=False):
     """Return a list of length ``bits`` corresponding to the binary value
     of ``n`` with small bits to the right (last). If bits is omitted, the
     length will be the number required to represent ``n``. If the bits are
@@ -493,7 +493,7 @@ def ibin(n, bits, str=False):
     ========
 
     >>> from sympy.utilities.iterables import ibin
-    >>> ibin(2, 0)
+    >>> ibin(2)
     [1, 0]
     >>> ibin(2, 4)
     [0, 0, 1, 0]
@@ -522,19 +522,14 @@ def ibin(n, bits, str=False):
 
     """
     if n < 0:
-        raise ValueError(
-                "Negetive numbers are not allowed")
-    x, y = abs(n), []
-    y.append(x)
-    #y.reverse()
+        raise ValueError("Negetive numbers are not allowed")
 
-    if not str:
-        if (len(y) - 1) is not None:
-            if (len(y) - 1) > bits:
+    if n.bitlength() is not None:
+        if not str:
+            if (n.bitlength() - 1) > bits:
                 raise ValueError("Negetive value of n is not allowed")
-
         try:
-            bits = as_int(bits)
+            bits = as_int(bits or 0)
             return [1 if i == "1" else 0 for i in bin(n)[2:].rjust(bits, "0")]
         except ValueError:
             return variations(list(range(2)), n, repetition=True)
