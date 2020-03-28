@@ -828,3 +828,5 @@ def test_ibin():
     assert ibin(3, 3, str=True) == '011'
     assert list(ibin(2, 'all')) == [(0, 0), (0, 1), (1, 0), (1, 1)]
     assert list(ibin(2, 'all', str=True)) == ['00', '01', '10', '11']
+    assert ibin(-0.5) == ValueError("negative numbers are not allowed")
+    assert ibin(2,1) == [1, 0]
