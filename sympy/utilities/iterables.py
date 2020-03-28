@@ -522,9 +522,10 @@ def ibin(n, bits=None, str=False):
 
     """
     if n < 0:
-        raise ValueError("negetive numbers are not allowed")
+        raise ValueError("negative numbers are not allowed")
 
-    if bits is not None and not all and n.bit_length() > as_int(bits):
+    n = as_int(n)
+    if bits is not None and not all and n.bit_length() > bits:
         raise ValueError("more bits needed for the number")
 
     if not str:
@@ -535,7 +536,7 @@ def ibin(n, bits=None, str=False):
             return variations(list(range(2)), n, repetition=True)
     else:
         try:
-            bits = as_int(bits)
+            bits = as_int(bits or 0)
             return bin(n)[2:].rjust(bits, "0")
         except ValueError:
             return (bin(i)[2:].rjust(n, "0") for i in range(2**n))
