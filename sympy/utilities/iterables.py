@@ -522,12 +522,12 @@ def ibin(n, bits=None, str=False):
 
     """
     if n < 0:
-        raise ValueError("Negetive numbers are not allowed")
+        raise ValueError("negetive numbers are not allowed")
 
-    if n.bitlength() is not None:
-        if not str:
-            if (n.bitlength() - 1) > bits:
-                raise ValueError("Negetive value of n is not allowed")
+    if n.bitlength() is not None and n.bitlength() > bits:
+        raise ValueError("more bits needed for the number")
+
+    if not str:
         try:
             bits = as_int(bits or 0)
             return [1 if i == "1" else 0 for i in bin(n)[2:].rjust(bits, "0")]
