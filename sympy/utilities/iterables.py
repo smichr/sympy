@@ -524,7 +524,7 @@ def ibin(n, bits=None, str=False):
     if n < 0:
         raise ValueError("negetive numbers are not allowed")
 
-    if n.bitlength() is not None and n.bitlength() > bits:
+    if bits is not None and not all and n.bit_length() > as_int(bits):
         raise ValueError("more bits needed for the number")
 
     if not str:
