@@ -59,6 +59,11 @@ from types import GeneratorType
 from collections import defaultdict
 
 
+class NonlinearError(ValueError):
+    """Raised by linsolve for nonlinear equations"""
+    pass
+
+
 def _masked(f, *atoms):
     """Return ``f``, with all objects given by ``atoms`` replaced with
     Dummy symbols, ``d``, and the list of replacements, ``(d, e)``,
@@ -2544,7 +2549,11 @@ def linsolve(system, *symbols):
                     be given as a sequence, too.
                 '''))
             eqs = system
-            eqs, ring = sympy_eqs_to_ring(eqs, symbols)
+            try:
+                eqs, ring = sympy_eqs_to_ring(eqs, symbols)
+            except PolynomialError as exc:
+                # e.g. cos(x) contains an element of the set of generators
+                raise NonlinearError(str(exc))
             sol = solve_lin_sys(eqs, ring, _raw=False)
             if sol is None:
                 return S.EmptySet
