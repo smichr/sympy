@@ -1,5 +1,6 @@
 from sympy import I, sqrt, log, exp, sin, asin, factorial, Mod, pi, oo
 from sympy.core import Symbol, S, Rational, Integer, Dummy, Wild, Pow
+from sympy.core.assumptions import assumptions
 from sympy.core.facts import InconsistentAssumptions
 from sympy import simplify
 
@@ -887,6 +888,7 @@ def test_Pow_is_pos_neg():
     assert (x**y).is_positive is True   # 0**0
     assert (x**y).is_negative is False
 
+
 def test_Pow_is_prime_composite():
     x = Symbol('x', positive=True, integer=True)
     y = Symbol('y', positive=True, integer=True)
@@ -1094,7 +1096,7 @@ def test_issue_8075():
 
 def test_issue_8642():
     x = Symbol('x', real=True, integer=False)
-    assert (x*2).is_integer is None
+    assert (x*2).is_integer is None, (x*2).is_integer
 
 
 def test_issues_8632_8633_8638_8675_8992():
@@ -1135,6 +1137,7 @@ def test_issue_9165():
     assert 0*(1/z) is S.NaN
     assert 0*f is S.NaN
 
+
 def test_issue_10024():
     x = Dummy('x')
     assert Mod(x, 2*pi).is_zero is None
@@ -1155,8 +1158,10 @@ def test_issue_10302():
     assert (a + x + I).is_imaginary is None
     assert (a + r*I + I).is_imaginary is None
 
+
 def test_complex_reciprocal_imaginary():
     assert (1 / (4 + 3*I)).is_imaginary is False
+
 
 def test_issue_16313():
     x = Symbol('x', extended_real=False)
@@ -1167,6 +1172,7 @@ def test_issue_16313():
     assert (l*x).is_real is False
     assert (l*x*x).is_real is None  # since x*x can be a real number
     assert (-x).is_positive is False
+
 
 def test_issue_16579():
     # extended_real -> finite | infinite
@@ -1184,7 +1190,43 @@ def test_issue_16579():
     nf = Symbol('nf', finite=False)
     assert nf.is_infinite is True
 
+
 def test_issue_17556():
     z = I*oo
     assert z.is_imaginary is False
     assert z.is_finite is False
+
+
+def test_assumptions():
+    assert assumptions(3 + I) == {
+        'algebraic': True,
+        'antihermitian': None,
+        'commutative': True,
+        'complex': True,
+        'composite': False,
+        'even': False,
+        'extended_negative': False,
+        'extended_nonnegative': False,
+        'extended_nonpositive': False,
+        'extended_nonzero': False,
+        'extended_positive': False,
+        'extended_real': False,
+        'finite': True,
+        'hermitian': None,
+        'imaginary': False,
+        'infinite': False,
+        'integer': False,
+        'irrational': False,
+        'negative': False,
+        'noninteger': False,
+        'nonnegative': False,
+        'nonpositive': False,
+        'nonzero': False,
+        'odd': False,
+        'polar': None,
+        'positive': False,
+        'prime': False,
+        'rational': False,
+        'real': False,
+        'transcendental': False,
+        'zero': False}

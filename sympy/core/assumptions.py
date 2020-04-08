@@ -153,6 +153,7 @@ References
 
 from sympy.core.facts import FactRules, FactKB
 from sympy.core.core import BasicMeta
+from sympy.core.sympify import sympify
 
 from random import shuffle
 
@@ -219,6 +220,12 @@ _assume_rules = FactRules([
 _assume_defined = _assume_rules.defined_facts.copy()
 _assume_defined.add('polar')
 _assume_defined = frozenset(_assume_defined)
+
+
+def assumptions(n):
+    """return the assumptions of n"""
+    n = sympify(n)
+    return {i: getattr(n,'is_{}'.format(i)) for i in _assume_defined}
 
 
 class StdFactKB(FactKB):
