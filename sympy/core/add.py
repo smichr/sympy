@@ -530,8 +530,17 @@ class Add(Expr, AssocOp):
         (a.is_finite for a in self.args), quick_exit=True)
     _eval_is_hermitian = lambda self: _fuzzy_group(
         (a.is_hermitian for a in self.args), quick_exit=True)
-    _eval_is_integer = lambda self: _fuzzy_group(
-        (a.is_integer for a in self.args), quick_exit=True)
+    def _eval_is_integer(self):
+        if len(self.args) == 2:
+            t = a, b = [i.is_integer for i in self.args]
+            if None not in t:
+                if a == b:
+                    if a:
+                        return True
+                elif a != b:
+                    return False
+        else: return _fuzzy_group(
+            (a.is_integer for a in self.args), quick_exit=True)
     _eval_is_rational = lambda self: _fuzzy_group(
         (a.is_rational for a in self.args), quick_exit=True)
     _eval_is_algebraic = lambda self: _fuzzy_group(

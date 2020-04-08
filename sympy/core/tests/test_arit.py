@@ -363,16 +363,26 @@ def test_Add_Mul_is_integer():
 
     k = Symbol('k', integer=True)
     n = Symbol('n', integer=True)
+    nk = Symbol('nk', integer=False)
+    nr = Symbol('nk', rational=False)
+    nz = Symbol('nk', integer=True, zero=False)
 
+    assert (-nk).is_integer is None
+    assert (-nr).is_integer is False
     assert (2*k).is_integer is True
     assert (-k).is_integer is True
     assert (k/3).is_integer is None
+    assert (nz/3).is_integer is None
+    assert (nr/3).is_integer is False
     assert (x*k*n).is_integer is None
 
+    assert (k + nk).is_integer is False
     assert (k + n).is_integer is True
     assert (k + x).is_integer is None
     assert (k + n*x).is_integer is None
     assert (k + n/3).is_integer is None
+    assert (k + nz/3).is_integer is None
+    assert (k + nr/3).is_integer is False
 
     assert ((1 + sqrt(3))*(-sqrt(3) + 1)).is_integer is not False
     assert (1 + (1 + sqrt(3))*(-sqrt(3) + 1)).is_integer is not False

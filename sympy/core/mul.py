@@ -1248,6 +1248,26 @@ class Mul(Expr, AssocOp):
         return zero
 
     def _eval_is_integer(self):
+        if len(self.args) == 2:
+            a, b = self.args
+            if None not in (a.is_integer, b.is_integer):
+                if b.is_integer:
+                    a, b = b, a
+                if a.is_integer:
+                    if b.is_integer:
+                        # both ints
+                        return True
+                    if a.is_zero and b.is_finite or b.is_zero:
+                        return True
+                    if a.is_zero is False and b.is_zero is False:
+                        if b.is_real is False:
+                            return False
+                        if b.is_rational is False or (
+                                a.is_even != (1/b).is_even and
+                                None not in (
+                                a.is_even, (1/b).is_even)):
+                            return False
+
         is_rational = self.is_rational
 
         if is_rational:
