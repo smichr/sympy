@@ -1248,35 +1248,25 @@ class Mul(Expr, AssocOp):
         return zero
 
     def _eval_is_integer(self):
-        if len(self.args) == 2:
-            a, b = self.args
-            if None not in (a.is_integer, b.is_integer):
-                if b.is_integer:
-                    a, b = b, a
-                if a.is_integer:
-                    if b.is_integer:
-                        # both ints
-                        return True
-                    if a.is_zero and b.is_finite or b.is_zero:
-                        return True
-                    if a.is_zero is False and b.is_zero is False:
-                        if b.is_real is False:
-                            return False
-                        if b.is_rational is False or (
-                                a.is_even != (1/b).is_even and
-                                None not in (
-                                a.is_even, (1/b).is_even)):
-                            return False
+        from sympy import fraction
 
         is_rational = self.is_rational
+        if is_rational is False:
+            return False
 
+        n, d = fraction(self)
+        if not is_rational:
+            _self = n/d
+            if _self != self:
+                return _self.is_integer
         if is_rational:
-            n, d = self.as_numer_denom()
             if d is S.One:
                 return True
             elif d == S(2):
                 return n.is_even
-        elif is_rational is False:
+        # if d is even -- 0 or not -- the
+        # result is not an integer
+        if n.is_odd and d.is_even:
             return False
 
     def _eval_is_polar(self):
