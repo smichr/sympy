@@ -1,6 +1,7 @@
 from sympy import I, sqrt, log, exp, sin, asin, factorial, Mod, pi, oo
 from sympy.core import Symbol, S, Rational, Integer, Dummy, Wild, Pow
-from sympy.core.assumptions import assumptions
+from sympy.core.assumptions import (assumptions, check_assumptions,
+    failing_assumptions, common_assumptions)
 from sympy.core.facts import InconsistentAssumptions
 from sympy import simplify
 
@@ -1197,10 +1198,16 @@ def test_issue_17556():
     assert z.is_finite is False
 
 
-def test_assumptions():
+def test_assumptions_copy():
+    assert assumptions(Symbol('x'), dict(commutative=True)
+        ) == {'commutative': True}
+    assert assumptions(Symbol('x'), ['integer']) == {}
+    assert assumptions(Symbol('x'), ['commutative']
+        ) == {'commutative': True}
+    assert assumptions(Symbol('x')) == {'commutative': True}
+    assert assumptions(1)['positive']
     assert assumptions(3 + I) == {
         'algebraic': True,
-        'antihermitian': None,
         'commutative': True,
         'complex': True,
         'composite': False,
@@ -1212,7 +1219,6 @@ def test_assumptions():
         'extended_positive': False,
         'extended_real': False,
         'finite': True,
-        'hermitian': None,
         'imaginary': False,
         'infinite': False,
         'integer': False,
@@ -1223,10 +1229,52 @@ def test_assumptions():
         'nonpositive': False,
         'nonzero': False,
         'odd': False,
-        'polar': None,
         'positive': False,
         'prime': False,
         'rational': False,
         'real': False,
         'transcendental': False,
         'zero': False}
+
+
+def test_check_assumptions():
+    x = Symbol('x', positive=True)
+    assert check_assumptions(1, x) is True
+    assert check_assumptions(1, 1) is True
+    assert check_assumptions(-1, 1) is False
+    i = Symbol('i', integer=True)
+    # don't know if i is positive (or prime, etc...)
+    assert check_assumptions(i, 1) is None
+    assert check_assumptions(Dummy(integer=None), integer=True) is None
+    assert check_assumptions(Dummy(integer=None), integer=False) is None
+    assert check_assumptions(Dummy(integer=False), integer=True) is False
+    assert check_assumptions(Dummy(integer=True), integer=False) is False
+    # no T/F assumptions to check
+    assert check_assumptions(Dummy(integer=False), integer=None) is True
+    raises(ValueError, lambda: check_assumptions(2*x, x, positive=True))
+
+
+def test_failing_assumptions():
+    x = Symbol('x', real=True, positive=True)
+    y = Symbol('y')
+    assert failing_assumptions(6*x + y, **x.assumptions0) == \
+    {'real': None, 'imaginary': None, 'complex': None, 'hermitian': None,
+    'positive': None, 'nonpositive': None, 'nonnegative': None, 'nonzero': None,
+    'negative': None, 'zero': None, 'extended_real': None, 'finite': None,
+    'infinite': None, 'extended_negative': None, 'extended_nonnegative': None,
+    'extended_nonpositive': None, 'extended_nonzero': None,
+    'extended_positive': None }
+
+
+def test_common_assumptions():
+    assert common_assumptions([0, 1, 2]
+        ) == {'extended_nonnegative': True,
+        'extended_real': True,
+        'finite': True,
+        'integer': True,
+        'nonnegative': True,
+        'rational': True,
+        'real': True}
+    assert common_assumptions([0, 1, 2], 'positive integer'.split()
+        ) == {'integer': True}
+    raises(ValueError, lambda: common_assumptions([]))

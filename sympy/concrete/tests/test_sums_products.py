@@ -1333,47 +1333,49 @@ def test_issue_17165():
 def test__dummy_with_inherited_properties_concrete():
     x = Symbol('x')
 
-    from sympy import Tuple
-    d = _dummy_with_inherited_properties_concrete(Tuple(x, 0, 5))
+    d = _dummy_with_inherited_properties_concrete((x, 0, 5))
     assert d.is_real
     assert d.is_integer
     assert d.is_nonnegative
     assert d.is_extended_nonnegative
 
-    d = _dummy_with_inherited_properties_concrete(Tuple(x, 1, 9))
+    d = _dummy_with_inherited_properties_concrete((x, 1, 9))
     assert d.is_real
     assert d.is_integer
     assert d.is_positive
     assert d.is_odd is None
 
-    d = _dummy_with_inherited_properties_concrete(Tuple(x, -5, 5))
+    d = _dummy_with_inherited_properties_concrete((x, -5, 5))
     assert d.is_real
     assert d.is_integer
     assert d.is_positive is None
     assert d.is_extended_nonnegative is None
     assert d.is_odd is None
 
-    d = _dummy_with_inherited_properties_concrete(Tuple(x, -1.5, 1.5))
+    d = _dummy_with_inherited_properties_concrete((x, -1.5, 1.5))
     assert d.is_real
     assert d.is_integer is None
     assert d.is_positive is None
     assert d.is_extended_nonnegative is None
 
     N = Symbol('N', integer=True, positive=True)
-    d = _dummy_with_inherited_properties_concrete(Tuple(x, 2, N))
+    d = _dummy_with_inherited_properties_concrete((x, 2, N))
     assert d.is_real
     assert d.is_positive
     assert d.is_integer
 
     # Return None if no assumptions are added
     N = Symbol('N', integer=True, positive=True)
-    d = _dummy_with_inherited_properties_concrete(Tuple(N, 2, 4))
+    d = _dummy_with_inherited_properties_concrete((N, 2, 4))
     assert d is None
 
     from sympy.core.facts import InconsistentAssumptions
     x = Symbol('x', negative=True)
     raises(InconsistentAssumptions,
-           lambda: _dummy_with_inherited_properties_concrete(Tuple(x, 1, 5)))
+           lambda: _dummy_with_inherited_properties_concrete((x, 1, 5)))
+    d = _dummy_with_inherited_properties_concrete((x, 1, 5), strict=False)
+    assert d.is_integer
+    assert d.is_positive
 
 
 def test_matrixsymbol_summation_numerical_limits():

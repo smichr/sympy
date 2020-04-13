@@ -1312,33 +1312,30 @@ def _eval_matrix_sum(expression):
                 return newf.doit()
 
 
-def _dummy_with_inherited_properties_concrete(limits):
+def _dummy_with_inherited_properties_concrete(limits, strict=True):
     """
-    Return a Dummy symbol that inherits as much assumptions based on the
-    provided symbol and limits as possible.
+    Return a Dummy symbol that inherits as many assumptions as possible
+    from the provided symbol and limits.
 
     If the symbol already has all possible assumptions, return None.
+
+    When ``strict`` is True (default) an InconsistentAssumptions error
+    is raised if the symbol' assumption is False while the
+    assumption is True in the limits; when ``strict`` is False then
+    the false assumption will be true in the returned Dummy.
     """
-    x, a, b = limits
-    l = [a, b]
-
-    assumptions_to_consider = ['extended_nonnegative', 'nonnegative',
-                               'extended_nonpositive', 'nonpositive',
-                               'extended_positive', 'positive',
-                               'extended_negative', 'negative',
-                               'integer', 'rational', 'finite',
-                               'zero', 'real', 'extended_real']
-
-    assumptions_to_keep = {}
-    assumptions_to_add = {}
-    for assum in assumptions_to_consider:
-        assum_true = x._assumptions.get(assum, None)
-        if assum_true:
-            assumptions_to_keep[assum] = True
-        elif all([getattr(i, 'is_' + assum) for i in l]):
-            assumptions_to_add[assum] = True
-    if assumptions_to_add:
-        assumptions_to_keep.update(assumptions_to_add)
-        return Dummy('d', **assumptions_to_keep)
+    from sympy.core.assumptions import common_assumptions
+    from sympy.core.facts import InconsistentAssumptions
+    common = common_assumptions(limits[1:])
+    x = limits[0].assumptions0
+    for k, v in common.items():
+        vx = x.get(k, None)
+        if vx is None:
+            continue
+        if vx != v:
+            if strict and vx is False:
+                raise InconsistentAssumptions(common, k, vx)
+            break
     else:
-        return None
+        return
+    return Dummy('d', **common)
