@@ -1037,13 +1037,15 @@ def test_unrad1():
     # watch out for when the cov doesn't involve the symbol of interest
     eq = S('-x + (7*y/8 - (27*x/2 + 27*sqrt(x**2)/2)**(1/3)/3)**3 - 1')
     assert solve(eq, y) == [
-        4*2**Rational(2, 3)*(27*x + 27*sqrt(x**2))**Rational(1, 3)/21 - (Rational(-1, 2) -
-        sqrt(3)*I/2)*(x*Rational(-6912, 343) + sqrt((x*Rational(-13824, 343) - Rational(13824, 343))**2)/2 -
-        Rational(6912, 343))**Rational(1, 3)/3, 4*2**Rational(2, 3)*(27*x + 27*sqrt(x**2))**Rational(1, 3)/21 -
-        (Rational(-1, 2) + sqrt(3)*I/2)*(x*Rational(-6912, 343) + sqrt((x*Rational(-13824, 343) -
-        Rational(13824, 343))**2)/2 - Rational(6912, 343))**Rational(1, 3)/3, 4*2**Rational(2, 3)*(27*x +
-        27*sqrt(x**2))**Rational(1, 3)/21 - (x*Rational(-6912, 343) + sqrt((x*Rational(-13824, 343) -
-        Rational(13824, 343))**2)/2 - Rational(6912, 343))**Rational(1, 3)/3]
+        4*2**(2/S(3))*(x + sqrt(x**2))**(1/S(3))/7 - (-1/S(2) -
+        sqrt(3)*I/2)*(-6912*x/343 + sqrt((-13824*x/343 -
+        13824/S(343))**2)/2 - 6912/S(343))**(1/S(3))/3,
+        4*2**(2/S(3))*(x + sqrt(x**2))**(1/S(3))/7 - (-1/S(2) +
+        sqrt(3)*I/2)*(-6912*x/343 + sqrt((-13824*x/343 -
+        13824/S(343))**2)/2 - 6912/S(343))**(1/S(3))/3,
+        4*2**(2/S(3))*(x + sqrt(x**2))**(1/S(3))/7 - (-6912*x/343 +
+        sqrt((-13824*x/343 - 13824/S(343))**2)/2 -
+        6912/S(343))**(1/S(3))/3]
 
     eq = root(x + 1, 3) - (root(x, 3) + root(x, 5))
     assert check(unrad(eq),
@@ -1139,6 +1141,14 @@ def test_unrad_fail():
     assert solve(root(x**3 - 3*x**2, 3) + 1 - x) == [Rational(1, 3)]
     assert solve(root(x + 1, 3) + root(x**2 - 2, 5) + 1) == [
         -1, -1 + CRootOf(x**5 + x**4 + 5*x**3 + 8*x**2 + 10*x + 5, 0)**3]
+
+
+def test_issue_19124():
+    eq = x*root(y, 4) + sqrt(y) - 1
+    assert str(unrad(eq)) == '(_p**2 + _p*x - 1, [_p, _p**4 - y])'
+    assert solve(eq, y) == [
+        (-x/2 - sqrt(x**2 + 4)/2)**4,  # spurious
+        (-x/2 + sqrt(x**2 + 4)/2)**4]  # true
 
 
 def test_checksol():

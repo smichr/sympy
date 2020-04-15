@@ -25,7 +25,7 @@ from sympy.core.function import (expand_mul, expand_log,
                           Derivative, AppliedUndef, UndefinedFunction, nfloat,
                           Function, expand_power_exp, _mexpand, expand)
 from sympy.integrals.integrals import Integral
-from sympy.core.numbers import ilcm, Float, Rational
+from sympy.core.numbers import ilcm, Float, Rational, igcd
 from sympy.core.relational import Relational
 from sympy.core.logic import fuzzy_not, fuzzy_and
 from sympy.core.power import integer_log
@@ -103,6 +103,47 @@ def recast_to_symbols(eqs, symbols):
             new_f.append(i)
     swap_sym = {v: k for k, v in swap_sym.items()}
     return new_f, new_symbols, swap_sym
+
+
+def reduce_order(expr, x=None):
+    """Return an expression with the generator replaced
+    with a symbol to give an expression with reduced ordered.
+    The relationship between the symbol and the original
+    generator is also returned.
+
+    Examples
+    ========
+
+    >>> from sympy import cos
+    >>> from sympy.abc import x
+    >>> reduce_order(Poly(2*cos(x)**4 - cos(x)**2 - 1))
+    (2*_p**2 - _p - 1, [_p, _p**2 - cos(x)])
+    """
+    if not isinstance(expr, Poly):
+        if not isinstance(x, Symbol):
+            raise ValueError('expecting Symbol for x')
+        expr = Poly(expr, x)
+    else:
+        if len(expr.gens) > 1:
+            raise ValueError('expecting univariate Poly')
+        if not isinstance(expr.gen, Symbol):
+            d = Dummy()
+            g = expr.gen
+            ec = reduce_order(expr.subs(g, d), d)
+            if ec is not None:
+                e, c = ec
+                return (e.subs(d, g), [c[0], c[1].subs(d, g)])
+    c =  expr.all_coeffs()
+    _ = c.pop()  # get rid of constant
+    nzexpo = [i + 1 for i, j in enumerate(reversed(c)) if j]
+    if len(nzexpo) < 2:
+        return
+    gcd = igcd(*nzexpo)
+    assert expr.is_Poly
+    if gcd != 1:
+        p = Dummy('p')
+        return (expr.subs(expr.gen**gcd, p),
+            [p, p**gcd - expr.gen])
 
 
 def _ispow(e):
@@ -1259,7 +1300,6 @@ def solve(f, *symbols, **flags):
         solution = nfloat(solution, exponent=False)
 
     if check and solution:  # assumption checking
-
         warn = flags.get('warn', False)
         got_None = []  # solutions for which one or more symbols gave None
         no_False = []  # solutions for which no symbols gave False
@@ -1692,11 +1732,26 @@ def _solve(f, *symbols, **flags):
             # if we aren't on the tsolve-pass, use roots
             if not flags.pop('tsolve', False):
                 soln = None
-                deg = poly.degree()
                 flags['tsolve'] = True
                 solvers = {k: flags.get(k, True) for k in
                     ('cubics', 'quartics', 'quintics')}
-                soln = roots(poly, **solvers)
+                rp = reduce_order(poly)
+                if rp:
+                    pe, cov = rp
+                    g = cov[0]
+                    poly = Poly(poly, g)
+                else:
+                    cov = None
+                    if not poly.gen.is_Symbol:
+                        g = Dummy('g')
+                        cov = g, g - poly.gen
+                        pe = poly.subs(poly.gen, g)
+                        poly = Poly(pe, g)
+                    else:
+                        g = poly.gen
+                        pe = poly.as_expr()
+                deg = poly.degree()
+                soln = roots(pe, g, **solvers)
                 if sum(soln.values()) < deg:
                     # e.g. roots(32*x**5 + 400*x**4 + 2032*x**3 +
                     #            5000*x**2 + 6250*x + 3189) -> {}
@@ -1706,7 +1761,7 @@ def _solve(f, *symbols, **flags):
                     try:
                         soln = poly.all_roots()
                     except NotImplementedError:
-                        if not flags.get('incomplete', True):
+                        if soln and not flags.get('incomplete', True):
                                 raise NotImplementedError(
                                 filldedent('''
     Neither high-order multivariate polynomials
@@ -1721,11 +1776,14 @@ def _solve(f, *symbols, **flags):
                     soln = list(soln.keys())
 
                 if soln is not None:
-                    u = poly.gen
-                    if u != symbol:
+                    if cov:
+                        t, ueq = cov
+                    else:
+                        t = Dummy('t')
+                        ueq = poly.gen - t
+                    if poly.gen != symbol:
                         try:
-                            t = Dummy('t')
-                            iv = _solve(u - t, symbol, **flags)
+                            iv = _solve(ueq, symbol, **flags)
                             soln = list(ordered({i.subs(t, s) for i in iv for s in soln}))
                         except NotImplementedError:
                             # perhaps _tsolve can handle f_num
@@ -3329,7 +3387,8 @@ def unrad(eq, *syms, **flags):
     Explanation
     ===========
 
-    None is returned if there are no radicals to remove.
+    None is returned if there are no radicals to remove or the degree
+    of a polynomial cannot be reduced.
 
     NotImplementedError is raised if there are radicals and they cannot be
     removed or if the relationship between the original symbols and the
@@ -3375,7 +3434,7 @@ def unrad(eq, *syms, **flags):
     ========
 
     >>> from sympy.solvers.solvers import unrad
-    >>> from sympy.abc import x
+    >>> from sympy.abc import x, y
     >>> from sympy import sqrt, Rational, root, real_roots, solve
 
     >>> unrad(sqrt(x)*x**Rational(1, 3) + 2)
@@ -3385,6 +3444,23 @@ def unrad(eq, *syms, **flags):
     >>> eq = sqrt(x) + root(x, 3) - 2
     >>> unrad(eq)
     (_p**3 + _p**2 - 2, [_p, _p**6 - x])
+
+    If there is more than one power of the generator
+    and the exponents of the powers have a common factor other
+    than 1, it will be returned as a change of variables even
+    if there were no radicals eplicitly present at the start:
+
+    >>> unrad(x**4 + x**2 - 1)
+    (_p**2 + _p - 1, [_p, _p**2 - x])
+
+    By specifying the symbol of interest, the work required
+    to remove radicals is reduced and may succeed if not all radicals
+    can be removed:
+
+    >>> root(3*root(x, 3)**4*y**2 + 1, 2)**3/(x**3*y**3)
+    (3*x**(4/3)*y**2 + 1)**(3/2)/(x**3*y**3)
+    >>> unrad(eq, y)
+    (27*_p**3*x**4 + 27*_p**2*x**(8/3) + 9*_p*x**(4/3) + 1, [_p, _p**2 - y])
 
     """
 
@@ -3431,6 +3507,23 @@ def unrad(eq, *syms, **flags):
         elif eq.could_extract_minus_sign():
             eq = -eq
 
+        # if there is no cov, try to reduce the order of syms
+        if not cov and eq.is_Add and len(syms) == 1:
+            x = list(syms)[0]
+            rp = reduce_order(eq, x)
+            if rp:
+                eq, cov = rp
+                eq = eq.as_expr()
+        elif cov:
+            ro = reduce_order(eq, cov[0])
+            if ro:
+                eq, cov2 = ro
+                eq = eq.as_expr()
+                i, d = cov2[1].as_independent(cov2[0])
+                # if we had (p, p**3 - x) and then
+                # got (o, o**2 - p) we want
+                # (o, o**6 - x)
+                cov = [cov2[0], cov[1].subs(-i, d)]
         return eq, cov
 
     def _Q(pow):
@@ -3460,6 +3553,8 @@ def unrad(eq, *syms, **flags):
     cov, nwas, rpt = [flags.setdefault(k, v) for k, v in
         sorted(dict(cov=[], n=None, rpt=0).items())]
 
+    covsym = Dummy('p', nonnegative=True)
+
     # preconditioning
     eq = powdenest(factor_terms(eq, radical=True, clear=True))
 
@@ -3481,7 +3576,10 @@ def unrad(eq, *syms, **flags):
     # check for trivial case
     # - already a polynomial in integer powers
     if all(_Q(g) == 1 for g in gens):
-        if (len(gens) == len(poly.gens) and d!=1):
+        rv = _canonical(eq, cov)
+        if rv[1]:  # if there was a change of variable
+            return rv
+        if (len(gens) == len(poly.gens) and d != 1):
             return eq, []
         else:
             return
@@ -3507,10 +3605,11 @@ def unrad(eq, *syms, **flags):
         return rads, bases, lcm
     rads, bases, lcm = _rads_bases_lcm(poly)
 
-    if not rads:
-        return
 
-    covsym = Dummy('p', nonnegative=True)
+    if not rads:
+        # there might be a power reduction
+        return _canonical(eq, cov)
+
 
     # only keep in syms symbols that actually appear in radicals;
     # and update gens
