@@ -1328,14 +1328,12 @@ def _dummy_with_inherited_properties_concrete(limits, strict=True):
     from sympy.core.facts import InconsistentAssumptions
     common = common_assumptions(limits[1:])
     x = limits[0].assumptions0
+    hit = False
     for k, v in common.items():
         vx = x.get(k, None)
-        if vx is None:
-            continue
         if vx != v:
-            if strict and vx is False:
+            hit = True
+            if strict and vx is not None:
                 raise InconsistentAssumptions(common, k, vx)
-            break
-    else:
-        return
-    return Dummy('d', **common)
+    if hit:
+        return Dummy('d', **common)

@@ -8,6 +8,7 @@ from sympy import (
 from sympy.abc import a, b, c, d, k, m, x, y, z
 from sympy.concrete.summations import telescopic, _dummy_with_inherited_properties_concrete
 from sympy.concrete.expr_with_intlimits import ReorderError
+from sympy.core.facts import InconsistentAssumptions
 from sympy.testing.pytest import XFAIL, raises, slow
 from sympy.matrices import \
     Matrix, SparseMatrix, ImmutableDenseMatrix, ImmutableSparseMatrix
@@ -1369,7 +1370,11 @@ def test__dummy_with_inherited_properties_concrete():
     d = _dummy_with_inherited_properties_concrete((N, 2, 4))
     assert d is None
 
-    from sympy.core.facts import InconsistentAssumptions
+    x = Symbol('x')
+    d = _dummy_with_inherited_properties_concrete((x, 1, 5), strict=False)
+    assert d.is_integer
+    assert d.is_positive
+
     x = Symbol('x', negative=True)
     raises(InconsistentAssumptions,
            lambda: _dummy_with_inherited_properties_concrete((x, 1, 5)))
