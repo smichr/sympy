@@ -155,12 +155,22 @@ class Sum(AddWithLimits, ExprWithIntLimits):
     __slots__ = ('is_commutative',)
 
     def __new__(cls, function, *symbols, **assumptions):
+        from sympy.core.containers import Tuple
         obj = AddWithLimits.__new__(cls, function, *symbols, **assumptions)
         if not hasattr(obj, 'limits'):
             return obj
         if any(len(l) != 3 or None in l for l in obj.limits):
             raise ValueError('Sum requires values for lower and upper bounds.')
-
+        reps = {}
+        args = Tuple(*obj.args)
+        for x, a, b in obj.limits:
+            d = _dummy_with_inherited_properties_concrete((x, a, b))
+            if d:
+                args = args.xreplace({x: d})
+                reps[d] = x
+        if reps:
+            args = args.xreplace(reps)
+            obj = AddWithLimits.__new__(cls, args[0], *args[1:], **assumptions)
         return obj
 
     def _eval_is_zero(self):
