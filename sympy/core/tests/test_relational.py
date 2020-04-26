@@ -1079,6 +1079,11 @@ def test_improved_canonical():
     test_different_forms(generate_forms(pi - 5*y < -x + 2*y**2 - 7))
 
     assert (pi >= x).canonical == (x <= pi)
+    assert (x + 3 < y).canonical == (x < y - 3).canonical
+    assert (x + 3 < 0).canonical == (x < -3)
+    assert (-x - 3 < 0).canonical == (x > -3)
+    assert (-x < 3).canonical == (x > -3)
+    assert (3 < x).canonical == (x > 3)
 
 
 def test_set_equality_canonical():
@@ -1108,7 +1113,7 @@ def test_trigsimp():
 def test_polynomial_relation_simplification():
     assert Ge(3*x*(x + 1) + 4, 3*x).simplify() in [Ge(x**2, -Rational(4,3)), Le(-x**2, Rational(4, 3))]
     assert Le(-(3*x*(x + 1) + 4), -3*x).simplify() in [Ge(x**2, -Rational(4,3)), Le(-x**2, Rational(4, 3))]
-    assert ((x**2+3)*(x**2-1)+3*x >= 2*x**2).simplify() in [(x**4 + 3*x >= 3), (-x**4 - 3*x <= -3)]
+    assert ((x**2+3)*(x**2-1)+3*x >= 2*x**2).simplify() == (x**4 + 3*x - 3 >= 0)
 
 
 def test_multivariate_linear_function_simplification():

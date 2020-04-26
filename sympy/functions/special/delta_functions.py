@@ -342,10 +342,10 @@ class DiracDelta(Function):
         Piecewise((DiracDelta(0), Eq(x, 0)), (0, True))
 
         >>> DiracDelta(x - 5).rewrite(Piecewise)
-        Piecewise((DiracDelta(0), Eq(x - 5, 0)), (0, True))
+        Piecewise((DiracDelta(0), Eq(x, 5)), (0, True))
 
         >>> DiracDelta(x**2 - 5).rewrite(Piecewise)
-           Piecewise((DiracDelta(0), Eq(x**2 - 5, 0)), (0, True))
+           Piecewise((DiracDelta(0), Eq(x**2, 5)), (0, True))
 
         >>> DiracDelta(x - 5, 4).rewrite(Piecewise)
         DiracDelta(x - 5, 4)
@@ -556,10 +556,10 @@ class Heaviside(Function):
         Piecewise((0, x < 0), (Heaviside(0), Eq(x, 0)), (1, x > 0))
 
         >>> Heaviside(x - 5).rewrite(Piecewise)
-        Piecewise((0, x - 5 < 0), (Heaviside(0), Eq(x - 5, 0)), (1, x - 5 > 0))
+        Piecewise((0, x < 5), (Heaviside(0), Eq(x, 5)), (1, x > 5))
 
         >>> Heaviside(x**2 - 1).rewrite(Piecewise)
-        Piecewise((0, x**2 - 1 < 0), (Heaviside(0), Eq(x**2 - 1, 0)), (1, x**2 - 1 > 0))
+        Piecewise((0, x**2 < 1), (Heaviside(0), Eq(x**2, 1)), (1, x**2 > 1))
 
         """
         if H0 is None:

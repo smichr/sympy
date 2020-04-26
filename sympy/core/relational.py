@@ -211,8 +211,28 @@ class Relational(Boolean, EvalfMixin):
         >>> (-y < -x).canonical
         x < y
         """
-        args = self.args
         r = self
+        if r.lhs.is_Add or r.rhs.is_Add:
+            # move additive constants to right to expose the
+            # lower ordered symbol-dependent core
+            ri, rd = r.rhs.as_independent(*r.rhs.free_symbols, as_Add=True)
+            li, ld = r.lhs.as_independent(*r.lhs.free_symbols, as_Add=True)
+            if next(ordered((rd, ld))) == ld:
+                r = self.func(ld, r.rhs - li)
+            else:
+                r = self.func(r.lhs - ri, rd)
+            if not r.is_Relational:
+                return r
+            if not r.lhs:
+                r = r.reversed
+            # univariate more than two args all on lhs;
+            # 2-arg add or multivariate => move constant to other side
+            if not r.rhs and r.lhs.is_Add and (
+                    len(r.lhs.args) == 2 or
+                    len(r.lhs.free_symbols) > 1):
+                i, d = r.lhs.as_independent(*r.lhs.free_symbols)
+                r = r.func(d, -i)
+        args = r.args
         if r.rhs.is_number:
             if r.rhs.is_Number and r.lhs.is_Number and r.lhs > r.rhs:
                 r = r.reversed
@@ -240,6 +260,12 @@ class Relational(Boolean, EvalfMixin):
             if expr1 != r.lhs:
                 return r.reversed.reversedsign
 
+        if r.lhs.is_Mul and r.lhs.args[0].is_Rational and \
+                r.rhs.is_number:
+            c = r.lhs.args[0]
+            r = r.func(r.lhs/c, r.rhs/c)
+            if c.is_negative:  # shouldn't be but in case
+                r = r.func(r.rhs, r.lhs).reversed
         return r
 
     def equals(self, other, failing_expression=False):

@@ -189,7 +189,9 @@ class Piecewise(Function):
                         pass
                     else:
                         reps = {}
-                        for i in c.atoms(Relational):
+                        crel = lambda x: set(
+                            [i.canonical for i in x.atoms(Relational)])
+                        for i in crel(c):
                             ic = i.canonical
                             if ic.rhs in (S.Infinity, S.NegativeInfinity):
                                 if not _c.has(ic.rhs):
@@ -197,8 +199,8 @@ class Piecewise(Function):
                                     # new Relationals with +/-oo
                                     reps[i] = S.true
                                 elif ('=' not in ic.rel_op and
-                                        c.xreplace({x: i.rhs}) !=
-                                        _c.xreplace({x: i.rhs})):
+                                        crel(c.xreplace({x: i.rhs})) !=
+                                        crel(_c.xreplace({x: i.rhs}))):
                                     reps[i] = Relational(
                                         i.lhs, i.rhs, i.rel_op + '=')
                         c = c.xreplace(reps)

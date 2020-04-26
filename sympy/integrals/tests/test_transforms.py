@@ -524,14 +524,22 @@ def test_laplace_transform():
 
 
 def test_issue_8368_7173():
+    from sympy import Piecewise
     LT = laplace_transform
     # hyperbolic
-    assert LT(sinh(x), x, s) == (1/(s**2 - 1), 1, True)
-    assert LT(cosh(x), x, s) == (s/(s**2 - 1), 1, True)
+    assert LT(sinh(x), x, s) == (1/(s**2 - 1), 0,
+        Ne(1/s, 1) & (cos(abs(arg(s)))*abs(s) > 1))
+    h = S.Half
+    assert LT(cosh(x), x, s) == (Piecewise(
+        (-s*exp_polar(I*pi)/(s**2 - 1), abs(s**2) < 1),
+        (s/(s**2 - 1), 1/abs(s**2) < 1),
+        (pi*meijerg(((h,), (0, 0)), ((0, h), (0,)), s**2), True)),
+        0, Ne(s**2, 1) & (cos(abs(arg(s)))*sqrt(abs(s**2)) > 1))
     assert LT(sinh(x + 3), x, s) == (
-        (-s + (s + 1)*exp(6) + 1)*exp(-3)/(s - 1)/(s + 1)/2, 1, True)
-    assert LT(sinh(x)*cosh(x), x, s) == (
-        1/(s**2 - 4), 2, Ne(s/2, 1))
+        (-s + (s + 1)*exp(6) + 1)*exp(-3)/((s - 1)*(s + 1)*2), 0,
+        Ne(1/s, 1) & (cos(abs(arg(s)))*abs(s) > 1))
+    assert LT(sinh(x)*cosh(x), x, s) == (1/(s**2 - 4), 0,
+        Ne(s, 2) & (cos(abs(arg(s)))*abs(s) > 2))
     # trig (make sure they are not being rewritten in terms of exp)
     assert LT(cos(x + 3), x, s) == ((s*cos(3) - sin(3))/(s**2 + 1), 0, True)
 

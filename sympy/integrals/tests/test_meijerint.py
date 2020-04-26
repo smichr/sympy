@@ -621,26 +621,36 @@ def test_expint():
 
 def test_messy():
     from sympy import (laplace_transform, Si, Shi, Chi, atan, Piecewise,
-                       acoth, E1, besselj, acosh, asin, And, re,
-                       fourier_transform, sqrt)
+                       acoth, E1, besselj, acosh, asin, re,
+                       fourier_transform, sqrt, atanh, Ne, arg)
     assert laplace_transform(Si(x), x, s) == ((-atan(s) + pi/2)/s, 0, True)
 
-    assert laplace_transform(Shi(x), x, s) == (acoth(s)/s, 1, True)
+    assert laplace_transform(Shi(x), x, s) == (Piecewise(
+        (acoth(s)/s, abs(s**2) > 1),
+        ((atanh(s) - I*pi/2)/s, True)), 0,
+        Ne(s**2, 1) & (cos(abs(arg(s)))*sqrt(abs(s**2)) > 1))
 
     # where should the logs be simplified?
-    assert laplace_transform(Chi(x), x, s) == \
-        ((log(s**(-2)) - log((s**2 - 1)/s**2))/(2*s), 1, True)
+    h = S.Half
+    got =  laplace_transform(Chi(x), x, s)
+    ans = (Piecewise((exp_polar(I*pi)*log(1 - s**2)/(2*s),
+        abs(s**2) < 1), ((-log(s**(-2)) + log((s**2 - 1)/s**2)
+        )*exp_polar(I*pi)/(2*s), 1/abs(s**2) < 1),
+        (pi*exp_polar(I*pi)*meijerg(((h, h), (0, 0)), ((0, h),
+        (0, -h)), s**2)/2, True)), 0, Ne(s**2, 1) & (cos(abs(arg(s))
+        )*sqrt(abs(s**2)) > 1))
+    assert got == ans, ('\n', got, '\n', ans)
 
     # TODO maybe simplify the inequalities?
-    assert laplace_transform(besselj(a, x), x, s)[1:] == \
-        (0, And(re(a/2) + S.Half > S.Zero, re(a/2) + 1 > S.Zero))
+    assert laplace_transform(besselj(a, x), x, s)[1:] == (
+        0, (re(a) > -2) & (re(a) > -1))
 
     # NOTE s < 0 can be done, but argument reduction is not good enough yet
     assert fourier_transform(besselj(1, x)/x, x, s, noconds=False) == \
         (Piecewise((0, 4*abs(pi**2*s**2) > 1),
                    (2*sqrt(-4*pi**2*s**2 + 1), True)), s > 0)
-    # TODO FT(besselj(0,x)) - conditions are messy (but for acceptable reasons)
-    #                       - folding could be better
+    assert fourier_transform(besselj(0, x), x, s) == Piecewise(
+        (0, pi**2*abs(s**2) > h/2), (2/sqrt(-4*pi**2*s**2 + 1), True))
 
     assert integrate(E1(x)*besselj(0, x), (x, 0, oo), meijerg=True) == \
         log(1 + sqrt(2))
