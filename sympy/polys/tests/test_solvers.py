@@ -15,6 +15,7 @@ def test_solve_lin_sys_2x2_one():
     _sol = solve_lin_sys(eqs, domain)
     assert _sol == sol and all(isinstance(s, domain.dtype) for s in _sol)
 
+
 def test_solve_lin_sys_2x4_none():
     domain, x1,x2 = ring("x1,x2", QQ)
     eqs = [x1 - 1,
@@ -33,6 +34,7 @@ def test_solve_lin_sys_3x4_one():
     sol = {x1: 0, x2: 0, x3: 0}
     assert solve_lin_sys(eqs, domain) == sol
 
+
 def test_solve_lin_sys_3x3_inf():
     domain, x1,x2,x3 = ring("x1,x2,x3", QQ)
     eqs = [x1 - x2 + 2*x3 - 1,
@@ -40,6 +42,7 @@ def test_solve_lin_sys_3x3_inf():
            x1 + x2 - 5]
     sol = {x1: -x3 + 3, x2: x3 + 2}
     assert solve_lin_sys(eqs, domain) == sol
+
 
 def test_solve_lin_sys_3x4_none():
     domain, x1,x2,x3,x4 = ring("x1,x2,x3,x4", QQ)
@@ -60,6 +63,7 @@ def test_solve_lin_sys_4x7_inf():
            x4: 1 - 2*x5 + 6*x6 - 6*x7}
     assert solve_lin_sys(eqs, domain) == sol
 
+
 def test_solve_lin_sys_5x5_inf():
     domain, x1,x2,x3,x4,x5 = ring("x1,x2,x3,x4,x5", QQ)
     eqs = [x1 - x2 - 2*x3 + x4 + 11*x5 - 13,
@@ -71,6 +75,7 @@ def test_solve_lin_sys_5x5_inf():
            x3: 1 + 2*x5,
            x4: 9 - 4*x5}
     assert solve_lin_sys(eqs, domain) == sol
+
 
 def test_solve_lin_sys_6x6_1():
     ground, d,r,e,g,i,j,l,o,m,p,q = field("d,r,e,g,i,j,l,o,m,p,q", ZZ)
@@ -88,6 +93,7 @@ def test_solve_lin_sys_6x6_1():
 
     assert solve_lin_sys(eqs, domain) == sol
 
+
 def test_solve_lin_sys_6x6_2():
     ground, d,r,e,g,i,j,l,o,m,p,q = field("d,r,e,g,i,j,l,o,m,p,q", ZZ)
     domain, c,f,h,k,n,b = ring("c,f,h,k,n,b", ground)
@@ -104,8 +110,9 @@ def test_solve_lin_sys_6x6_2():
 
     assert solve_lin_sys(eqs, domain) == sol
 
+
 def test_eqs_to_matrix():
     domain, x1,x2 = ring("x1,x2", QQ)
     eqs = [x1 + x2 - 5,
            2*x1 - x2]
-    assert Matrix([[1, 1, 5], [2, -1, 0]]).__eq__(eqs_to_matrix(eqs, domain))
+    assert Matrix([[1, 1, 5], [2, -1, 0]]) == eqs_to_matrix(eqs, domain).to_Matrix()

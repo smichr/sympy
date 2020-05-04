@@ -7,7 +7,7 @@ from sympy.utilities.iterables import connected_components
 from sympy.matrices import MutableDenseMatrix
 from sympy.polys.domains import EX
 from sympy.polys.rings import sring
-from sympy.polys.polyerrors import NotInvertible
+from sympy.polys.polyerrors import NotInvertible, PolynomialError
 from sympy.polys.polymatrix import DomainMatrix
 
 class RawMatrix(MutableDenseMatrix):
@@ -62,7 +62,6 @@ def solve_lin_sys(eqs, ring, _raw=True):
     assert ring.domain.is_Field
 
     eqs_dict = [dict(eq) for eq in eqs]
-
     one_monom = ring.one.monoms()[0]
     zero = ring.domain.zero
 
@@ -70,7 +69,11 @@ def solve_lin_sys(eqs, ring, _raw=True):
     eqs_coeffs = []
     for eq_dict in eqs_dict:
         eq_rhs = eq_dict.pop(one_monom, zero)
-        eq_coeffs = {ring.gens[monom.index(1)]:coeff for monom, coeff in eq_dict.items()}
+        try:
+            eq_coeffs = {ring.gens[monom.index(1)]:coeff
+                for monom, coeff in eq_dict.items()}
+        except ValueError:
+            raise PolynomialError('nonlinear system')
         if not eq_coeffs:
             if not eq_rhs:
                 continue

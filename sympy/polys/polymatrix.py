@@ -96,7 +96,7 @@ class DomainMatrix:
 
     def __init__(self, rows, shape, domain):
         self.shape = shape
-        self.rows = [[item for item in row] for row in rows]
+        self.rows = [[item for item in row] for row in rows]  # XXX use tolist; confusion with Matrix.rows -> scalar number of rows
         self.domain = domain
 
     @classmethod
