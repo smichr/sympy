@@ -1222,16 +1222,32 @@ def test_issue_5849():
     I1: I2 + I3,
     Q4: -I3/2 + 3*I5/2 - dI4/2}]
     v = I1, I4, Q2, Q4, dI1, dI4, dQ2, dQ4
-    assert solve(e, *v, manual=True, check=False, dict=True) == ans
-    assert solve(e, *v, manual=True) == []
+    ans = {
+        I1: I2 + I6,
+        dI1: -4*I2 - 4*I3 - 4*I5 - 10*I6 + 24,
+        I4: -I5 + I6,
+        dQ4: -I5 + I6,
+        Q4: 3*I5/2 - I6/2 - dI4/2,
+        dQ2: I2,
+        Q2: 2*I3 + 2*I5 + 3*I6}
+    assert solve(e, *v, manual=True, check=False, dict=True) == [ans]
+    assert solve(e, *v, manual=True) == ans
     # the matrix solver (tested below) doesn't like this because it produces
     # a zero row in the matrix. Is this related to issue 4551?
     assert [ei.subs(
-        ans[0]) for ei in e] == [0, 0, I3 - I6, -I3 + I6, 0, 0, 0, 0, 0]
+        ans) for ei in e] == [-I3 + I6, I3 - I6, 0, 0, 0, 0, 0, 0, 0]
 
 
 def test_issue_5849_matrix():
-    '''Same as test_2750 but solved with the matrix solver.'''
+    '''Same as test_issue_5849 but solved with the matrix solver.
+
+    A solution only exists if I3 == I6 which is not generically true,
+    but `solve` does not return conditions under which the solution is
+    valid, only a solution that is canonical and consistent with the input.
+    '''
+    # a simple example with the same issue
+    assert solve([x+y+z, x+y], [x, y]) == {x: -y}
+    # the longer example
     I1, I2, I3, I4, I5, I6 = symbols('I1:7')
     dI1, dI4, dQ2, dQ4, Q2, Q4 = symbols('dI1,dI4,dQ2,dQ4,Q2,Q4')
 
@@ -1246,14 +1262,14 @@ def test_issue_5849_matrix():
         2*I3 + 2*I5 + 3*I6 - Q2,
         I4 - 2*I5 + 2*Q4 + dI4
     )
-    assert solve(e, I1, I4, Q2, Q4, dI1, dI4, dQ2, dQ4) == {
-        dI4: -I3 + 3*I5 - 2*Q4,
-        dI1: -4*I2 - 8*I3 - 4*I5 - 6*I6 + 24,
-        dQ2: I2,
-        I1: I2 + I3,
-        Q2: 2*I3 + 2*I5 + 3*I6,
-        dQ4: I3 - I5,
-        I4: I3 - I5}
+    ans = {I1: I2 + I6,
+         dI1: -4*I2 - 4*I3 - 4*I5 - 10*I6 + 24,
+         dI4: 3*I5 - I6 - 2*Q4,
+         dQ4: -I5 + I6,
+         I4: -I5 + I6,
+         dQ2: I2,
+         Q2: 2*I3 + 2*I5 + 3*I6}
+    assert solve(e, I1, I4, Q2, Q4, dI1, dI4, dQ2, dQ4) == ans
 
 
 def test_issue_5901():
