@@ -1631,6 +1631,7 @@ class Basic(metaclass=ManagedProperties):
 
         """
         from sympy.core.symbol import Wild
+        from sympy.core.function import WildFunction
         pattern = sympify(pattern)
         # match non-bound symbols
         canonical = lambda x: x if x.is_Symbol else x.as_dummy()
@@ -1638,7 +1639,9 @@ class Basic(metaclass=ManagedProperties):
         if m is None:
             return m
         # now see if bound symbols were requested
-        bwild = pattern.atoms(Wild) - set(m)
+        wild = pattern.atoms(Wild, WildFunction)
+        assert not set(m) - wild
+        bwild = wild - set(m)
         if not bwild:
             return m
         # replace free-Wild symbols in pattern with match result

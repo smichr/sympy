@@ -315,3 +315,13 @@ def test_replace_exceptions():
     raises(TypeError, lambda: e.replace(b*c, c.is_real))
     raises(TypeError, lambda: e.replace(b.is_real, 1))
     raises(TypeError, lambda: e.replace(lambda d: d.is_Number, 1))
+
+
+def test_cg_simp_sum():
+    from sympy import Sum, symbols, KroneckerDelta
+    from sympy.physics.quantum.cg import CG, cg_simp
+    x, a, b, c, cp, alpha, beta, gamma, gammap = symbols(
+        'x a b c cp alpha beta gamma gammap')
+    # Varshalovich 8.7.1 Eq 1
+    assert cg_simp(x * Sum(CG(a, alpha, b, 0, a, alpha), (alpha, -a, a)
+                   )) == x*(2*a + 1)*KroneckerDelta(b, 0)
