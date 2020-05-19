@@ -1561,6 +1561,7 @@ class Basic(metaclass=ManagedProperties):
         >>> Basic(a + x, x).matches(Basic(a + b + c, b + c))
         {x_: b + c}
         """
+        repl_dict = repl_dict.copy()
         expr = sympify(expr)
         if not isinstance(expr, self.__class__):
             return None
@@ -1863,7 +1864,7 @@ class Atom(Basic):
 
     def matches(self, expr, repl_dict={}, old=False):
         if self == expr:
-            return repl_dict
+            return repl_dict.copy()
 
     def xreplace(self, rule, hack2=False):
         return rule.get(self, self)
