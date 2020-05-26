@@ -295,7 +295,7 @@ class StrPrinter(Printer):
 
         # Gather args for numerator/denominator
         for item in args:
-            if item.is_commutative and item.is_Pow and item.exp.is_Rational and item.exp.is_negative:
+            if item.is_commutative is not False and item.is_Pow and item.exp.is_Rational and item.exp.is_negative:
                 if item.exp != -1:
                     b.append(Pow(item.base, -item.exp, evaluate=False))
                 else:
@@ -586,7 +586,7 @@ class StrPrinter(Printer):
         if expr.exp is S.Half and not rational:
             return "sqrt(%s)" % self._print(expr.base)
 
-        if expr.is_commutative:
+        if expr.is_commutative is not False:
             if -expr.exp is S.Half and not rational:
                 # Note: Don't test "expr.exp == -S.Half" here, because that will
                 # match -0.5, which we don't want.
