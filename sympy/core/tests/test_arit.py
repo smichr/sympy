@@ -378,7 +378,7 @@ def test_Mul_is_integer():
     assert Mul(o, 1/o, evaluate=False).is_integer is True
     assert Mul(k, 1/k, evaluate=False).is_integer is None
     assert Mul(nze, 1/nze, evaluate=False).is_integer is True
-    assert Mul(2., S.Half, evaluate=False).is_integer is False
+    assert Mul(2., S.Half, evaluate=False).is_integer is None # Ideally False...
 
     s = 2**2**2**Pow(2, 1000, evaluate=False)
     m = Mul(s, s, evaluate=False)
@@ -1569,10 +1569,10 @@ def test_suppressed_evaluation():
     c = Pow(3, 2, evaluate=False)
     assert a != 6
     assert a.func is Add
-    assert a.args == (3, 2)
+    assert a.args == (0, 3, 2)
     assert b != 6
     assert b.func is Mul
-    assert b.args == (3, 2)
+    assert b.args == (1, 3, 2)
     assert c != 9
     assert c.func is Pow
     assert c.args == (3, 2)

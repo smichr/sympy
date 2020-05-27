@@ -29,7 +29,6 @@ class AssocOp(Basic):
     def __new__(cls, *args, **options):
         from sympy import Order
         args = list(map(_sympify, args))
-        args = [a for a in args if a is not cls.identity]
 
         # XXX: Maybe only Expr should be allowed here...
         from sympy.core.relational import Relational
@@ -43,6 +42,8 @@ class AssocOp(Basic):
             obj = cls._from_args(args)
             obj = cls._exec_constructor_postprocessors(obj)
             return obj
+
+        args = [a for a in args if a is not cls.identity]
 
         if len(args) == 0:
             return cls.identity
