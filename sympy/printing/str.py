@@ -307,6 +307,8 @@ class StrPrinter(Printer):
                     a.append(Rational(item.p))
                 if item.q != 1:
                     b.append(Rational(item.q))
+                if item.p == 1 and item.q == 1:
+                    a.append(S.One)
             else:
                 a.append(item)
 

@@ -1096,6 +1096,8 @@ def fraction(expr, exact=False):
         else:
             numer.append(term)
     if exact:
+        numer = [n for n in numer if n != 1]
+        denom = [d for d in denom if d != 1]
         return Mul(*numer, evaluate=False), Mul(*denom, evaluate=False)
     else:
         return Mul(*numer), Mul(*denom)
