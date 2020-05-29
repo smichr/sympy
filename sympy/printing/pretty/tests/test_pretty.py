@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from sympy import (
-    And, Basic, Derivative, Dict, Eq, Equivalent, FF,
+    Add, And, Basic, Derivative, Dict, Eq, Equivalent, FF,
     FiniteSet, Function, Ge, Gt, I, Implies, Integral, SingularityFunction,
     Lambda, Le, Limit, Lt, Matrix, Mul, Nand, Ne, Nor, Not, O, Or,
     Pow, Product, QQ, RR, Rational, Ray, rootof, RootSum, S,
@@ -948,6 +948,33 @@ u("""\
 ─────\n\
   37 \
 """)
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+    expr = Mul(1, 2, evaluate=False)
+    ascii_str = "1*2"
+    ucode_str = "1⋅2"
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+    expr = Add(0, 1, evaluate=False)
+    ascii_str = "0 + 1"
+    ucode_str = "0 + 1"
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+    expr = Mul(1, 1, 2, evaluate=False)
+    ascii_str = "1*1*2"
+    ucode_str = "1⋅1⋅2"
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+    expr = Add(0, 0, 1, evaluate=False)
+    ascii_str = "0 + 0 + 1"
+    ucode_str = "0 + 0 + 1"
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
+    expr = Mul(1, -1, evaluate=False)
+    ascii_str = "1*(-1)"
+    ucode_str = "1⋅(-1)"
     assert pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
 
