@@ -1790,6 +1790,13 @@ class PrettyPrinter(Printer):
         else:
             args = list(product.args)
 
+        # Always show the ones out front of a product:
+        num_ones = args.count(S.One)
+        if num_ones != 0:
+            rest = Mul(*(a for a in args if a is not S.One), evaluate=False)
+            factors = [self._print(S.One)] * num_ones + [self._print_Mul(rest)]
+            return prettyForm.__mul__(*factors)
+
         # If quantities are present append them at the back
         args = sorted(args, key=lambda x: isinstance(x, Quantity) or
                      (isinstance(x, Pow) and isinstance(x.base, Quantity)))
@@ -1806,8 +1813,6 @@ class PrettyPrinter(Printer):
                     a.append( Rational(item.p) )
                 if item.q != 1:
                     b.append( Rational(item.q) )
-                if item.p == 1 and item.q == 1:
-                    a.append(S.One)
             else:
                 a.append(item)
 

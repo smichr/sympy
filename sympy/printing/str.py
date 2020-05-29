@@ -293,6 +293,14 @@ class StrPrinter(Printer):
             # use make_args in case expr was something like -x -> x
             args = Mul.make_args(expr)
 
+        # Always show the ones out front of a product:
+        num_ones = sum(1 for a in args if a is S.One)
+        if num_ones != 0:
+            rest = Mul(*(a for a in args if a is not S.One), evaluate=False)
+            factors = [S.One] * num_ones + [rest]
+            factors = [self.parenthesize(x, prec, strict=False) for x in factors]
+            return '*'.join(factors)
+
         # Gather args for numerator/denominator
         for item in args:
             if item.is_commutative and item.is_Pow and item.exp.is_Rational and item.exp.is_negative:
@@ -307,8 +315,6 @@ class StrPrinter(Printer):
                     a.append(Rational(item.p))
                 if item.q != 1:
                     b.append(Rational(item.q))
-                if item.p == 1 and item.q == 1:
-                    a.append(S.One)
             else:
                 a.append(item)
 
