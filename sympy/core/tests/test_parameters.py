@@ -75,7 +75,12 @@ def test_add():
         assert x + S.One / 2 == Add(x, S.One / 2)
 
         assert S.One / x * x == Mul(S.One / x, x)
-        assert x * (S.One / x) == Mul(x, Mul(1, Pow(x, -1)))
+        assert x * (S.One / x) == Mul(x, Pow(x, -1))
+
+        assert S.One / 3 == Pow(3, -1)
+        assert S.One / x == Pow(x, -1)
+        assert 1 / S(3) == Pow(3, -1)
+        assert 1 / x == Pow(x, -1)
 
 def test_nested():
     with evaluate(False):
