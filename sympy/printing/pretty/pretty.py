@@ -1794,7 +1794,9 @@ class PrettyPrinter(Printer):
         num_ones = sum(1 for a in args if a is S.One)
         if num_ones != 0:
             rest = Mul(*(a for a in args if a is not S.One), evaluate=False)
-            factors = [self._print(S.One)] * num_ones + [self._print_Mul(rest)]
+            factors = [self._print(S.One)] * num_ones
+            if rest is not S.One:
+                factors += [self._print(rest)]
             return prettyForm.__mul__(*factors)
 
         # If quantities are present append them at the back

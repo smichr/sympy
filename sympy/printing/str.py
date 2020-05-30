@@ -297,7 +297,9 @@ class StrPrinter(Printer):
         num_ones = sum(1 for a in args if a is S.One)
         if num_ones != 0:
             rest = Mul(*(a for a in args if a is not S.One), evaluate=False)
-            factors = [S.One] * num_ones + [rest]
+            factors = [S.One] * num_ones
+            if rest is not S.One:
+                factors += [rest]
             factors = [self.parenthesize(x, prec, strict=False) for x in factors]
             return '*'.join(factors)
 

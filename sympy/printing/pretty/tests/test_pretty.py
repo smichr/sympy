@@ -950,36 +950,33 @@ u("""\
 """)
     assert pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
+    expr = Mul(0, 1, evaluate=False)
+    assert pretty(expr) == "1*0"
+    assert upretty(expr) == "1⋅0"
+    expr = Mul(1, 1, evaluate=False)
+    assert pretty(expr) == "1*1"
+    assert upretty(expr) == "1⋅1"
+    expr = Mul(1, 1, 1, evaluate=False)
+    assert pretty(expr) == "1*1*1"
+    assert upretty(expr) == "1⋅1⋅1"
     expr = Mul(1, 2, evaluate=False)
-    ascii_str = "1*2"
-    ucode_str = "1⋅2"
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
+    assert pretty(expr) == "1*2"
+    assert upretty(expr) == "1⋅2"
     expr = Add(0, 1, evaluate=False)
-    ascii_str = "0 + 1"
-    ucode_str = "0 + 1"
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
+    assert pretty(expr) == "0 + 1"
+    assert upretty(expr) == "0 + 1"
     expr = Mul(1, 1, 2, evaluate=False)
-    ascii_str = "1*1*2"
-    ucode_str = "1⋅1⋅2"
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
+    assert pretty(expr) == "1*1*2"
+    assert upretty(expr) == "1⋅1⋅2"
     expr = Add(0, 0, 1, evaluate=False)
-    ascii_str = "0 + 0 + 1"
-    ucode_str = "0 + 0 + 1"
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
+    assert pretty(expr) == "0 + 0 + 1"
+    assert upretty(expr) == "0 + 0 + 1"
     expr = Mul(1, -1, evaluate=False)
-    ascii_str = "1*(-1)"
-    ucode_str = "1⋅(-1)"
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
+    assert pretty(expr) == "1*(-1)"
+    assert upretty(expr) == "1⋅(-1)"
     expr = Mul(1.0, x, evaluate=False)
-    ascii_str = "1.0*x"
-    ucode_str = "1.0⋅x"
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
+    assert pretty(expr) == "1.0*x"
+    assert upretty(expr) == "1.0⋅x"
 
 def test_issue_5524():
     assert pretty(-(-x + 5)*(-x - 2*sqrt(2) + 5) - (-y + 5)*(-y + 5)) == \
