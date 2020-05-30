@@ -960,8 +960,6 @@ u("""\
     ucode_str = "0 + 1"
     assert pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
-    assert pretty(expr) == ascii_str
-    assert upretty(expr) == ucode_str
     expr = Mul(1, 1, 2, evaluate=False)
     ascii_str = "1*1*2"
     ucode_str = "1⋅1⋅2"
