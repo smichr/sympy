@@ -43,6 +43,7 @@ def test_Add():
     assert str(x + x**2) == "x**2 + x"
     assert str(Add(0, 1, evaluate=False)) == "0 + 1"
     assert str(Add(0, 0, 1, evaluate=False)) == "0 + 0 + 1"
+    assert str(1.0*x) == "1.0*x"
     assert str(5 + x + y + x*y + x**2 + y**2) == "x**2 + x*y + x + y**2 + y + 5"
     assert str(1 + x + x**2/2 + x**3/3) == "x**3/3 + x**2/2 + x + 1"
     assert str(2*x - 7*x**2 + 2 + 3*y) == "-7*x**2 + 2*x + 3*y + 2"

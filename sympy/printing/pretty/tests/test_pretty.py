@@ -977,6 +977,11 @@ u("""\
     ucode_str = "1⋅(-1)"
     assert pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
+    expr = Mul(1.0, x, evaluate=False)
+    ascii_str = "1.0*x"
+    ucode_str = "1.0⋅x"
+    assert pretty(expr) == ascii_str
+    assert upretty(expr) == ucode_str
 
 def test_issue_5524():
     assert pretty(-(-x + 5)*(-x - 2*sqrt(2) + 5) - (-y + 5)*(-y + 5)) == \

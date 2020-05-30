@@ -1791,7 +1791,7 @@ class PrettyPrinter(Printer):
             args = list(product.args)
 
         # Always show the ones out front of a product:
-        num_ones = args.count(S.One)
+        num_ones = sum(1 for a in args if a is S.One)
         if num_ones != 0:
             rest = Mul(*(a for a in args if a is not S.One), evaluate=False)
             factors = [self._print(S.One)] * num_ones + [self._print_Mul(rest)]
