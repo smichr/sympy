@@ -233,6 +233,7 @@ def test_Mul():
     assert str(Mul(1, 2, evaluate=False)) == '1*2'
     assert str(Mul(1, S.Half, evaluate=False)) == '1*(1/2)'
     assert str(Mul(1, 1, S.Half, evaluate=False)) == '1*1*(1/2)'
+    assert str(Mul(1, 1, 2, 3, x, evaluate=False)) == '1*1*2*3*x'
     assert str(Mul(1, -1, evaluate=False)) == '1*(-1)'
     # For issue 14160
     assert str(Mul(-2, x, Pow(Mul(y,y,evaluate=False), -1, evaluate=False),

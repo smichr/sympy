@@ -296,10 +296,10 @@ class StrPrinter(Printer):
         # Always show the ones out front of a product:
         num_ones = sum(1 for a in args if a is S.One)
         if num_ones != 0:
-            rest = Mul(*(a for a in args if a is not S.One), evaluate=False)
+            rest = [a for a in args if a is not S.One]
             factors = [S.One] * num_ones
-            if rest is not S.One:
-                factors += [rest]
+            if rest:
+                factors += rest
             factors = [self.parenthesize(x, prec, strict=False) for x in factors]
             return '*'.join(factors)
 
