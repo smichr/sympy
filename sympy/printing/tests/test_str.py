@@ -227,7 +227,8 @@ def test_Mul():
     assert str(-2*x/3) == '-2*x/3'
     assert str(-1.0*x) == '-1.0*x'
     assert str(1.0*x) == '1.0*x'
-    assert str(Mul(0, 1, evaluate=False)) == '1*0'
+    assert str(Mul(0, 1, evaluate=False)) == '0*1'
+    assert str(Mul(1, 0, evaluate=False)) == '1*0'
     assert str(Mul(1, 1, evaluate=False)) == '1*1'
     assert str(Mul(1, 1, 1, evaluate=False)) == '1*1*1'
     assert str(Mul(1, 2, evaluate=False)) == '1*2'
@@ -235,6 +236,10 @@ def test_Mul():
     assert str(Mul(1, 1, S.Half, evaluate=False)) == '1*1*(1/2)'
     assert str(Mul(1, 1, 2, 3, x, evaluate=False)) == '1*1*2*3*x'
     assert str(Mul(1, -1, evaluate=False)) == '1*(-1)'
+    assert str(Mul(-1, 1, evaluate=False)) == '(-1)*1'
+    assert str(Mul(4, 3, 2, 1, 0, y, x, evaluate=False)) == '4*3*2*1*0*y*x'
+    assert str(Mul(4, 3, 2, 1+z, 0, y, x, evaluate=False)) == '4*3*2*(z + 1)*0*y*x'
+    assert str(Mul(Rational(2, 3), Rational(5, 7), evaluate=False)) == '(2/3)*(5/7)'
     # For issue 14160
     assert str(Mul(-2, x, Pow(Mul(y,y,evaluate=False), -1, evaluate=False),
                                                 evaluate=False)) == '-2*x/(y*y)'

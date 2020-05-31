@@ -6,7 +6,7 @@ from sympy.core import S
 from sympy.core.containers import Tuple
 from sympy.core.function import _coeff_isneg
 from sympy.core.mul import Mul
-from sympy.core.numbers import Rational
+from sympy.core.numbers import Number, Rational
 from sympy.core.power import Pow
 from sympy.core.symbol import Symbol
 from sympy.core.sympify import SympifyError
@@ -1782,6 +1782,22 @@ class PrettyPrinter(Printer):
 
     def _print_Mul(self, product):
         from sympy.physics.units import Quantity
+
+        # Check for unevaluated Mul. In this case we need to make sure the
+        # identities are visible, multiple Rational factors are not combined
+        # etc so we display in a straight-forward form that fully preserves all
+        # args and their order.
+        args = product.args
+        if args[0] is S.One or any(isinstance(arg, Number) for arg in args[1:]):
+            strargs = list(map(self._print, args))
+            negone = strargs[0] == '-1'
+            if negone:
+                strargs[0] = prettyForm('1', 0, 0)
+            obj = prettyForm.__mul__(*strargs)
+            if negone:
+                obj = prettyForm('-' + obj.s, obj.baseline, obj.binding)
+            return obj
+
         a = []  # items in the numerator
         b = []  # items that are in the denominator (if any)
 

@@ -951,6 +951,9 @@ u("""\
     assert pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
     expr = Mul(0, 1, evaluate=False)
+    assert pretty(expr) == "0*1"
+    assert upretty(expr) == "0⋅1"
+    expr = Mul(1, 0, evaluate=False)
     assert pretty(expr) == "1*0"
     assert upretty(expr) == "1⋅0"
     expr = Mul(1, 1, evaluate=False)
@@ -980,6 +983,20 @@ u("""\
     expr = Mul(1, 1, 2, 3, x, evaluate=False)
     assert pretty(expr) == "1*1*2*3*x"
     assert upretty(expr) == "1⋅1⋅2⋅3⋅x"
+    expr = Mul(-1, 1, evaluate=False)
+    assert pretty(expr) == "-1*1"
+    assert upretty(expr) == "-1⋅1"
+    '(-1)*1'
+    expr = Mul(4, 3, 2, 1, 0, y, x, evaluate=False)
+    assert pretty(expr) == "4*3*2*1*0*y*x"
+    assert upretty(expr) == "4⋅3⋅2⋅1⋅0⋅y⋅x"
+    expr = Mul(4, 3, 2, 1+z, 0, y, x, evaluate=False)
+    assert pretty(expr) == "4*3*2*(z + 1)*0*y*x"
+    assert upretty(expr) == "4⋅3⋅2⋅(z + 1)⋅0⋅y⋅x"
+    expr = Mul(Rational(2, 3), Rational(5, 7), evaluate=False)
+    assert pretty(expr) == "2/3*5/7"
+    assert upretty(expr) == "2/3⋅5/7"
+    '(2/3)*(5/7)'
 
 def test_issue_5524():
     assert pretty(-(-x + 5)*(-x - 2*sqrt(2) + 5) - (-y + 5)*(-y + 5)) == \
