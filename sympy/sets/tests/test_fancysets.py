@@ -282,7 +282,7 @@ def test_Range_set():
     raises(ValueError, lambda: Range(oo, 0, -2)[:1:-1])
 
     # test empty Range
-    assert Range(x, x, y) == empty
+    assert Range(x, x, y) == empty, Range(x, x, y)
     assert empty.reversed == empty
     assert 0 not in empty
     assert list(empty) == []
