@@ -294,10 +294,7 @@ def intersection_sets(self, other): # noqa:F811
         ifree = im.free_symbols
         lam = Lambda(n, re)
         if not im:
-            # allow re-evaluation
-            # of self in this case to make
-            # the result canonical
-            pass
+            base_set = base_set.intersect(solveset_real(f - n_, n))
         elif im.is_zero is False:
             return S.EmptySet
         elif ifree != {n}:
