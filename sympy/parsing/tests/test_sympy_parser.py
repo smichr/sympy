@@ -158,9 +158,10 @@ def test_issue_7663():
     assert parse_expr(e, evaluate=0) == parse_expr(e, evaluate=False)
     assert parse_expr(e, evaluate=0).equals(2*(x+1))
 
-def test_issue_10560():
+
+def test_issue_10560_21119():
     inputs = {
-        '4*-3' : '(-3)*4',
+        '4*-3' : '4*(-3)',
         '-4*3' : '(-4)*3',
     }
     for text, result in inputs.items():

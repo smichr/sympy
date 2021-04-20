@@ -252,7 +252,12 @@ def test_Mul():
     # For issue 14160
     assert str(Mul(-2, x, Pow(Mul(y,y,evaluate=False), -1, evaluate=False),
                                                 evaluate=False)) == '-2*x/(y*y)'
-
+    # issue 21119
+    assert S('4/2',evaluate=0) == '4/2'
+    assert S('4/-2',evaluate=0) == '4/(-2)'
+    assert S('-4/2',evaluate=0) == '(-4)/2'
+    assert S('-4/-2',evaluate=0) == '(-4)/(-2)'
+    assert S('4/2/1',evaluate=0) == '4/(2*1)'
 
     class CustomClass1(Expr):
         is_commutative = True
