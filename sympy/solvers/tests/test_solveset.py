@@ -70,7 +70,7 @@ def test_invert_real():
     y = Symbol('y', positive=True)
     n = Symbol('n', real=True)
     assert invert_real(x + 3, y, x) == (x, FiniteSet(y - 3))
-    assert invert_real(x*3, y, x) == (x, FiniteSet(y / 3))
+    assert invert_real(3*x, y, x) == (x, FiniteSet(y / 3))
 
     assert invert_real(exp(x), y, x) == (x, FiniteSet(log(y)))
     assert invert_real(exp(3*x), y, x) == (x, FiniteSet(log(y) / 3))
@@ -89,10 +89,17 @@ def test_invert_real():
     assert invert_real(2**exp(x), y, x) == (x, ireal(FiniteSet(log(log(y)/log(2)))))
 
     assert invert_real(x**2, y, x) == (x, FiniteSet(sqrt(y), -sqrt(y)))
-    assert invert_real(x**S.Half, y, x) == (x, FiniteSet(y**2))
+    assert invert_real(sqrt(x), y, x) == (x, FiniteSet(y**2))
+    assert all(i.dummy_eq(j) for i, j in zip(
+        invert_real(sqrt(x), z, x),
+        (x,
+        Intersection(ImageSet(Lambda(x, x**2), Intersection(FiniteSet(z),
+        Interval(0, oo))), Interval(0, oo)))))
 
+    assert invert_real(x**pi, y, x) == (x, Intersection(FiniteSet(y**(1/pi)), S.Reals))
+    assert invert_real(x**pi, -E, x) == (x, EmptySet())
+    assert invert_real(x**1.5, 1000, x) == (x, FiniteSet(1000**(1/1.5)))
     raises(ValueError, lambda: invert_real(x, x, x))
-    raises(ValueError, lambda: invert_real(x**pi, y, x))
     raises(ValueError, lambda: invert_real(S.One, y, x))
 
     assert invert_real(x**31 + x, y, x) == (x**31 + x, FiniteSet(y))
