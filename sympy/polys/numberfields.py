@@ -53,30 +53,27 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     if len(factors) == 1:
         return factors[0]
 
-    points = {x:v}
+    factors = {f:f.as_expr().subs({x:v}) for f in factors}
+
     symbols = dom.symbols if hasattr(dom, 'symbols') else []
-    t = QQ(1, 10)
 
     for n in range(bound**len(symbols)):
-        prec1 = 10
         n_temp = n
+        points = {}
         for s in symbols:
             points[s] = n_temp % bound
             n_temp = n_temp // bound
 
-        while True:
-            candidates = []
-            eps = t**(prec1 // 2)
-            for f in factors:
-                if abs(f.as_expr().evalf(prec1, points)) < eps:
-                    candidates.append(f)
-            if candidates:
-                factors = candidates
-            if len(factors) == 1:
-                return factors[0]
-            if prec1 > prec:
-                break
-            prec1 *= 2
+        def nonzero(f):
+            n10 = abs(f.evalf(10, points))
+            return n10._prec > 1 and n10 > 0
+
+        candidates = {f:fe for f, fe in factors.items() if not nonzero(fe)}
+        if candidates:
+            factors = candidates
+        if len(factors) == 1:
+            [f] = factors
+            return f
 
     raise NotImplementedError("multiple candidates for the minimal polynomial of %s" % v)
 
