@@ -50,7 +50,8 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     Return a factor having root ``v``
     It is assumed that one of the factors has root ``v``.
     """
-    from sympy.polys.polyutils import illegal
+    from sympy import Pow
+    from sympy.solvers.solvers import denoms
 
     if isinstance(factors[0], tuple):
         factors = [f[0] for f in factors]
@@ -66,19 +67,24 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
         xv = {x:v if not v.is_number else v.n(prec1)}
         fe = [f.as_expr().xreplace(xv) for f in factors]
 
+        concerns = set([i.base for f in factors for i in f.atoms(Pow)
+            if not (i.exp.is_Integer and i.exp > 0 or i.base.is_number)])
+        ex = set.union(*[set(denoms(i)) for i in fe])
+        assert not ex - concerns
+        rbase = concerns
+        p = {i:Dummy(positive=True) for i in symbols}
+        assert all(i.xreplace(p).is_nonnegative for i in rbase)
+
         # assign integers [0, n) to symbols (if any)
-        for n in subsets(range(bound), k=len(symbols), repetition=True):
+        from random import randint
+        for do in range(bound):
+            n = [randint(1,100) for i in symbols]
             for s, i in zip(symbols, n):
                 points[s] = i
 
             # evaluate the expression at these points
             candidates = [(abs(f.subs(points).n(prec1)), i)
                 for i,f in enumerate(fe)]
-
-            # if we get invalid numbers (e.g. from division by zero)
-            # we try again
-            if any(i in illegal for i, _ in candidates):
-                continue
 
             # find the smallest two -- if they differ significantly
             # then we assume we have found the factor that becomes
