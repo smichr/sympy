@@ -49,6 +49,17 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     """
     Return a factor having root ``v``
     It is assumed that one of the factors has root ``v``.
+
+    When `v` is numeric, the evaluation of a factor at that value
+    may not compute with precision to 0, but the other factors
+    will and will be larger, so we will take the one with the
+    minimum value.
+
+    When `v` is symbolic, we will substitute in arbitrary values
+    for the symbols making sure that no denominator is 0 and that
+    all arguments of radicals are positive (so we get the principle
+    value). This should yield a single expression that is 0 provided
+    that enough precision is used.
     """
     from sympy import Pow
     from sympy.solvers.solvers import denoms
@@ -61,43 +72,66 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     prec1 = 10
     points = {}
     symbols = dom.symbols if hasattr(dom, 'symbols') else []
-    while True:
-        # when dealing with non-Rational numbers we usually evaluate
-        # with `subs` argument but we only need a ballpark evaluation
-        xv = {x:v if not v.is_number else v.n(prec1)}
-        fe = [f.as_expr().xreplace(xv) for f in factors]
 
-        concerns = set([i.base for f in factors for i in f.atoms(Pow)
-            if not (i.exp.is_Integer and i.exp > 0 or i.base.is_number)])
-        ex = set.union(*[set(denoms(i)) for i in fe])
-        assert not ex - concerns
-        rbase = concerns
-        p = {i:Dummy(positive=True) for i in symbols}
-        assert all(i.xreplace(p).is_nonnegative for i in rbase)
+    # when dealing with non-Rational numbers we usually evaluate
+    # with `subs` argument but we only need a ballpark evaluation
+    xv = {x: v if not v.is_number else v.n(prec1)}
+    fe = [f.as_expr().xreplace(xv) for f in factors]
 
-        # assign integers [0, n) to symbols (if any)
-        from random import randint
-        for do in range(bound):
-            n = [randint(1,100) for i in symbols]
+    if not all(i.is_number for i in fe):
+        def _base(i):
+            """return denominator or base of non-integer Pow,
+            recursively
+
+            Examples
+            ========
+
+            >>> from sympy import sqrt
+            >>> from sympy.abc import x
+            >>> _base(x**2)
+            >>> _base(sqrt(x))
+            x
+            >>> _base(x**-2)
+            x
+            >>> _base(1/sqrt(x))
+            x
+            """
+            if not isinstance(i, Pow):
+                return i
+            if i.exp.is_Integer and i.exp < 0:
+                return _base(i.base)
+            if not i.exp.is_Integer:
+                return _base(i.base)
+
+        concerns = set(filter(None,
+            [_base(i) for f in fe for i in f.atoms(Pow)]))
+        p = {i: Dummy(positive=True) for i in symbols}
+        if not all(i.xreplace(p).is_nonnegative for i in concerns):
+            prec1 = prec + 1  # to flag failure
+            # TODO figure out a good way to pick values for
+            # symbols so all denominators/bases are positive
+        else:
+            from random import randint
+            n = [randint(1, 100*len(symbols)) for i in symbols]
             for s, i in zip(symbols, n):
                 points[s] = i
 
-            # evaluate the expression at these points
-            candidates = [(abs(f.subs(points).n(prec1)), i)
-                for i,f in enumerate(fe)]
+    while prec1 <= prec:
+        # evaluate the expression at these points
+        candidates = [(abs(f.xreplace(points).n(prec1)), i)
+            for i, f in enumerate(fe)]
 
-            # find the smallest two -- if they differ significantly
-            # then we assume we have found the factor that becomes
-            # 0 when v is substituted into it
-            can = sorted(candidates)
-            (a, ix), (b, _) = can[:2]
-            if b > a * 10**6:  # XXX what to use?
-                return factors[ix]
+        # find the smallest two -- if they differ significantly
+        # then we assume we have found the factor that becomes
+        # 0 when v is substituted into it
+        can = sorted(candidates)
+        (a, ix), (b, _) = can[:2]
+        if b > a * 10**6:  # XXX what to use?
+            return factors[ix]
 
         prec1 *= 2
 
     raise NotImplementedError("multiple candidates for the minimal polynomial of %s" % v)
-
 
 
 def _separate_sq(p):
