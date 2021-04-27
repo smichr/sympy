@@ -182,6 +182,9 @@ def test_minimal_polynomial_issue_19732():
             + 211295968822207088328287206509522887719741955693091053353263782924470627623790749534705683380138972642560898936171035770539616881000369889020398551821767092685775598633794696371561234818461806577723412581353857653829324364446419444210520602157621008010129702779407422072249192199762604318993590841636967747488049176548615614290254356975376588506729604345612047361483789518445332415765213187893207704958013682516462853001964919444736320672860140355089)
     assert minimal_polynomial(expr, x) == poly
 
+    assert minimal_polynomial(I + sqrt(2 - I*y), x) == \
+        x**4 - 2*x**2 - 4*x*y + y**2 + 9
+
 
 def test_minimal_polynomial_hi_prec():
     p = 1/sqrt(1 - 9*sqrt(2) + 7*sqrt(3) + Rational(1, 10)**30)
@@ -323,6 +326,7 @@ def test_primitive_element():
     # Issue 14117
     a, b = I*sqrt(2*sqrt(2) + 3), I*sqrt(-2*sqrt(2) + 3)
     assert primitive_element([a, b, I], x) == (x**4 + 6*x**2 + 1, [1, 0, 0])
+
 
 def test_field_isomorphism_pslq():
     a = AlgebraicNumber(I)
@@ -732,6 +736,7 @@ def test_isolate():
 
     raises(NotImplementedError, lambda: isolate(I))
 
+
 def test_minpoly_fraction_field():
     assert minimal_polynomial(1/x, y) == -x*y + 1
     assert minimal_polynomial(1 / (x + 1), y) == (x + 1)*y - 1
@@ -768,10 +773,12 @@ def test_minpoly_fraction_field():
     raises(GeneratorsError, lambda: minimal_polynomial(sqrt(x) - y, x))
     raises(NotImplementedError, lambda: minimal_polynomial(sqrt(x), y, compose=False))
 
+
 @slow
 def test_minpoly_fraction_field_slow():
     assert minimal_polynomial(minimal_polynomial(sqrt(x**Rational(1,5) - 1),
         y).subs(y, sqrt(x**Rational(1,5) - 1)), z) == z
+
 
 def test_minpoly_domain():
     assert minimal_polynomial(sqrt(2), x, domain=QQ.algebraic_field(sqrt(2))) == \
@@ -805,6 +812,7 @@ def test_issue_13230():
     + 9*sqrt(5)/29 + sqrt(196*sqrt(35) + 1941)/29), -2*sqrt(7)/29 + 9*sqrt(5)/29
     + sqrt(196*sqrt(35) + 1941)/29), Point2D(-1 + (-sqrt(7) + sqrt(5))*(-sqrt(196*sqrt(35)
     + 1941)/29 - 2*sqrt(7)/29 + 9*sqrt(5)/29), -sqrt(196*sqrt(35) + 1941)/29 - 2*sqrt(7)/29 + 9*sqrt(5)/29)]
+
 
 def test_issue_19760():
     e = 1/(sqrt(1 + sqrt(2)) - sqrt(2)*sqrt(1 + sqrt(2))) + 1

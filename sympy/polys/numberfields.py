@@ -55,22 +55,17 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     will and will be larger, so we will take the one with the
     minimum value.
 
-    When `v` is symbolic, we will substitute in arbitrary values
-    for the symbols making sure that no denominator is 0 and that
-    all arguments of radicals are positive (so we get the principle
-    value). This should yield a single expression that is 0 provided
-    that enough precision is used.
+    When `v` is symbolic, the factor which simplifies to 0 when
+    values are assumed to be positive will be selected as the desired
+    root. If none factors to 0 then a NotImplementedError will be
+    raised.
     """
-    from sympy import Pow
-    from sympy.solvers.solvers import denoms
-
     if isinstance(factors[0], tuple):
         factors = [f[0] for f in factors]
     if len(factors) == 1:
         return factors[0]
 
     prec1 = 10
-    points = {}
     symbols = dom.symbols if hasattr(dom, 'symbols') else []
 
     # when dealing with non-Rational numbers we usually evaluate
@@ -78,57 +73,21 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     xv = {x: v if not v.is_number else v.n(prec1)}
     fe = [f.as_expr().xreplace(xv) for f in factors]
 
+    # handle symbolic expressions by using simplification to
+    # give an expression that is 0
     if not all(i.is_number for i in fe):
-        def _base(i):
-            """return denominator or base of non-integer Pow,
-            recursively
-
-            Examples
-            ========
-
-            >>> from sympy import sqrt
-            >>> from sympy.abc import x
-            >>> _base(x**2)
-            >>> _base(sqrt(x))
-            x
-            >>> _base(x**-2)
-            x
-            >>> _base(1/sqrt(x))
-            x
-            """
-            if not isinstance(i, Pow):
-                return i
-            if i.exp.is_Integer and i.exp < 0:
-                return _base(i.base)
-            if not i.exp.is_Integer:
-                return _base(i.base)**(S.One/i.exp.q)
-
-        concerns = set(filter(None,
-            [_base(i) for f in fe for i in f.atoms(Pow)]))
-        concerns = [(i.base, i.exp.q) if i.is_Pow else (i, 1) for i in concerns]
         p = {i: Dummy('p', positive=True) for i in symbols}
-        bq = [(i.xreplace(p), q) for i, q in concerns]
-        if any(b.is_positive is None for b, q in bq):
-            prec1 = prec + 1  # to flag failure
-            # TODO figure out a good way to pick values for
-            # symbols so all denominators/bases are positive
-        else:
-            from random import randint
-            n = [randint(1, 100*len(symbols)) for i in symbols]
-            for s, i in zip(symbols, n):
-                points[s] = i
-            from sympy import real_root
-            unp = {v:k for k,v in p.items()}
-            rr = {(i**(S(1)/q)): real_root(i, q).xreplace(unp) for i, q in bq}
-            fe = [i.subs(rr) for i in fe]
-            print()
-            print(rr)
-            print(fe)
+        fe = [f.xreplace(p).factor() for f in fe]
+        if S.Zero in fe:
+            return factors[fe.index(S.Zero)]
+        # for some reason the expression did not simplify
+        # to zero -- find a new way to select the factor that
+        # becomes 0 when x is replaced with non-numeric v
+        prec1 = prec + 1
 
     while prec1 <= prec:
-        # evaluate the expression at these points
-        candidates = [(abs(f.xreplace(points).n(prec1)), i)
-            for i, f in enumerate(fe)]
+        # evaluate the expression at this precision
+        candidates = [(abs(f.n(prec1)), i) for i, f in enumerate(fe)]
 
         # find the smallest two -- if they differ significantly
         # then we assume we have found the factor that becomes
@@ -169,7 +128,6 @@ def _separate_sq(p):
     -x**8 + 48*x**6 - 536*x**4 + 1728*x**2 - 400
 
     """
-    from sympy.utilities.iterables import sift
     def is_sqrt(expr):
         return expr.is_Pow and expr.exp is S.Half
     # p = c1*sqrt(q1) + ... + cn*sqrt(qn) -> a = [(c1, q1), .., (cn, qn)]
