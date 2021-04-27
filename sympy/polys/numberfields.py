@@ -101,12 +101,14 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
             if i.exp.is_Integer and i.exp < 0:
                 return _base(i.base)
             if not i.exp.is_Integer:
-                return _base(i.base)
+                return _base(i.base)**(S.One/i.exp.q)
 
         concerns = set(filter(None,
             [_base(i) for f in fe for i in f.atoms(Pow)]))
-        p = {i: Dummy(positive=True) for i in symbols}
-        if not all(i.xreplace(p).is_nonnegative for i in concerns):
+        concerns = [(i.base, i.exp.q) if i.is_Pow else (i, 1) for i in concerns]
+        p = {i: Dummy('p', positive=True) for i in symbols}
+        bq = [(i.xreplace(p), q) for i, q in concerns]
+        if any(b.is_positive is None for b, q in bq):
             prec1 = prec + 1  # to flag failure
             # TODO figure out a good way to pick values for
             # symbols so all denominators/bases are positive
@@ -115,6 +117,13 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
             n = [randint(1, 100*len(symbols)) for i in symbols]
             for s, i in zip(symbols, n):
                 points[s] = i
+            from sympy import real_root
+            unp = {v:k for k,v in p.items()}
+            rr = {(i**(S(1)/q)): real_root(i, q).xreplace(unp) for i, q in bq}
+            fe = [i.subs(rr) for i in fe]
+            print()
+            print(rr)
+            print(fe)
 
     while prec1 <= prec:
         # evaluate the expression at these points
