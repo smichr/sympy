@@ -73,29 +73,60 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     xv = {x: v if not v.is_number else v.n(prec1)}
     fe = [f.as_expr().xreplace(xv) for f in factors]
 
-    # handle symbolic expressions by using simplification to
-    # give an expression that is 0
-    if not all(i.is_number for i in fe):
-        p = {i: Dummy('p', positive=True) for i in symbols}
-        fe = [f.xreplace(p).factor() for f in fe]
-        if S.Zero in fe:
-            return factors[fe.index(S.Zero)]
-        # for some reason the expression did not simplify
-        # to zero -- find a new way to select the factor that
-        # becomes 0 when x is replaced with non-numeric v
-        prec1 = prec + 1
-
     while prec1 <= prec:
-        # evaluate the expression at this precision
-        candidates = [(abs(f.n(prec1)), i) for i, f in enumerate(fe)]
+        if not all(i.is_number for i in fe):
+            # find a set of numbers that doesn't create infinities or
+            # nan and select the factor having the root closest to v
+            from random import randint
+            from sympy import oo, RootOf
+            ok = False
+            for i in range(bound):
+                reps = {s: randint(1, 100*len(symbols)) for s in symbols}
+                fn = [f.as_expr().xreplace(reps) for f in factors]
+                if any(i in fn for i in (oo, -oo, S.NaN)):
+                    continue
+                vn = v.xreplace(reps)
+                if vn in (oo, -oo, S.NaN):
+                    continue
+                ok = True
+                break
+            if ok:
+                best = []
+                for f in fn:
+                    ix = 0
+                    small = oo
+                    res = []
+                    while True:
+                        try:
+                            # do not calculate as abs(RootOf(f, ix) - vn).n(2))
+                            res.append(abs(RootOf(f, ix).n(prec1) - vn.n(prec1)))
+                            ix += 1
+                        except IndexError:
+                            res.sort()
+                            if len(res) > 1 and res[0] == res[1]:
+                                ok = False
+                            best.append(res[0])
+                            break
+                    if not ok:
+                        break
+                if ok:
+                    a, b = sorted(best)[:2]
+                    print(a,b)
+                    if b < a*10**6:
+                        ok = False
+                if ok:
+                    return factors[best.index(a)]
+        else:
+            # evaluate the expression at this precision
+            candidates = [(abs(f.n(prec1)), i) for i, f in enumerate(fe)]
 
-        # find the smallest two -- if they differ significantly
-        # then we assume we have found the factor that becomes
-        # 0 when v is substituted into it
-        can = sorted(candidates)
-        (a, ix), (b, _) = can[:2]
-        if b > a * 10**6:  # XXX what to use?
-            return factors[ix]
+            # find the smallest two -- if they differ significantly
+            # then we assume we have found the factor that becomes
+            # 0 when v is substituted into it
+            can = sorted(candidates)
+            (a, ix), (b, _) = can[:2]
+            if b > a * 10**6:  # XXX what to use?
+                return factors[ix]
 
         prec1 *= 2
 
