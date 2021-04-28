@@ -33,6 +33,10 @@ from sympy.polys.polytools import degree
 from sympy.abc import x, y, z
 
 Q = Rational
+i = Symbol('i', integer=True)
+r = Symbol('r', rational=True)
+pr = Symbol('pr', rational=True, positive=True)
+nzr = Symbol('nzr', rational=True, zero=False)
 
 
 def test_minimal_polynomial():
@@ -74,8 +78,10 @@ def test_minimal_polynomial():
     assert minimal_polynomial(
         1/sqrt(a), x) == 392*x**8 - 1232*x**6 + 612*x**4 + 4*x**2 - 1
 
+    raises(TypeError, lambda: minimal_polynomial(1/r, x))
+    raises(TypeError, lambda: minimal_polynomial(2**y, x))
+    raises(TypeError, lambda: minimal_polynomial(2**i, x))
     raises(NotAlgebraic, lambda: minimal_polynomial(oo, x))
-    raises(NotAlgebraic, lambda: minimal_polynomial(2**y, x))
     raises(NotAlgebraic, lambda: minimal_polynomial(sin(1), x))
 
     assert minimal_polynomial(sqrt(2)).dummy_eq(x**2 - 2)
@@ -181,9 +187,6 @@ def test_minimal_polynomial_issue_19732():
             - 5773274155644072033773937864114266313663195672820501581692669271302387257492905909558846459600429795784309388968498783843631580008547382703258503404023153694528041873101120067477617592651525155101107144042679962433039557235772239171616433004024998230222455940044709064078962397144550855715640331680262171410099614469231080995436488414164502751395405398078353242072696360734131090111239998110773292915337556205692674790561090109440000000000000*x**2
             + 211295968822207088328287206509522887719741955693091053353263782924470627623790749534705683380138972642560898936171035770539616881000369889020398551821767092685775598633794696371561234818461806577723412581353857653829324364446419444210520602157621008010129702779407422072249192199762604318993590841636967747488049176548615614290254356975376588506729604345612047361483789518445332415765213187893207704958013682516462853001964919444736320672860140355089)
     assert minimal_polynomial(expr, x) == poly
-
-    assert minimal_polynomial(I + sqrt(2 - I*y), x) == \
-        x**4 - 2*x**2 - 4*x*y + y**2 + 9
 
 
 def test_minimal_polynomial_hi_prec():
@@ -738,40 +741,29 @@ def test_isolate():
 
 
 def test_minpoly_fraction_field():
-    assert minimal_polynomial(1/x, y) == -x*y + 1
-    assert minimal_polynomial(1 / (x + 1), y) == (x + 1)*y - 1
-
-    assert minimal_polynomial(sqrt(x), y) == y**2 - x
-    assert minimal_polynomial(sqrt(x + 1), y) == y**2 - x - 1
-    assert minimal_polynomial(sqrt(x) / x, y) == x*y**2 - 1
-    assert minimal_polynomial(sqrt(2) * sqrt(x), y) == y**2 - 2 * x
-    assert minimal_polynomial(sqrt(2) + sqrt(x), y) == \
-        y**4 + (-2*x - 4)*y**2 + x**2 - 4*x + 4
-
-    assert minimal_polynomial(x**Rational(1,3), y) == y**3 - x
-    assert minimal_polynomial(x**Rational(1,3) + sqrt(x), y) == \
-        y**6 - 3*x*y**4 - 2*x*y**3 + 3*x**2*y**2 - 6*x**2*y - x**3 + x**2
-
-    assert minimal_polynomial(sqrt(x) / z, y) == z**2*y**2 - x
-    assert minimal_polynomial(sqrt(x) / (z + 1), y) == (z**2 + 2*z + 1)*y**2 - x
-
-    assert minimal_polynomial(1/x, y, polys=True) == Poly(-x*y + 1, y, domain='ZZ(x)')
-    assert minimal_polynomial(1 / (x + 1), y, polys=True) == \
-        Poly((x + 1)*y - 1, y, domain='ZZ(x)')
-    assert minimal_polynomial(sqrt(x), y, polys=True) == Poly(y**2 - x, y, domain='ZZ(x)')
-    assert minimal_polynomial(sqrt(x) / z, y, polys=True) == \
-        Poly(z**2*y**2 - x, y, domain='ZZ(x, z)')
+    raises(TypeError, lambda: minimal_polynomial(1/x, y))
+    assert minimal_polynomial(1/nzr, x) == 1 - nzr*x
+    assert str(minimal_polynomial(1/nzr, x, polys=True)) == \
+        "Poly(-nzr*x + 1, x, domain='ZZ(nzr)')"
+    raises(TypeError, lambda: minimal_polynomial(1/(r + 1), y))
+    assert minimal_polynomial(1/(pr + 1), y) == (pr + 1)*y - 1
+    assert str(minimal_polynomial(1/(pr + 1), y, polys=True)) == \
+        "Poly((pr + 1)*y - 1, y, domain='ZZ(pr)')"
 
     # this is (sqrt(1 + x**3)/x).integrate(x).diff(x) - sqrt(1 + x**3)/x
+    # and is only 0 when x is real and greater than -1; the answer
+    # cannot be an unqualified y (see issue 21395)
     a = sqrt(x)/sqrt(1 + x**(-3)) - sqrt(x**3 + 1)/x + 1/(x**Rational(5, 2)* \
         (1 + x**(-3))**Rational(3, 2)) + 1/(x**Rational(11, 2)*(1 + x**(-3))**Rational(3, 2))
+    raises(TypeError, lambda: minimal_polynomial(a, y))
 
-    assert minimal_polynomial(a, y) == y
+    # issue 8354
+    e=S('''-2**(1/3)*(3*sqrt(93) + 29)**2 - 4*(3*sqrt(93) + 29)**(4/3) +
+        12*sqrt(93)*(3*sqrt(93) + 29)**(1/3) + 116*(3*sqrt(93) + 29)**(1/3) +
+        174*2**(1/3)*sqrt(93) + 1678*2**(1/3)''')
+    assert minimal_polynomial(e, x) == x
 
     raises(NotAlgebraic, lambda: minimal_polynomial(exp(x), y))
-    raises(GeneratorsError, lambda: minimal_polynomial(sqrt(x), x))
-    raises(GeneratorsError, lambda: minimal_polynomial(sqrt(x) - y, x))
-    raises(NotImplementedError, lambda: minimal_polynomial(sqrt(x), y, compose=False))
 
 
 @slow

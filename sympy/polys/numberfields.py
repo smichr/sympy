@@ -48,18 +48,15 @@ from mpmath import pslq, mp
 def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     """
     Return a factor having root ``v``
-    It is assumed that one of the factors has root ``v``.
+    It is assumed that one of the factors has root ``v``
+    and that ``v`` is numeric.
 
-    When `v` is numeric, the evaluation of a factor at that value
-    may not compute with precision to 0, but the other factors
-    will and will be larger, so we will take the one with the
-    minimum value.
-
-    When `v` is symbolic, the factor which simplifies to 0 when
-    values are assumed to be positive will be selected as the desired
-    root. If none factors to 0 then a NotImplementedError will be
-    raised.
+    The evaluation of a factor at ``v`` may not compute with
+    precision to 0, but the other factors will and will be
+    larger, so we will take the one with the minimum value.
     """
+    # assert v.is_number is the assumption for what follows
+
     if isinstance(factors[0], tuple):
         factors = [f[0] for f in factors]
     if len(factors) == 1:
@@ -74,60 +71,18 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
     fe = [f.as_expr().xreplace(xv) for f in factors]
 
     while prec1 <= prec:
-        if not all(i.is_number for i in fe):
-            # find a set of numbers that doesn't create infinities or
-            # nan and select the factor having the root closest to v
-            from random import randint
-            from sympy import oo, RootOf
-            ok = False
-            for i in range(bound):
-                reps = {s: randint(1, 100*len(symbols)) for s in symbols}
-                fn = [f.as_expr().xreplace(reps) for f in factors]
-                if any(i in fn for i in (oo, -oo, S.NaN)):
-                    continue
-                vn = v.xreplace(reps)
-                if vn in (oo, -oo, S.NaN):
-                    continue
-                ok = True
-                break
-            if ok:
-                best = []
-                for f in fn:
-                    ix = 0
-                    small = oo
-                    res = []
-                    while True:
-                        try:
-                            # do not calculate as abs(RootOf(f, ix) - vn).n(2))
-                            res.append(abs(RootOf(f, ix).n(prec1) - vn.n(prec1)))
-                            ix += 1
-                        except IndexError:
-                            res.sort()
-                            if len(res) > 1 and res[0] == res[1]:
-                                ok = False
-                            best.append(res[0])
-                            break
-                    if not ok:
-                        break
-                if ok:
-                    a, b = sorted(best)[:2]
-                    print(a,b)
-                    if b < a*10**6:
-                        ok = False
-                if ok:
-                    return factors[best.index(a)]
-        else:
-            # evaluate the expression at this precision
-            candidates = [(abs(f.n(prec1)), i) for i, f in enumerate(fe)]
+        # evaluate the expression at this precision
+        candidates = [(abs(f.n(prec1)), i) for i, f in enumerate(fe)]
 
-            # find the smallest two -- if they differ significantly
-            # then we assume we have found the factor that becomes
-            # 0 when v is substituted into it
-            can = sorted(candidates)
-            (a, ix), (b, _) = can[:2]
-            if b > a * 10**6:  # XXX what to use?
-                return factors[ix]
+        # find the smallest two -- if they differ significantly
+        # then we assume we have found the factor that becomes
+        # 0 when v is substituted into it
+        can = sorted(candidates)
+        (a, ix), (b, _) = can[:2]
+        if b > a * 10**6:  # XXX what to use?
+            return factors[ix]
 
+        # else we raise the precision and try again
         prec1 *= 2
 
     raise NotImplementedError("multiple candidates for the minimal polynomial of %s" % v)
@@ -695,11 +650,28 @@ def minimal_polynomial(ex, x=None, compose=True, polys=False, domain=None):
     from sympy.polys.polytools import degree
     from sympy.polys.domains import FractionField
     from sympy.core.basic import preorder_traversal
+    from sympy.core.power import Pow
 
     ex = sympify(ex)
+
     if ex.is_number:
-        # not sure if it's always needed but try it for numbers (issue 8354)
+        # not sure if it's always needed but (see issue 8354)
         ex = _mexpand(ex, recursive=True)
+
+    free = ex.free_symbols
+
+    if not ex.is_number:
+        for i in ex.atoms(Pow):
+            if i.is_number:
+                continue
+            if not i.exp.is_Integer:
+                if i.exp.is_number:
+                    raise TypeError('exponents of symbolic bases must be literal integers')
+                else:
+                    raise TypeError('symbolic exponents are not supported')
+            elif i.exp < 0:
+                if i.base.is_zero is not False:
+                    raise TypeError('denominators must be non-zero')
     for expr in preorder_traversal(ex):
         if expr.is_AlgebraicNumber:
             compose = False
@@ -711,8 +683,8 @@ def minimal_polynomial(ex, x=None, compose=True, polys=False, domain=None):
         x, cls = Dummy('x'), PurePoly
 
     if not domain:
-        if ex.free_symbols:
-            domain = FractionField(QQ, list(ex.free_symbols))
+        if free:
+            domain = FractionField(QQ, list(free))
         else:
             domain = QQ
     if hasattr(domain, 'symbols') and x in domain.symbols:
