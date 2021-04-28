@@ -283,6 +283,7 @@ def test_pow_as_base_exp():
     assert p.base, p.exp == p.as_base_exp() == (S(2), -x)
     # issue 8344:
     assert Pow(1, 2, evaluate=False).as_base_exp() == (S.One, S(2))
+    assert Pow(I, S.Half).as_base_exp() == (-1, S(1)/4)
 
 
 def test_nseries():

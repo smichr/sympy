@@ -932,6 +932,8 @@ class Pow(Expr):
         b, e = self.args
         if b.is_Rational and b.p == 1 and b.q != 1:
             return Integer(b.q), -e
+        if b is S.ImaginaryUnit:
+            return S.NegativeOne, e/2
         return b, e
 
     def _eval_adjoint(self):
