@@ -22,7 +22,6 @@ from sympy.polys.partfrac import apart
 from sympy.polys.polyerrors import (
     IsomorphismFailed,
     NotAlgebraic,
-    GeneratorsError,
 )
 
 from sympy.polys.polyclasses import DMP

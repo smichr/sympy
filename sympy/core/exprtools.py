@@ -363,7 +363,7 @@ class Factors:
                     factors[q] = (factors[q] if q in factors else S.Zero) - factors[f]
                     factors.pop(f)
             if i:
-                factors[I] = S.One*i
+                factors[I] = factors.get(I, S.Zero) + i
             if nc:
                 factors[Mul(*nc, evaluate=False)] = S.One
         else:
@@ -376,28 +376,26 @@ class Factors:
                 if k is I or k in (-1, 1):
                     handle.append(k)
             if handle:
-                i1 = S.One
+                i1 = []
                 for k in handle:
                     if not _isnumber(factors[k]):
                         continue
-                    i1 *= k**factors.pop(k)
-                if i1 is not S.One:
-                    for a in i1.args if i1.is_Mul else [i1]:  # at worst, -1.0*I*(-1)**e
-                        if a is S.NegativeOne:
-                            factors[a] = S.One
-                        elif a is I:
-                            factors[I] = S.One
-                        elif a.is_Pow:
-                            if S.NegativeOne not in factors:
-                                factors[S.NegativeOne] = S.Zero
-                            factors[S.NegativeOne] += a.exp
-                        elif a == 1:
-                            factors[a] = S.One
-                        elif a == -1:
-                            factors[-a] = S.One
-                            factors[S.NegativeOne] = S.One
-                        else:
-                            raise ValueError('unexpected factor in i1: %s' % a)
+                    i1.append(k**factors.pop(k))
+                for a in Mul.make_args(Mul(*i1)):
+                    # 1.0*I*I**e1*(-1)**e2 at worst
+                    if not a.is_Pow:
+                        b, e = a, S.One
+                    else:
+                        b, e = a.as_base_exp()
+                    if not (b in (S.NegativeOne, I
+                            ) or b == 1 or b == -1):
+                        raise ValueError('unexpected factor in i1: %s' % a)
+                    if b is S.One:
+                        continue
+                    if b == -1 and b is not S.NegativeOne:
+                        b = -b
+                        factors[S.NegativeOne] = S.One
+                    factors[b] = factors.get(b, S.Zero) + e
 
         self.factors = factors
         keys = getattr(factors, 'keys', None)

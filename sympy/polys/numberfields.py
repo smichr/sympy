@@ -14,7 +14,6 @@ from sympy.functions.elementary.exponential import exp
 from sympy.functions.elementary.trigonometric import cos, sin
 from sympy.ntheory import sieve
 from sympy.ntheory.factor_ import divisors
-from sympy.utilities.iterables import subsets
 
 from sympy.polys.densetools import dup_eval
 from sympy.polys.domains import ZZ, QQ
@@ -63,7 +62,6 @@ def _choose_factor(factors, x, v, dom=QQ, prec=200, bound=5):
         return factors[0]
 
     prec1 = 10
-    symbols = dom.symbols if hasattr(dom, 'symbols') else []
 
     # when dealing with non-Rational numbers we usually evaluate
     # with `subs` argument but we only need a ballpark evaluation

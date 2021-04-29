@@ -294,6 +294,14 @@ class Pow(Expr):
         if evaluate:
             if b is S.Zero and e is S.NegativeInfinity:
                 return S.ComplexInfinity
+            if b is S.ImaginaryUnit and e.is_Rational:
+                i, r = divmod(e, 2)
+                rv = [S.One, b, S.NegativeOne, -b][2*i % 4]
+                if r == 1:
+                    rv *= b
+                elif r:
+                    rv *= Pow(b, S(r), evaluate=False)
+                return rv
             if e is S.ComplexInfinity:
                 return S.NaN
             if e is S.Zero:
@@ -932,8 +940,6 @@ class Pow(Expr):
         b, e = self.args
         if b.is_Rational and b.p == 1 and b.q != 1:
             return Integer(b.q), -e
-        if b is S.ImaginaryUnit:
-            return S.NegativeOne, e/2
         return b, e
 
     def _eval_adjoint(self):

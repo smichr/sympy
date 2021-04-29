@@ -2,7 +2,7 @@
 
 from sympy import (S, Add, sin, Mul, Symbol, oo, Integral, sqrt, Tuple, I,
                    Function, Interval, O, symbols, simplify, collect, Sum,
-                   Basic, Dict, root, exp, cos, Dummy, log, Rational)
+                   Basic, Dict, root, exp, cos, Dummy, log, Rational, Float)
 from sympy.core.exprtools import (decompose_power, Factors, Term, _gcd_terms,
                                   gcd_terms, factor_terms, factor_nc, _mask_nc,
                                   _monotonic_sign)
@@ -54,8 +54,12 @@ def test_Factors():
     assert Factors(sqrt(2)*x).as_expr() == sqrt(2)*x
 
     assert Factors(-I)*I == Factors()
+    assert Factors(-I)*sqrt(I) == Factors({-1: 1, I: S(3)/2})
+    assert Factors(-1)*-1 == Factors()
     assert Factors({S.NegativeOne: S(3)})*Factors({S.NegativeOne: S.One, I: S(5)}) == \
         Factors(I)
+    assert Factors(sqrt(I)*I) == Factors(I**(S(3)/2)) == Factors({I: S(3)/2})
+    assert Factors({I: S(3)/2}).as_expr() == I**(S(3)/2)
 
     assert Factors(S(2)**x).div(S(3)**x) == \
         (Factors({S(2): x}), Factors({S(3): x}))
@@ -66,6 +70,7 @@ def test_Factors():
     # /!\ things break if this is not True
     assert Factors({S.NegativeOne: Rational(3, 2)}) == Factors({I: S.One, S.NegativeOne: S.One})
     assert Factors({I: S.One, S.NegativeOne: Rational(1, 3)}).as_expr() == I*(-1)**Rational(1, 3)
+    assert Factors({I: S.One, Float(-1.):Rational(1, 3)}).as_expr() == 1.0*(-1)**Rational(5, 6)
 
     assert Factors(-1.) == Factors({S.NegativeOne: S.One, S(1.): 1})
     assert Factors(-2.) == Factors({S.NegativeOne: S.One, S(2.): 1})

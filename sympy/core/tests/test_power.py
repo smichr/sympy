@@ -275,6 +275,13 @@ def test_zero():
     assert 0 ** -oo is zoo
     assert power(0, -oo) is zoo
 
+
+def test_ImaginaryUnit():
+    assert [sqrt(I)**i for i in range(-4, 5)] == [
+        -1, -sqrt(I), -I, -sqrt(I)**3,
+        1, sqrt(I), I, sqrt(I)**3, -1]
+
+
 def test_pow_as_base_exp():
     x = Symbol('x')
     assert (S.Infinity**(2 - x)).as_base_exp() == (S.Infinity, 2 - x)
@@ -283,7 +290,6 @@ def test_pow_as_base_exp():
     assert p.base, p.exp == p.as_base_exp() == (S(2), -x)
     # issue 8344:
     assert Pow(1, 2, evaluate=False).as_base_exp() == (S.One, S(2))
-    assert Pow(I, S.Half).as_base_exp() == (-1, S(1)/4)
 
 
 def test_nseries():
