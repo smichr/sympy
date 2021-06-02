@@ -1308,7 +1308,7 @@ def test_Pow_is_zero():
                 exp = table[0][col]
                 is_zero = table[row][col]
                 # The actual test here:
-                assert Pow(base, exp, evaluate=False).is_zero is is_zero
+                assert Pow(base, exp, evaluate=False).is_zero is is_zero, (base, exp, Pow(base, exp, evaluate=False).is_zero, row, col, table[row][col])
 
     test_table(pow_iszero)
 
@@ -1326,7 +1326,7 @@ def test_Pow_is_zero():
     df, df2 = symbols('df, df2', nonpositive=True)
 
     # Without finiteness:
-    zi, zi2 = symbols('zi, zi2')
+    zi, zi2 = symbols('zi, zi2', arb=True)  # arb prevents default finite
     wi, wi2 = symbols('wi, wi2', zero=False)
     xi, xi2 = symbols('xi, xi2', extended_real=True)
     yi, yi2 = symbols('yi, yi2', zero=False, extended_real=True)

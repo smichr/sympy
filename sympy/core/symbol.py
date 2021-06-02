@@ -291,6 +291,8 @@ class Symbol(AtomicExpr, Boolean):
         # be strict about commutativity
         is_commutative = fuzzy_bool(assumptions.get('commutative', True))
         assumptions['commutative'] = is_commutative
+        if len(assumptions) == 1:
+            assumptions['finite'] = True
         obj._assumptions = StdFactKB(assumptions)
         obj._assumptions._generator = tmp_asm_copy  # Issue #8873
         return obj
