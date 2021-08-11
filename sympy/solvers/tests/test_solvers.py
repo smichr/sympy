@@ -664,7 +664,7 @@ def test_solve_linear():
     assert solve_linear(w, x) in [(w, x), (x, w)]
     assert solve_linear(cos(x)**2 + sin(x)**2 + 2 + y) == \
         (y, -2 - cos(x)**2 - sin(x)**2)
-    assert solve_linear(cos(x)**2 + sin(x)**2 + 2 + y, symbols=[x]) == (0, 1)
+    assert solve_linear(cos(x)**2 + sin(x)**2 + 2 + y, symbols=[x])== (0, 1)
     assert solve_linear(Eq(x, 3)) == (x, 3)
     assert solve_linear(1/(1/x - 2)) == (0, 0)
     assert solve_linear((x + 1)*exp(-x), symbols=[x]) == (x, -1)
@@ -677,6 +677,10 @@ def test_solve_linear():
     eq = cos(x)**2 + sin(x)**2  # = 1
     assert solve_linear(eq) == (0, 1)
     raises(ValueError, lambda: solve_linear(Eq(x, 3), 3))
+    # issue 21852
+    eq = 2*x + sqrt(2*x**2) - 21
+    assert solve_linear(eq) == (2*x + sqrt(2)*sqrt(x**2) - 21, 1)
+    assert solve(eq) == [21 - 21*sqrt(2)/2]
 
 
 def test_solve_undetermined_coeffs():

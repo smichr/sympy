@@ -2132,33 +2132,41 @@ def solve_linear(lhs, rhs=0, symbols=[], exclude=[]):
         for c in csym:
             derivs[c].append(der)
 
-    all_zero = True
+    candidate = False
     for xi in sorted(symbols, key=default_sort_key):  # canonical order
         # if there are derivatives in this var, calculate them now
         if isinstance(derivs[xi], list):
             derivs[xi] = {der: der.doit() for der in derivs[xi]}
         newn = n.subs(derivs[xi])
         dnewn_dxi = newn.diff(xi)
-        # dnewn_dxi can be nonzero if it survives differentation by any
-        # of its free symbols
+        if dnewn_dxi.is_zero:
+            continue  # constant wrt xi, not linear in xi
+        # first derivative is not identically 0
         free = dnewn_dxi.free_symbols
-        if dnewn_dxi and (not free or any(dnewn_dxi.diff(s) for s in free)):
-            all_zero = False
-            if dnewn_dxi is S.NaN:
-                break
-            if xi not in dnewn_dxi.free_symbols:
-                vi = -1/dnewn_dxi*(newn.subs(xi, 0))
-                if dens is None:
-                    dens = _simple_dens(eq, symbols)
-                if not any(checksol(di, {xi: vi}, minimal=True) is True
-                          for di in dens):
-                    # simplify any trivial integral
-                    irep = [(i, i.doit()) for i in vi.atoms(Integral) if
-                            i.function.is_number]
-                    # do a slight bit of simplification
-                    vi = expand_mul(vi.subs(irep))
-                    return xi, vi
-    if all_zero:
+        if xi in free:
+            candidate = True
+        if free and not any(dnewn_dxi.diff(s) for s in free):
+            # xi is a false variable since its coefficient
+            # doesn't truly depend on any variable
+            continue
+        candidate = True
+        if dnewn_dxi is S.NaN:
+            continue
+        if not free:
+            # newn = dnewn_dxi*xi + newn.subs(xi, 0)
+            #    0 = dnewn_dxi*vi + newn.subs(xi, 0)
+            vi = -newn.subs(xi, 0)/dnewn_dxi
+            if dens is None:
+                dens = _simple_dens(eq, symbols)
+            if not any(checksol(di, {xi: vi}, minimal=True) is True
+                      for di in dens):
+                # simplify any trivial integral
+                irep = [(i, i.doit()) for i in vi.atoms(Integral) if
+                        i.function.is_number]
+                # do a slight bit of simplification
+                vi = expand_mul(vi.subs(irep))
+                return xi, vi
+    if not candidate:
         return S.Zero, S.One
     if n.is_Symbol: # no solution for this symbol was found
         return S.Zero, S.Zero
