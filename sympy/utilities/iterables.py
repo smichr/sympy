@@ -929,6 +929,36 @@ def postfixes(seq):
         yield seq[n - i - 1:]
 
 
+def repsort(*replace):
+    """Return sorted replacement tuples ``(o, n)`` such that
+    ``(o_i, n_i)`` will appear before ``(o_j, n_j)`` if ``o_j``
+    appears in ``n_i``. An error will be raised if ``o_j``
+    appears in ``n_i`` and ``o_i`` appears in ``n_k`` if ``k >= i``.
+
+    Examples
+    ========
+
+    >>> from sympy.utilities.iterables import repsort
+    >>> from sympy.abc import x, y, z
+    >>> repsort((x, y + 1), (z, x + 2))
+    [(z, x + 2), (x, y + 1)]
+    >>> repsort((x, y + 1), (z, x**2))
+    [(z, x**2), (x, y + 1)]
+
+    Any two of the following 3 tuples will not raise an error,
+    but together they contain a cycle that raises an error:
+
+    >>> repsort((x, y), (y, z), (z, x))
+    Traceback (most recent call last):
+    ...
+    raise ValueError("cycle detected")
+    """
+    from itertools import permutations
+    edges = [(i, j) for i, j in permutations(replace, 2) if
+        i[1].has(j[0]) and (not j[0].is_Symbol or j[0] in i[1].free_symbols)]
+    return topological_sort([replace, edges], default_sort_key)
+
+
 def topological_sort(graph, key=None):
     r"""
     Topological sort of graph's vertices.

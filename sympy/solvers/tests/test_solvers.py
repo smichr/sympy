@@ -31,7 +31,7 @@ def test_swap_back():
     f, g = map(Function, 'fg')
     fx, gx = f(x), g(x)
     assert solve([fx + y - 2, fx - gx - 5], fx, y, gx) == \
-        {fx: gx + 5, y: -gx - 3}
+        {fx: gx  + 5, y: -gx - 3}
     assert solve(fx + gx*x - 2, [fx, gx], dict=True)[0] == {fx: 2, gx: 0}
     assert solve(fx + gx**2*x - y, [fx, gx], dict=True) == [{fx: y - gx**2*x}]
     assert solve([f(1) - 2, x + 2], dict=True) == [{x: -2, f(1): 2}]
@@ -160,9 +160,11 @@ def test_solve_args():
     assert solve([], [x]) == []
     # overdetermined system
     # - nonlinear
-    assert solve([(x + y)**2 - 4, x + y - 2]) == [{x: -y + 2}]
+    assert solve([(x + y)**2 - 4, x + 2*y - 2]) == [{x: -6, y: 4}, {x: 2, y: 0}]
     # - linear
     assert solve((x + y - 2, 2*x + 2*y - 4)) == {x: -y + 2}
+    # - mixed (linear solution satisfies other equation)
+    assert solve([(x + y)**2 - 4, x + y - 2]) == {x: -y + 2}
     # When one or more args are Boolean
     assert solve(Eq(x**2, 0.0)) == [0]  # issue 19048
     assert solve([True, Eq(x, 0)], [x], dict=True) == [{x: 0}]
@@ -390,7 +392,7 @@ def test_linear_system_symbols_doesnt_hang_1():
 
     for n in range(1, 7+1):
         eqs, c = _mk_eqs(n)
-        solve(eqs, c)
+        solve(eqs, c, simplify=False, check=False)
 
 
 def test_linear_system_symbols_doesnt_hang_2():
@@ -1344,8 +1346,8 @@ def test_issue_5849():
     Q2: 2*I3 + 2*I5 + 3*I6}]
 
     v = I1, I4, Q2, Q4, dI1, dI4, dQ2, dQ4
-    assert solve(e, *v, manual=True, check=False, dict=True) == ans
-    assert solve(e, *v, manual=True, check=False) == ans[0]
+    assert solve(e, *v, manual=True, check=False, dict=True) == []
+    assert solve(e, *v, manual=True, check=False) == []
     assert solve(e, *v, manual=True) == []
     assert solve(e, *v) == []
 
@@ -1353,6 +1355,19 @@ def test_issue_5849():
     # a zero row in the matrix. Is this related to issue 4551?
     assert [ei.subs(
         ans[0]) for ei in e] == [0, 0, I3 - I6, -I3 + I6, 0, 0, 0, 0, 0]
+
+    # if you let the solver pick the variables, there is a solution
+    got = solve(e)
+    assert got == {
+        I1: S(4)/3 - dIS(1)/18 + 7*dQS(2)/9 + 2*dQS(4)/9,
+        I2: dQ2,
+        I3: S(4)/3 - dIS(1)/18 - 2*dQS(2)/9 + 2*dQS(4)/9,
+        I4: dQ4,
+        I5: S(4)/3 - dIS(1)/18 - 2*dQS(2)/9 - 7*dQS(4)/9,
+        I6: S(4)/3 - dIS(1)/18 - 2*dQS(2)/9 + 2*dQS(4)/9,
+        Q2: S(28)/3 - 7*dIS(1)/18 - 14*dQS(2)/9 - 4*dQS(4)/9,
+        Q4: S(4)/3 - dIS(1)/18 - dIS(4)/2 - 2*dQS(2)/9 - 23*dQS(4)/18}
+    assert not any(ei.xreplace(got) for ei in e)
 
 
 def test_issue_5849_matrix():
@@ -1400,7 +1415,7 @@ def test_issue_21882():
 
     answer = [
         {a: 0, f: 0, b: 0, d: 0, c: 0, g: 0},
-        {a: 0, f: -d, b: 0, k: S(5)/6, c: 0, g: 0},
+        {a: 0, d: -f, b: 0, k: S(5)/6, c: 0, g: 0},
         {a: -2*c, f: 0, b: c, d: 0, k: S(13)/18, g: 0},
     ]
 
@@ -1421,7 +1436,7 @@ def test_issue_5901():
     assert solve([f(x) - 3*f(x).diff(x)], f(x)) == \
         {f(x): 3*D}
     assert solve([f(x) - 3*f(x).diff(x), f(x)**2 - y + 4], f(x), y) == \
-        [{f(x): 3*D, y: 9*D**2 + 4}]
+        {f(x): 3*D, y: 9*D**2 + 4}
     assert solve(-f(a)**2*g(a)**2 + f(a)**2*h(a)**2 + g(a).diff(a),
                 h(a), g(a), set=True) == \
         ([g(a)], {
@@ -2367,7 +2382,7 @@ def test_issue_21034():
     newsystem = [(exp(x) - exp(-x)) - tanh(x)*(exp(x) + exp(-x)) + x - 5]
     assert solve(newsystem, x) == {x: 5}
     #If the variable of interest is present in hyperbolic function, only then
-    # it shouuld be rewritten in terms of exp and solved further
+    # it should be rewritten in terms of exp and solved further
 
 
 def test_issue_4886():
@@ -2385,3 +2400,22 @@ def test_issue_6819():
 def test_issue_21852():
     solution = [21 - 21*sqrt(2)/2]
     assert solve(2*x + sqrt(2*x**2) - 21) == solution
+
+
+def test_issue_17186_repsort():
+    from sympy.utilities.iterables import repsort
+    eqs = S('''(
+        Eq(y0, x26), Eq(y1, x35), Eq(y2, x5), Eq(y3, x38), Eq(y4, x15),
+        Eq(y5, x44), Eq(y6, y5), Eq(y7, x52), Eq(y8, x58), Eq(y9, x36),
+        Eq(y10, x2), Eq(y11, x53), Eq(y12, y37*y9), Eq(y13, -y12 + y9),
+        Eq(y14, y11*y37), Eq(y15, y11 - y14), Eq(y16, y15*y8 + y33), Eq(y17,
+        x1 + y10*y7 + y33), Eq(y18, x1 + y13*y16 + y13*y5), Eq(y19, y12),
+        Eq(y20, x18), Eq(y21, x12), Eq(y22, x57), Eq(y23, x10), Eq(y24, y23),
+        Eq(y25, x25), Eq(y26, x30), Eq(y27, x43), Eq(y28, x50), Eq(y29, x34),
+        Eq(y30, x8*y27), Eq(y31, y27 - y30), Eq(y32, x8*y29), Eq(y33, y29 -
+        y32), Eq(y34, x10 + y26*y33), Eq(y35, x10 + x8 + y25*y28), Eq(y36, x8
+        + y23*y31 + y31*y34), Eq(y37, y30))''')
+    ok = repsort(*[i.args for i in eqs])  # no error => no cycles
+    sol = solve(eqs, [i.lhs for i in eqs], dict=True)
+    assert len(sol) == 1
+    assert all([i.xreplace(sol[0]).expand() == True for i in eqs])

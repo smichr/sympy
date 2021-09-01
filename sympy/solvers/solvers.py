@@ -1733,11 +1733,83 @@ def _solve(f, *symbols, **flags):
     return result
 
 
+def _syms_with_constant_coeff(eq):
+    """return the set of symbols from eq that have constant coeffs"""
+    rv = {}
+    nonlin = set()
+    for i in Add.make_args(eq):
+        c, s = i.as_coeff_mul()
+        if len(s) == 1 and s[0].is_Symbol:
+            if s[0] not in rv:
+                rv[s[0]] = 0
+            rv[s[0]] += c
+        else:
+            for si in s:
+                nonlin |= si.free_symbols
+    return set(k for k in rv if rv[k]) - nonlin
+
+
 def _solve_system(exprs, symbols, **flags):
     if not exprs:
         return []
 
-    if flags.pop('_split', True):
+    if flags.get('_eliminate_definitions', True):
+        flags['_eliminate_definitions'] = False
+        eqs = list(reversed(list(ordered(exprs))))
+        sol = {}
+        syms = set(symbols)
+        while True:
+            hit = False
+            for j in reversed(range(len(eqs))):
+                e = eqs[j]
+                xyz = _syms_with_constant_coeff(e) & syms
+                if len(xyz) != 1:
+                    continue
+                x = xyz.pop()
+                c = e.coeff(x)
+                b = e.xreplace({x: S.Zero})
+                y = -b/c
+                if c is not S.One:
+                    if b in syms:
+                        x, y = b, -x*c
+                    elif -b in syms:
+                        x, y = -b, x*c
+                s =  {x: y}
+                syms.remove(x)
+                for k in sol:
+                    sol[k] = sol[k].xreplace(s)
+                sol.update(s)
+                eqs.pop(j)
+                for i in range(len(eqs)):
+                    eqs[i] = eqs[i].xreplace(s)
+                hit = True
+                break
+            if not hit:
+                break
+        if sol:
+            do_simplify = flags.get('simplify', True)
+            eqs = [i for i in eqs if i]
+            if not eqs:
+                if do_simplify:
+                    sol = {k: simplify(v) for k, v in sol.items()}
+                return sol
+            if any(i.is_zero is False for i in eqs):
+                return []
+            flags['simplify'] = False
+            sol2 = _solve_system(eqs, [i for i in symbols if i not in sol], **flags)
+            if type(sol2) is dict:
+                sol2 = [sol2]
+            result = []
+            for i in sol2:
+                r = {k: v.xreplace(i) for k,v in sol.items()}
+                r.update(i)
+                if do_simplify:
+                    r = {k: simplify(v) for k, v in r.items()}
+                result.append(r)
+            return result if len(result) > 1 else result[0]
+
+    if flags.get('_split', True):
+        flags['_split'] = False  # skip split step
         # Split the system into connected components
         V = exprs
         symsset = set(symbols)
@@ -1758,7 +1830,6 @@ def _solve_system(exprs, symbols, **flags):
                 for e in subexpr:
                     subsyms |= exprsyms[e]
                 subsyms = list(sorted(subsyms, key = lambda x: sym_indices[x]))
-                flags['_split'] = False  # skip split step
                 subsol = _solve_system(subexpr, subsyms, **flags)
                 if not isinstance(subsol, list):
                     subsol = [subsol]
