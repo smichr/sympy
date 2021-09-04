@@ -887,15 +887,14 @@ def test_issue_5132():
             (-log(3), -sqrt(-exp(2*x) - sin(log(3)))),
         (-log(3), sqrt(-exp(2*x) - sin(log(3))))}
     eqs = [exp(x)**2 - sin(y) + z, 1/exp(y) - 3]
-    assert solve(eqs, set=True) == ([y, z], {
-        (-log(3), -exp(2*x) - sin(log(3)))})
+    assert solve(eqs, set=True) == ([x, y, z], {
+        (x, -log(3), -exp(2*x) - sin(log(3)))})
     assert solve(eqs, x, z, set=True) == (
         [x, z], {(x, -exp(2*x) + sin(y))})
     assert set(solve(eqs, x, y)) == {
             (log(-sqrt(-z - sin(log(3)))), -log(3)),
             (log(-z - sin(log(3)))/2, -log(3))}
-    assert solve(eqs, z, y) == \
-        [(-exp(2*x) - sin(log(3)), -log(3))]
+    assert solve(eqs, z, y) == {z: -exp(2*x) - sin(log(3)), y: -log(3)}
     assert solve((sqrt(x**2 + y**2) - sqrt(10), x + y - 4), set=True) == (
         [x, y], {(S.One, S(3)), (S(3), S.One)})
     assert set(solve((sqrt(x**2 + y**2) - sqrt(10), x + y - 4), x, y)) == \
@@ -1358,15 +1357,16 @@ def test_issue_5849():
 
     # if you let the solver pick the variables, there is a solution
     got = solve(e)
+
     assert got == {
-        I1: S(4)/3 - dIS(1)/18 + 7*dQS(2)/9 + 2*dQS(4)/9,
+        I1: S(4)/3 - dI1/18 + 7*dQ2/9 + 2*dQ4/9,
         I2: dQ2,
-        I3: S(4)/3 - dIS(1)/18 - 2*dQS(2)/9 + 2*dQS(4)/9,
+        I3: S(4)/3 - dI1/18 - 2*dQ2/9 + 2*dQ4/9,
         I4: dQ4,
-        I5: S(4)/3 - dIS(1)/18 - 2*dQS(2)/9 - 7*dQS(4)/9,
-        I6: S(4)/3 - dIS(1)/18 - 2*dQS(2)/9 + 2*dQS(4)/9,
-        Q2: S(28)/3 - 7*dIS(1)/18 - 14*dQS(2)/9 - 4*dQS(4)/9,
-        Q4: S(4)/3 - dIS(1)/18 - dIS(4)/2 - 2*dQS(2)/9 - 23*dQS(4)/18}
+        I5: S(4)/3 - dI1/18 - 2*dQ2/9 - 7*dQ4/9,
+        I6: S(4)/3 - dI1/18 - 2*dQ2/9 + 2*dQ4/9,
+        Q2: S(28)/3 - 7*dI1/18 - 14*dQ2/9 - 4*dQ4/9,
+        Q4: S(4)/3 - dI1/18 - dI4/2 - 2*dQ2/9 - 23*dQ4/18}
     assert not any(ei.xreplace(got) for ei in e)
 
 
@@ -1414,12 +1414,13 @@ def test_issue_21882():
     ]
 
     answer = [
-        {a: 0, f: 0, b: 0, d: 0, c: 0, g: 0},
-        {a: 0, d: -f, b: 0, k: S(5)/6, c: 0, g: 0},
-        {a: -2*c, f: 0, b: c, d: 0, k: S(13)/18, g: 0},
+        {a: 0, f: 0, b: 0, d: 0, c: 0, g: 0, k: k},
+        #{a: 0, d: -f, b: 0, k: S(5)/6, c: 0, g: 0},  # XXX need to detect when there is more than 1 way to solve for a linear variable like f in eq 0 and 2
+        {a: -2*c, f: 0, b: c, d: 0, k: S(13)/18, g: 0, c: c},
     ]
 
-    assert solve(equations, unknowns, dict=True) == answer
+    assert solve(equations, unknowns, dict=True
+        ) == answer, solve(equations, unknowns, dict=True)
 
 
 def test_issue_5901():
@@ -2415,7 +2416,7 @@ def test_issue_17186_repsort():
         Eq(y30, x8*y27), Eq(y31, y27 - y30), Eq(y32, x8*y29), Eq(y33, y29 -
         y32), Eq(y34, x10 + y26*y33), Eq(y35, x10 + x8 + y25*y28), Eq(y36, x8
         + y23*y31 + y31*y34), Eq(y37, y30))''')
-    ok = repsort(*[i.args for i in eqs])  # no error => no cycles
+    assert repsort(*[i.args for i in eqs])  # no error => no cycles
     sol = solve(eqs, [i.lhs for i in eqs], dict=True)
     assert len(sol) == 1
     assert all([i.xreplace(sol[0]).expand() == True for i in eqs])

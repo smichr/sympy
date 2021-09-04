@@ -1787,11 +1787,13 @@ def _solve_system(exprs, symbols, **flags):
             if not hit:
                 break
         if sol:
+            eqs = ([i for i in eqs if i])
             do_simplify = flags.get('simplify', True)
-            eqs = [i for i in eqs if i]
+            unspecified = [i for i in symbols if i not in sol]
             if not eqs:
                 if do_simplify:
                     sol = {k: simplify(v) for k, v in sol.items()}
+                sol.update({s: s for s in unspecified})
                 return sol
             if any(i.is_zero is False for i in eqs):
                 return []
@@ -1799,14 +1801,20 @@ def _solve_system(exprs, symbols, **flags):
             sol2 = _solve_system(eqs, [i for i in symbols if i not in sol], **flags)
             if type(sol2) is dict:
                 sol2 = [sol2]
+                linear = True
+            else:
+                linear = False
             result = []
             for i in sol2:
-                r = {k: v.xreplace(i) for k,v in sol.items()}
+                r = {k: v.xreplace(i) for k, v in sol.items()}
                 r.update(i)
                 if do_simplify:
                     r = {k: simplify(v) for k, v in r.items()}
+                r.update({s: s for s in unspecified if s not in i})
                 result.append(r)
-            return result if len(result) > 1 else result[0]
+            if not result:
+                return result
+            return result[0] if linear else result
 
     if flags.get('_split', True):
         flags['_split'] = False  # skip split step
@@ -1880,7 +1888,7 @@ def _solve_system(exprs, symbols, **flags):
                     try:
                         j = monom.index(1)
                         matrix[i, j] = coeff
-                    except ValueError:
+                    except (ValueError, IndexError):
                         matrix[i, m] = -coeff
 
             # returns a dictionary ({symbols: values}) or None
@@ -1904,7 +1912,17 @@ def _solve_system(exprs, symbols, **flags):
                 free = list(ordered(free.intersection(symbols)))
                 got_s = set()
                 result = []
-                for syms in subsets(free, len(polys)):
+                def subsets_by_linearity():
+                    hits = defaultdict(int)
+                    for p in polys:
+                        for s in syms_linear(p.as_expr(), *free):
+                            hits[s] += 1
+                    for s in symbols:
+                        if s not in hits:
+                            hits[s] = 0
+                    for syms in sorted([(-sum([hits[i] for i in t]), t) for t in subsets(free, len(polys))], key=lambda x: x[0]):
+                        yield syms[1]
+                for syms in subsets_by_linearity():
                     try:
                         # returns [] or list of tuples of solutions for syms
                         res = solve_poly_system(polys, *syms)
@@ -2061,6 +2079,41 @@ def _solve_system(exprs, symbols, **flags):
     if linear and result:
         result = result[0]
     return result
+
+
+def syms_linear(eq, *syms):
+    """return the set of symbols from in syms (or all in eq)
+    that are linear wrt syms in eq.
+
+    Examples
+    ========
+
+    >>> syms_linear(a*b+3*d+c+4)
+    {d, c}
+    >>> syms_linear(a*b+3*d+c+4,a,b,c)
+    {c}
+    """
+    rv = {0: 0}
+    nonlin = set()
+    syms = set(syms) or eq.free_symbols
+    for i in Add.make_args(eq):
+        c, s = i.as_coeff_mul()
+        hit = 0
+        for si in s:
+            if si in syms:
+                if hit:
+                    break
+                hit = si
+            elif si.free_symbols & syms:
+                break
+        else:
+            if hit:
+                if hit not in rv:
+                    rv[hit] = 0
+                rv[hit] += i/hit
+            continue
+        nonlin |= i.free_symbols
+    return set(k for k in rv if rv[k]) - nonlin
 
 
 def solve_linear(lhs, rhs=0, symbols=[], exclude=[]):
