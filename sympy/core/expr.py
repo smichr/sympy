@@ -2284,15 +2284,24 @@ class Expr(Basic, EvalfMixin):
         elif self.is_Add:
             cs, ps = self.primitive()
             # assert cs >= 1
-            if c.is_Number and c is not S.NegativeOne:
-                # assert c != 1 (handled at top)
-                if cs is not S.One:
-                    if c.is_negative:
-                        xc = -(cs.extract_multiplicatively(-c))
-                    else:
-                        xc = cs.extract_multiplicatively(c)
-                    if xc is not None:
-                        return xc*ps  # rely on 2-arg Mul to restore Add
+            if c.is_Number:
+                if c is S.NegativeOne:
+                    args = len(ps.args)
+                    neg = sum(1 for a in ps.args
+                        if a.could_extract_minus_sign())
+                    pos = len(ps.args) - neg
+                    if neg > pos or neg == pos and ps.args[0
+                            ].could_extract_minus_sign():
+                        return -cs*ps
+                else:
+                    # assert c != 1 (handled at top)
+                    if cs is not S.One:
+                        if c.is_negative:
+                            xc = -(cs.extract_multiplicatively(-c))
+                        else:
+                            xc = cs.extract_multiplicatively(c)
+                        if xc is not None:
+                            return xc*ps  # rely on 2-arg Mul to restore Add
                 return  # |c| != 1 can only be extracted from cs
             if c == ps:
                 return cs
