@@ -479,7 +479,7 @@ def test_laplace_transform():
     assert LT(exp(2*t), t, s)[:2] == (1/(s - 2), 2)
     assert LT(exp(a*t), t, s)[:2] == (1/(s - a), a)
 
-    assert LT(log(t/a), t, s) == ((log(a*s) + EulerGamma)/s/-1, 0, True)
+    assert LT(log(t/a), t, s) == (-(log(a*s) + EulerGamma)/s, 0, True)
 
     assert LT(erf(t), t, s) == (erfc(s/2)*exp(s**2/4)/s, 0, True)
 
@@ -526,8 +526,8 @@ def test_laplace_transform():
 
     # Fresnel functions
     assert laplace_transform(fresnels(t), t, s) == \
-        ((-sin(s**2/(2*pi))*fresnels(s/pi) + sin(s**2/(2*pi))/2 -
-            cos(s**2/(2*pi))*fresnelc(s/pi) + cos(s**2/(2*pi))/2)/s, 0, True)
+        ((-2*sin(s**2/(2*pi))*fresnels(s/pi) + sin(s**2/(2*pi)) -
+            2*cos(s**2/(2*pi))*fresnelc(s/pi) + cos(s**2/(2*pi)))/(2*s), 0, True)
     assert laplace_transform(fresnelc(t), t, s) == (
         ((2*sin(s**2/(2*pi))*fresnelc(s/pi) - 2*cos(s**2/(2*pi))*fresnels(s/pi)
         + sqrt(2)*cos(s**2/(2*pi) + pi/4))/(2*s), 0, True))
@@ -590,8 +590,8 @@ def test_inverse_laplace_transform():
     assert ILT(a/(a**2 + s**2), s, t) == sin(a*t)*Heaviside(t)
     assert ILT(s/(s**2 + a**2), s, t) == cos(a*t)*Heaviside(t)
     assert ILT(b/(b**2 + (a + s)**2), s, t) == exp(-a*t)*sin(b*t)*Heaviside(t)
-    assert ILT(b*s/(b**2 + (a + s)**2), s, t) +\
-        (a*sin(b*t) - b*cos(b*t))*exp(-a*t)*Heaviside(t) == 0
+    assert ILT(b*s/(b**2 + (a + s)**2), s, t) -\
+        (-a*sin(b*t) + b*cos(b*t))*exp(-a*t)*Heaviside(t) == 0
     assert ILT(exp(-a*s)/s, s, t) == Heaviside(-a + t)
     assert ILT(exp(-a*s)/(b + s), s, t) == exp(b*(a - t))*Heaviside(-a + t)
     assert ILT((b + s)/(a**2 + (b + s)**2), s, t) == \
@@ -856,7 +856,7 @@ def test_issue_7173():
         (x2, pi/2),
         (x3, Abs(x0 + pi))]
     assert e == [
-        a/(-4*a**2 + s**2),
+        -a/(4*a**2 - s**2),
         0,
         ((x1 <= x2) | (x1 < x2)) & ((x3 <= x2) | (x3 < x2))]
 
