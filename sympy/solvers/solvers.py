@@ -656,7 +656,6 @@ def solve(f, *symbols, **flags):
     (which can be quite long). If the expression is univariate, ``CRootOf``
     instances will be returned instead:
 
-        >>> from sympy import count_ops
         >>> solve(x**3 - x + 1)
         [-(-1/2 + sqrt(3)*I/2)*(3*sqrt(69)/2 + 27/2)**(1/3)/3 + 1/((1/2 -
         sqrt(3)*I/2)*(3*sqrt(69)/2 + 27/2)**(1/3)), 1/((1/2 +
