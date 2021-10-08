@@ -1880,6 +1880,9 @@ class Basic(Printable, metaclass=ManagedProperties):
             # call the freshly monkey-patched method
             return self._sage_()
 
+    def could_extract_minus_sign(self):
+        return False
+
 
 class Atom(Basic):
     """
