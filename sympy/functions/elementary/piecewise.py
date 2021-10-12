@@ -142,7 +142,7 @@ class Piecewise(Function):
             return r
 
     @classmethod
-    def eval(cls, *_args):
+    def eval(cls, *args):
         """Either return a modified version of the args or, if no
         modifications were made, return None.
 
@@ -156,34 +156,31 @@ class Piecewise(Function):
         If there is a single arg with a True condition, its
         corresponding expression will be returned.
         """
-        from sympy.functions.elementary.complexes import im, re
-
-        if not _args:
+        if not args:
             return Undefined
 
-        if len(_args) == 1 and _args[0][-1] == True:
-            return _args[0][0]
+        if len(args) == 1 and args[0][-1] == True:
+            return args[0][0]
 
-        newargs = []  # the unevaluated conditions
+        _args = []
+        newargs = []
         current_cond = set()  # the conditions up to a given e, c pair
-        # make conditions canonical
-        args = []
-        for e, c in _args:
+        # make conditions canonical in term of set representation
+        for e, c in args:
+            from sympy import re, im
             if (not c.is_Atom and not isinstance(c, Relational) and
                     not c.has(im, re)):
-                free = c.free_symbols
-                if len(free) == 1:
-                    funcs = [i for i in c.atoms(Function)
-                             if not isinstance(i, Boolean)]
-                    if len(funcs) == 1 and len(
-                            c.xreplace({list(funcs)[0]: Dummy()}
-                            ).free_symbols) == 1:
-                        # we can treat function like a symbol
-                        free = funcs
+                from sympy.core.exprtools import unigen
+                from sympy.core.symbol import Symbol
+                x = unigen(c)
+                if x is not None:
+                    if not isinstance(x, Symbol):
+                        d = Dummy()
+                    else:
+                        d = x
                     _c = c
-                    x = free.pop()
                     try:
-                        c = c.as_set().as_relational(x)
+                        c = c.xreplace({x: d}).as_set().as_relational(x)
                     except NotImplementedError:
                         pass
                     else:
@@ -201,9 +198,9 @@ class Piecewise(Function):
                                     reps[i] = Relational(
                                         i.lhs, i.rhs, i.rel_op + '=')
                         c = c.xreplace(reps)
-            args.append((e, _canonical(c)))
+            _args.append((e, _canonical(c)))
 
-        for expr, cond in args:
+        for expr, cond in _args:
             # Check here if expr is a Piecewise and collapse if one of
             # the conds in expr matches cond. This allows the collapsing
             # of Piecewise((Piecewise((x,x<0)),x<0)) to Piecewise((x,x<0)).
@@ -272,22 +269,23 @@ class Piecewise(Function):
 
             # collect successive e,c pairs when exprs or cond match
             if newargs:
-                if newargs[-1].expr == expr:
-                    orcond = Or(cond, newargs[-1].cond)
+                e, c = newargs[-1]
+                if e == expr:
+                    orcond = Or(cond, c)
                     if isinstance(orcond, (And, Or)):
                         orcond = distribute_and_over_or(orcond)
-                    newargs[-1] = ExprCondPair(expr, orcond)
+                    newargs[-1] = (expr, orcond)
                     continue
-                elif newargs[-1].cond == cond:
-                    newargs[-1] = ExprCondPair(expr, cond)
+                elif c == cond:
+                    newargs[-1] = (expr, cond)
                     continue
 
-            newargs.append(ExprCondPair(expr, cond))
+            newargs.append((expr, cond))
 
         # some conditions may have been redundant
         missing = len(newargs) != len(_args)
         # some conditions may have changed
-        same = all(a == b for a, b in zip(newargs, _args))
+        same = all(a == b for a, b in zip(newargs, args))
         # if either change happened we return the expr with the
         # updated args
         if not newargs:
@@ -1211,7 +1209,8 @@ def piecewise_simplify_arguments(expr, **kwargs):
                 e = newe
         if isinstance(c, Basic):
             c = simplify(c, doit=doit, **kwargs)
-        args.append((e, c))
+        args.append((e, _canonical(c)))
+
     return Piecewise(*args)
 
 
