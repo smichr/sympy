@@ -6,6 +6,7 @@ from sympy.core import S, Symbol, Integer, Basic, Expr, Mul, Add
 from sympy.core.assumptions import check_assumptions
 from sympy.core.compatibility import SYMPY_INTS, default_sort_key
 from sympy.core.decorators import call_highest_priority
+from sympy.core.kind import NumberKind
 from sympy.core.logic import FuzzyBool
 from sympy.core.symbol import Str
 from sympy.core.sympify import SympifyError, _sympify
@@ -722,6 +723,7 @@ class MatrixElement(Expr):
     _diff_wrt = True
     is_symbol = True
     is_commutative = True
+    kind = NumberKind
 
     def __new__(cls, name, n, m):
         n, m = map(_sympify, (n, m))

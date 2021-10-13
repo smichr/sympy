@@ -1570,6 +1570,16 @@ def test_free_symbols():
     assert (meter**x).free_symbols == {x}
 
 
+def test_number_kind():
+    from sympy import IndexedBase, Function, MatrixSymbol
+    from sympy.core.kind import NumberKind
+    X = IndexedBase("X")
+    M = MatrixSymbol("M", 1, 1)
+    f = Function('f')
+    for i in [X[a], f(a, b), M[0, 0]]:
+        assert i.kind is NumberKind
+
+
 def test_issue_5300():
     x = Symbol('x', commutative=False)
     assert x*sqrt(2)/sqrt(6) == x*sqrt(3)/3

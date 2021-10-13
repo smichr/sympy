@@ -47,6 +47,7 @@ from .sympify import sympify
 
 from sympy.core.containers import Tuple, Dict
 from sympy.core.parameters import global_parameters
+from sympy.core.kind import NumberKind
 from sympy.core.logic import fuzzy_and, fuzzy_or, fuzzy_not, FuzzyBool
 from sympy.utilities import default_sort_key
 from sympy.utilities.exceptions import SymPyDeprecationWarning
@@ -886,6 +887,8 @@ class UndefinedFunction(FunctionClass):
     """
     def __new__(mcl, name, bases=(AppliedUndef,), __dict__=None, **kwargs):
         from .symbol import _filter_assumptions
+        if not kwargs.get('kind', None):
+            kwargs['kind'] = NumberKind
         # Allow Function('f', real=True)
         # and/or Function(Symbol('f', real=True))
         assumptions, kwargs = _filter_assumptions(kwargs)

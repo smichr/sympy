@@ -110,6 +110,7 @@ from sympy.core.assumptions import StdFactKB
 from sympy.core import Expr, Tuple, sympify, S
 from sympy.core.symbol import _filter_assumptions, Symbol
 from sympy.core.compatibility import (is_sequence, NotIterable)
+from sympy.core.kind import NumberKind
 from sympy.core.logic import fuzzy_bool, fuzzy_not
 from sympy.core.sympify import _sympify
 from sympy.functions.special.tensor_functions import KroneckerDelta
@@ -142,6 +143,7 @@ class Indexed(Expr):
     is_Indexed = True
     is_symbol = True
     is_Atom = True
+    kind = NumberKind
 
     def __new__(cls, base, *args, **kw_args):
         from sympy.utilities.misc import filldedent
