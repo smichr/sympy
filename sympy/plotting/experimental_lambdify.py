@@ -35,7 +35,7 @@ from sympy.utilities.iterables import numbered_symbols
 
 #  Please, if there is a bug, do not try to fix it here! Rewrite this by using
 # the method proposed in the last Q'n'A below. That way the new function will
-# work just as well, be just as simple, but it wont need any new workarounds.
+# work just as well, be just as simple, but it won't need any new workarounds.
 #  If you insist on fixing it here, look at the workarounds in the function
 # sympy_expression_namespace and in lambdify.
 
@@ -54,7 +54,7 @@ from sympy.utilities.iterables import numbered_symbols
 # constructor of the namespace there will be no problem.
 
 # Q: What if some of the printers are not printing as expected?
-# A: The algorithm wont work. You must use srepr for those cases. But even
+# A: The algorithm won't work. You must use srepr for those cases. But even
 # srepr may not print well. All problems with printers should be considered
 # bugs.
 

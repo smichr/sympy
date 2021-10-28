@@ -216,7 +216,7 @@ class CoordSystem(Basic):
     >>> Pol = CoordSystem('Pol', p, (r, theta), relation_dict)
 
     ``symbols`` property returns ``CoordinateSymbol`` instances. These symbols
-    are not same with the symbols used to construct the coordinate system.
+    are not the same as the symbols used to construct the coordinate system.
 
     >>> Car2D
     Car2D
