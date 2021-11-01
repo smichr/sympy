@@ -10,7 +10,7 @@ the following minimal implementation::
     def getResource(identifier, pkgname=__name__):
         pkgpath = os.path.dirname(sys.modules[pkgname].__file__)
         path = os.path.join(pkgpath, identifier)
-        return file(os.path.normpath(path), mode='rb')
+        return open(os.path.normpath(path), mode='rb')
 
 When a __loader__ is present on the module given by __name__, it will defer
 getResource to its get_data implementation and return it as a file-like
@@ -19,15 +19,17 @@ object (such as StringIO).
 
 import sys
 import os
-from cStringIO import StringIO
+from io import StringIO
+
 
 def get_resource(identifier, pkgname=__name__):
     """
     Acquire a readable object for a given package name and identifier.
-    An IOError will be raised if the resource can not be found.
+    An IOError will be raised if the resource cannot be found.
 
     For example::
-        mydata = get_esource('mypkgdata.jpg').read()
+
+        mydata = get_resource('mypkgdata.jpg').read()
 
     Note that the package name must be fully qualified, if given, such
     that it would be found in sys.modules.
@@ -41,14 +43,14 @@ def get_resource(identifier, pkgname=__name__):
     mod = sys.modules[pkgname]
     fn = getattr(mod, '__file__', None)
     if fn is None:
-        raise IOError("%r has no __file__!")
+        raise OSError("%r has no __file__!")
     path = os.path.join(os.path.dirname(fn), identifier)
     loader = getattr(mod, '__loader__', None)
     if loader is not None:
         try:
             data = loader.get_data(path)
-        except IOError:
+        except (OSError, AttributeError):
             pass
         else:
-            return StringIO(data)
-    return file(os.path.normpath(path), 'rb')
+            return StringIO(data.decode('utf-8'))
+    return open(os.path.normpath(path), 'rb')

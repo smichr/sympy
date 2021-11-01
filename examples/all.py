@@ -63,25 +63,28 @@ TERMINAL_EXAMPLES = [
     "intermediate.trees",
     "intermediate.vandermonde",
     "advanced.curvilinear_coordinates",
+    "advanced.dense_coding_example",
     "advanced.fem",
     "advanced.gibbs_phenomenon",
     "advanced.grover_example",
+    "advanced.hydrogen",
     "advanced.pidigits",
     "advanced.qft",
     "advanced.relativity",
-    ]
+]
 
 WINDOWED_EXAMPLES = [
     "beginner.plotting_nice_plot",
-    "intermediate.print_gtk",
     "intermediate.mplot2d",
     "intermediate.mplot3d",
+    "intermediate.print_gtk",
     "advanced.autowrap_integrators",
     "advanced.autowrap_ufuncify",
-    "advanced.plotting",
-    ]
+    "advanced.pyglet_plotting",
+]
 
 EXAMPLE_DIR = os.path.dirname(__file__)
+
 
 def __import__(name, globals=None, locals=None, fromlist=None):
     """An alternative to the import function so that we can import
@@ -116,7 +119,7 @@ def load_example_module(example):
     return mod
 
 
-def run_examples(windowed=False, quiet=False, summary=True):
+def run_examples(*, windowed=False, quiet=False, summary=True):
     """Run all examples in the list of modules.
 
     Returns a boolean value indicating whether all the examples were
@@ -129,7 +132,7 @@ def run_examples(windowed=False, quiet=False, summary=True):
         examples += WINDOWED_EXAMPLES
 
     if quiet:
-        from sympy.utilities.runtests import PyTestReporter
+        from sympy.testing.runtests import PyTestReporter
         reporter = PyTestReporter()
         reporter.write("Testing Examples\n")
         reporter.write("-" * reporter.terminal_width)
@@ -148,7 +151,7 @@ def run_examples(windowed=False, quiet=False, summary=True):
     return len(failures) == 0
 
 
-def run_example(example, reporter=None):
+def run_example(example, *, reporter=None):
     """Run a specific example.
 
     Returns a boolean value indicating whether the example was successful.
@@ -156,8 +159,8 @@ def run_example(example, reporter=None):
     if reporter:
         reporter.write(example)
     else:
-        print "=" * 79
-        print "Running: ", example
+        print("=" * 79)
+        print("Running: ", example)
 
     try:
         mod = load_example_module(example)
@@ -167,6 +170,8 @@ def run_example(example, reporter=None):
         else:
             mod.main()
         return True
+    except KeyboardInterrupt as e:
+        raise e
     except:
         if reporter:
             reporter.write("[FAIL]", "Red", align="right")
@@ -174,8 +179,9 @@ def run_example(example, reporter=None):
         return False
 
 
-class DummyFile(object):
-    def write(self, x): pass
+class DummyFile:
+    def write(self, x):
+        pass
 
 
 def suppress_output(fn):
@@ -188,7 +194,7 @@ def suppress_output(fn):
         sys.stdout = save_stdout
 
 
-def show_summary(successes, failures, reporter=None):
+def show_summary(successes, failures, *, reporter=None):
     """Shows a summary detailing which examples were successful and which failed."""
     if reporter:
         reporter.write("-" * reporter.terminal_width)
@@ -200,18 +206,18 @@ def show_summary(successes, failures, reporter=None):
             reporter.write("ALL EXAMPLES PASSED\n", "Green")
     else:
         if successes:
-            print >> sys.stderr, "SUCCESSFUL: "
+            print("SUCCESSFUL: ", file=sys.stderr)
             for example in successes:
-                print >> sys.stderr, "  -", example
+                print("  -", example, file=sys.stderr)
         else:
-            print >> sys.stderr, "NO SUCCESSFUL EXAMPLES"
+            print("NO SUCCESSFUL EXAMPLES", file=sys.stderr)
 
         if failures:
-            print >> sys.stderr, "FAILED: "
+            print("FAILED: ", file=sys.stderr)
             for example in failures:
-                print >> sys.stderr, "  -", example
+                print("  -", example, file=sys.stderr)
         else:
-            print >> sys.stderr, "NO FAILED EXAMPLES"
+            print("NO FAILED EXAMPLES", file=sys.stderr)
 
 
 def main(*args, **kws):

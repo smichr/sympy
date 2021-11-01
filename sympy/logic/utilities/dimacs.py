@@ -3,11 +3,11 @@
 www.cs.ubc.ca/~hoos/SATLIB/Benchmarks/SAT/satformat.ps
 
 """
-from __future__ import with_statement
 
 from sympy.core import Symbol
 from sympy.logic.boolalg import And, Or
 import re
+
 
 def load(s):
     """Loads a boolean expression from a string.
@@ -19,18 +19,18 @@ def load(s):
     >>> load('1')
     cnf_1
     >>> load('1 2')
-    Or(cnf_1, cnf_2)
+    cnf_1 | cnf_2
     >>> load('1 \\n 2')
-    And(cnf_1, cnf_2)
+    cnf_1 & cnf_2
     >>> load('1 2 \\n 3')
-    And(cnf_3, Or(cnf_1, cnf_2))
+    cnf_3 & (cnf_1 | cnf_2)
     """
     clauses = []
 
     lines = s.split('\n')
 
-    pComment = re.compile('c.*')
-    pStats = re.compile('p\s*cnf\s*(\d*)\s*(\d*)')
+    pComment = re.compile(r'c.*')
+    pStats = re.compile(r'p\s*cnf\s*(\d*)\s*(\d*)')
 
     while len(lines) > 0:
         line = lines.pop(0)
@@ -44,19 +44,23 @@ def load(s):
                 list = []
                 for lit in nums:
                     if lit != '':
-                        if int(lit) == 0: continue
+                        if int(lit) == 0:
+                            continue
                         num = abs(int(lit))
                         sign = True
                         if int(lit) < 0:
                             sign = False
 
-                        if sign: list.append(Symbol("cnf_%s" % num))
-                        else: list.append(~Symbol("cnf_%s" % num))
+                        if sign:
+                            list.append(Symbol("cnf_%s" % num))
+                        else:
+                            list.append(~Symbol("cnf_%s" % num))
 
                 if len(list) > 0:
                     clauses.append(Or(*list))
 
     return And(*clauses)
+
 
 def load_file(location):
     """Loads a boolean expression from a file."""

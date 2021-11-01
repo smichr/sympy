@@ -1,16 +1,26 @@
 """Implementation of :class:`ModularInteger` class. """
 
+
+from typing import Any, Dict, Tuple, Type
+
 import operator
 
 from sympy.polys.polyutils import PicklableWithSlots
 from sympy.polys.polyerrors import CoercionFailed
+from sympy.polys.domains.domainelement import DomainElement
 
-class ModularInteger(PicklableWithSlots):
+from sympy.utilities import public
+
+@public
+class ModularInteger(PicklableWithSlots, DomainElement):
     """A class representing a modular integer. """
 
-    mod, dom, sym = None, None, None
+    mod, dom, sym, _parent = None, None, None, None
 
-    __slots__ = ['val']
+    __slots__ = ('val',)
+
+    def parent(self):
+        return self._parent
 
     def __init__(self, val):
         if isinstance(val, self.__class__):
@@ -88,7 +98,7 @@ class ModularInteger(PicklableWithSlots):
     def __rmul__(self, other):
         return self.__mul__(other)
 
-    def __div__(self, other):
+    def __truediv__(self, other):
         val = self._get_val(other)
 
         if val is not None:
@@ -96,11 +106,8 @@ class ModularInteger(PicklableWithSlots):
         else:
             return NotImplemented
 
-    def __rdiv__(self, other):
+    def __rtruediv__(self, other):
         return self.invert().__mul__(other)
-
-    __truediv__ = __div__
-    __rtruediv__ = __rdiv__
 
     def __mod__(self, other):
         val = self._get_val(other)
@@ -123,11 +130,11 @@ class ModularInteger(PicklableWithSlots):
             return self.__class__(self.dom.one)
 
         if exp < 0:
-            val, exp = self.invert(), -exp
+            val, exp = self.invert().val, -exp
         else:
             val = self.val
 
-        return self.__class__(val**exp)
+        return self.__class__(pow(val, int(exp), self.mod))
 
     def _compare(self, other, op):
         val = self._get_val(other)
@@ -155,7 +162,7 @@ class ModularInteger(PicklableWithSlots):
     def __ge__(self, other):
         return self._compare(other, operator.ge)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self.val)
 
     @classmethod
@@ -165,15 +172,10 @@ class ModularInteger(PicklableWithSlots):
     def invert(self):
         return self.__class__(self._invert(self.val))
 
-_modular_integer_cache = {}
+_modular_integer_cache = {}  # type: Dict[Tuple[Any, Any, Any], Type[ModularInteger]]
 
-def ModularIntegerFactory(_mod, _dom=None, _sym=True):
+def ModularIntegerFactory(_mod, _dom, _sym, parent):
     """Create custom class for specific integer modulus."""
-    if _dom is None:
-        from sympy.polys.domains import ZZ as _dom
-    elif not _dom.is_ZZ:
-        raise TypeError("expected an integer ring, got %s" % _dom)
-
     try:
         _mod = _dom.convert(_mod)
     except CoercionFailed:
@@ -191,6 +193,7 @@ def ModularIntegerFactory(_mod, _dom=None, _sym=True):
     except KeyError:
         class cls(ModularInteger):
             mod, dom, sym = _mod, _dom, _sym
+            _parent = parent
 
         if _sym:
             cls.__name__ = "SymmetricModularIntegerMod%s" % _mod

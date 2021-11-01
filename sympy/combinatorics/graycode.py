@@ -1,8 +1,7 @@
 from sympy.core import Basic
 
-from sympy.core.compatibility import bin
-
 import random
+
 
 class GrayCode(Basic):
     """
@@ -25,12 +24,6 @@ class GrayCode(Basic):
     we want to compute various statistics related to subsets
     in an efficient manner.
 
-    References:
-    [1] Nijenhuis,A. and Wilf,H.S.(1978).
-    Combinatorial Algorithms. Academic Press.
-    [2] Knuth, D. (2011). The Art of Computer Programming, Vol 4
-    Addison Wesley
-
     Examples
     ========
 
@@ -42,6 +35,16 @@ class GrayCode(Basic):
     >>> list(a.generate_gray())
     ['0000', '0001', '0011', '0010', '0110', '0111', '0101', '0100', \
     '1100', '1101', '1111', '1110', '1010', '1011', '1001', '1000']
+
+    References
+    ==========
+
+    .. [1] Nijenhuis,A. and Wilf,H.S.(1978).
+           Combinatorial Algorithms. Academic Press.
+    .. [2] Knuth, D. (2011). The Art of Computer Programming, Vol 4
+           Addison Wesley
+
+
     """
 
     _skip = False
@@ -78,17 +81,20 @@ class GrayCode(Basic):
 
         """
         if n < 1 or int(n) != n:
-            raise ValueError('Gray code dimension must be a positive integer, not %i' % n)
+            raise ValueError(
+                'Gray code dimension must be a positive integer, not %i' % n)
         n = int(n)
         args = (n,) + args
         obj = Basic.__new__(cls, *args)
         if 'start' in kw_args:
             obj._current = kw_args["start"]
             if len(obj._current) > n:
-                raise ValueError('Gray code start has length %i but should not be greater than %i' % (len(obj._current), n))
+                raise ValueError('Gray code start has length %i but '
+                'should not be greater than %i' % (len(obj._current), n))
         elif 'rank' in kw_args:
             if int(kw_args["rank"]) != kw_args["rank"]:
-                raise ValueError('Gray code rank must be a positive integer, not %i' % kw_args["rank"])
+                raise ValueError('Gray code rank must be a positive integer, '
+                'not %i' % kw_args["rank"])
             obj._rank = int(kw_args["rank"]) % obj.selections
             obj._current = obj.unrank(n, obj._rank)
         return obj
@@ -145,9 +151,6 @@ class GrayCode(Basic):
         """
         Generates the sequence of bit vectors of a Gray Code.
 
-        [1] Knuth, D. (2011). The Art of Computer Programming,
-        Vol 4, Addison Wesley
-
         Examples
         ========
 
@@ -162,23 +165,32 @@ class GrayCode(Basic):
 
         See Also
         ========
+
         skip
+
+        References
+        ==========
+
+        .. [1] Knuth, D. (2011). The Art of Computer Programming,
+               Vol 4, Addison Wesley
+
         """
         bits = self.n
         start = None
-        if hints.has_key("start"):
+        if "start" in hints:
             start = hints["start"]
-        elif hints.has_key("rank"):
+        elif "rank" in hints:
             start = GrayCode.unrank(self.n, hints["rank"])
-        if start != None:
+        if start is not None:
             self._current = start
         current = self.current
         graycode_bin = gray_to_bin(current)
         if len(graycode_bin) > self.n:
-            raise ValueError('Gray code start has length %i but should not be greater than %i' % (len(graycode_bin), bits))
+            raise ValueError('Gray code start has length %i but should '
+            'not be greater than %i' % (len(graycode_bin), bits))
         self._current = int(current, 2)
         graycode_int = int(''.join(graycode_bin), 2)
-        for i in xrange(graycode_int, 1 << bits):
+        for i in range(graycode_int, 1 << bits):
             if self._skip:
                 self._skip = False
             else:
@@ -200,7 +212,7 @@ class GrayCode(Basic):
         >>> for i in a.generate_gray():
         ...     if i == '010':
         ...         a.skip()
-        ...     print i
+        ...     print(i)
         ...
         000
         001
@@ -212,6 +224,7 @@ class GrayCode(Basic):
 
         See Also
         ========
+
         generate_gray
         """
         self._skip = True
@@ -228,9 +241,6 @@ class GrayCode(Basic):
         the 6th position in the canonical ordering of the family
         of 4 bit Gray codes.
 
-        References:
-        [1] http://www-stat.stanford.edu/~susan/courses/s208/node12.html
-
         Examples
         ========
 
@@ -245,7 +255,14 @@ class GrayCode(Basic):
 
         See Also
         ========
+
         unrank
+
+        References
+        ==========
+
+        .. [1] http://statweb.stanford.edu/~susan/courses/s208/node12.html
+
         """
         if self._rank is None:
             self._rank = int(gray_to_bin(self.current), 2)
@@ -258,12 +275,13 @@ class GrayCode(Basic):
 
         Examples
         ========
+
         >>> from sympy.combinatorics.graycode import GrayCode
         >>> GrayCode(3, start='100').current
         '100'
         """
         rv = self._current or '0'
-        if type(rv) is not str:
+        if not isinstance(rv, str):
             rv = bin(rv)[2:]
         return rv.rjust(self.n, '0')
 
@@ -288,6 +306,7 @@ class GrayCode(Basic):
 
         See Also
         ========
+
         rank
         """
         def _unrank(k, n):
@@ -298,6 +317,7 @@ class GrayCode(Basic):
                 return '0' + _unrank(k, n - 1)
             return '1' + _unrank(m - (k % m) - 1, n - 1)
         return _unrank(rank, n)
+
 
 def random_bitstring(n):
     """
@@ -310,7 +330,8 @@ def random_bitstring(n):
     >>> random_bitstring(3) # doctest: +SKIP
     100
     """
-    return ''.join([random.choice('01') for i in xrange(n)])
+    return ''.join([random.choice('01') for i in range(n)])
+
 
 def gray_to_bin(bin_list):
     """
@@ -327,12 +348,14 @@ def gray_to_bin(bin_list):
 
     See Also
     ========
+
     bin_to_gray
     """
     b = [bin_list[0]]
-    for i in xrange(1, len(bin_list)):
-        b += str(int(b[i-1] != bin_list[i]))
+    for i in range(1, len(bin_list)):
+        b += str(int(b[i - 1] != bin_list[i]))
     return ''.join(b)
+
 
 def bin_to_gray(bin_list):
     """
@@ -349,12 +372,14 @@ def bin_to_gray(bin_list):
 
     See Also
     ========
+
     gray_to_bin
     """
     b = [bin_list[0]]
-    for i in xrange(0, len(bin_list) - 1):
-        b += str(int(bin_list[i]) ^ int(b[i - 1]))
+    for i in range(1, len(bin_list)):
+        b += str(int(bin_list[i]) ^ int(bin_list[i - 1]))
     return ''.join(b)
+
 
 def get_subset_from_bitstring(super_set, bitstring):
     """
@@ -364,19 +389,21 @@ def get_subset_from_bitstring(super_set, bitstring):
     ========
 
     >>> from sympy.combinatorics.graycode import get_subset_from_bitstring
-    >>> get_subset_from_bitstring(['a','b','c','d'], '0011')
+    >>> get_subset_from_bitstring(['a', 'b', 'c', 'd'], '0011')
     ['c', 'd']
-    >>> get_subset_from_bitstring(['c','a','c','c'], '1100')
+    >>> get_subset_from_bitstring(['c', 'a', 'c', 'c'], '1100')
     ['c', 'a']
 
     See Also
     ========
+
     graycode_subsets
     """
     if len(super_set) != len(bitstring):
         raise ValueError("The sizes of the lists are not equal")
-    return [super_set[i] for i, j in enumerate(bitstring) \
+    return [super_set[i] for i, j in enumerate(bitstring)
             if bitstring[i] == '1']
+
 
 def graycode_subsets(gray_code_set):
     """
@@ -386,17 +413,18 @@ def graycode_subsets(gray_code_set):
     ========
 
     >>> from sympy.combinatorics.graycode import graycode_subsets
-    >>> list(graycode_subsets(['a','b','c']))
+    >>> list(graycode_subsets(['a', 'b', 'c']))
     [[], ['c'], ['b', 'c'], ['b'], ['a', 'b'], ['a', 'b', 'c'], \
     ['a', 'c'], ['a']]
-    >>> list(graycode_subsets(['a','b','c','c']))
+    >>> list(graycode_subsets(['a', 'b', 'c', 'c']))
     [[], ['c'], ['c', 'c'], ['c'], ['b', 'c'], ['b', 'c', 'c'], \
     ['b', 'c'], ['b'], ['a', 'b'], ['a', 'b', 'c'], ['a', 'b', 'c', 'c'], \
     ['a', 'b', 'c'], ['a', 'c'], ['a', 'c', 'c'], ['a', 'c'], ['a']]
 
     See Also
     ========
+
     get_subset_from_bitstring
     """
-    return [get_subset_from_bitstring(gray_code_set, bitstring) for \
-            bitstring in list(GrayCode(len(gray_code_set)).generate_gray())]
+    for bitstring in list(GrayCode(len(gray_code_set)).generate_gray()):
+        yield get_subset_from_bitstring(gray_code_set, bitstring)

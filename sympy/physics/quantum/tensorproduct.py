@@ -1,17 +1,25 @@
 """Abstract tensor product."""
 
-from sympy import Expr, Add, Mul, Matrix, Pow, sympify
+from sympy.core.add import Add
+from sympy.core.expr import Expr
+from sympy.core.mul import Mul
+from sympy.core.power import Pow
+from sympy.core.sympify import sympify
+from sympy.matrices.dense import MutableDenseMatrix as Matrix
 from sympy.printing.pretty.stringpict import prettyForm
 
 from sympy.physics.quantum.qexpr import QuantumError
 from sympy.physics.quantum.dagger import Dagger
 from sympy.physics.quantum.commutator import Commutator
 from sympy.physics.quantum.anticommutator import AntiCommutator
+from sympy.physics.quantum.state import Ket, Bra
 from sympy.physics.quantum.matrixutils import (
     numpy_ndarray,
     scipy_sparse_matrix,
     matrix_tensor_product
 )
+from sympy.physics.quantum.trace import Tr
+
 
 __all__ = [
     'TensorProduct',
@@ -21,6 +29,24 @@ __all__ = [
 #-----------------------------------------------------------------------------
 # Tensor product
 #-----------------------------------------------------------------------------
+
+_combined_printing = False
+
+
+def combined_tensor_printing(combined):
+    """Set flag controlling whether tensor products of states should be
+    printed as a combined bra/ket or as an explicit tensor product of different
+    bra/kets. This is a global setting for all TensorProduct class instances.
+
+    Parameters
+    ----------
+    combine : bool
+        When true, tensor product states are combined into one ket/bra, and
+        when false explicit tensor product notation is used between each
+        ket/bra.
+    """
+    global _combined_printing
+    _combined_printing = combined
 
 
 class TensorProduct(Expr):
@@ -32,10 +58,10 @@ class TensorProduct(Expr):
     multiplication that is used primarily with operators and states in quantum
     mechanics.
 
-    Currently, the tensor product distinguishes between commutative and non-
-    commutative arguments.  Commutative arguments are assumed to be scalars and
-    are pulled out in front of the ``TensorProduct``. Non-commutative arguments
-    remain in the resulting ``TensorProduct``.
+    Currently, the tensor product distinguishes between commutative and
+    non-commutative arguments.  Commutative arguments are assumed to be scalars
+    and are pulled out in front of the ``TensorProduct``. Non-commutative
+    arguments remain in the resulting ``TensorProduct``.
 
     Parameters
     ==========
@@ -46,23 +72,25 @@ class TensorProduct(Expr):
     Examples
     ========
 
-    Start with a simple tensor product of sympy matrices::
+    Start with a simple tensor product of SymPy matrices::
 
-        >>> from sympy import I, Matrix, symbols
+        >>> from sympy import Matrix
         >>> from sympy.physics.quantum import TensorProduct
 
         >>> m1 = Matrix([[1,2],[3,4]])
         >>> m2 = Matrix([[1,0],[0,1]])
         >>> TensorProduct(m1, m2)
-        [1, 0, 2, 0]
-        [0, 1, 0, 2]
-        [3, 0, 4, 0]
-        [0, 3, 0, 4]
+        Matrix([
+        [1, 0, 2, 0],
+        [0, 1, 0, 2],
+        [3, 0, 4, 0],
+        [0, 3, 0, 4]])
         >>> TensorProduct(m2, m1)
-        [1, 2, 0, 0]
-        [3, 4, 0, 0]
-        [0, 0, 1, 2]
-        [0, 0, 3, 4]
+        Matrix([
+        [1, 2, 0, 0],
+        [3, 4, 0, 0],
+        [0, 0, 1, 2],
+        [0, 0, 3, 4]])
 
     We can also construct tensor products of non-commutative symbols:
 
@@ -99,10 +127,10 @@ class TensorProduct(Expr):
         if len(new_args) == 0:
             return c_part
         elif len(new_args) == 1:
-            return c_part*new_args[0]
+            return c_part * new_args[0]
         else:
             tp = Expr.__new__(cls, *new_args)
-            return c_part*tp
+            return c_part * tp
 
     @classmethod
     def flatten(cls, args):
@@ -115,29 +143,53 @@ class TensorProduct(Expr):
             nc_parts.append(Mul._from_args(ncp))
         return c_part, nc_parts
 
-    def _eval_dagger(self):
+    def _eval_adjoint(self):
         return TensorProduct(*[Dagger(i) for i in self.args])
 
-    def _eval_rewrite(self, pattern, rule, **hints):
-        sargs = self.args
-        terms = [ t._eval_rewrite(pattern, rule, **hints) for t in sargs]
-        return TensorProduct(*terms).expand(tensorproduct=True)
+    def _eval_rewrite(self, rule, args, **hints):
+        return TensorProduct(*args).expand(tensorproduct=True)
 
     def _sympystr(self, printer, *args):
-        from sympy.printing.str import sstr
         length = len(self.args)
         s = ''
         for i in range(length):
             if isinstance(self.args[i], (Add, Pow, Mul)):
                 s = s + '('
-            s = s + sstr(self.args[i])
+            s = s + printer._print(self.args[i])
             if isinstance(self.args[i], (Add, Pow, Mul)):
                 s = s + ')'
-            if i != length-1:
+            if i != length - 1:
                 s = s + 'x'
         return s
 
     def _pretty(self, printer, *args):
+
+        if (_combined_printing and
+                (all(isinstance(arg, Ket) for arg in self.args) or
+                 all(isinstance(arg, Bra) for arg in self.args))):
+
+            length = len(self.args)
+            pform = printer._print('', *args)
+            for i in range(length):
+                next_pform = printer._print('', *args)
+                length_i = len(self.args[i].args)
+                for j in range(length_i):
+                    part_pform = printer._print(self.args[i].args[j], *args)
+                    next_pform = prettyForm(*next_pform.right(part_pform))
+                    if j != length_i - 1:
+                        next_pform = prettyForm(*next_pform.right(', '))
+
+                if len(self.args[i].args) > 1:
+                    next_pform = prettyForm(
+                        *next_pform.parens(left='{', right='}'))
+                pform = prettyForm(*pform.right(next_pform))
+                if i != length - 1:
+                    pform = prettyForm(*pform.right(',' + ' '))
+
+            pform = prettyForm(*pform.left(self.args[0].lbracket))
+            pform = prettyForm(*pform.right(self.args[0].rbracket))
+            return pform
+
         length = len(self.args)
         pform = printer._print('', *args)
         for i in range(length):
@@ -147,11 +199,28 @@ class TensorProduct(Expr):
                     *next_pform.parens(left='(', right=')')
                 )
             pform = prettyForm(*pform.right(next_pform))
-            if i != length-1:
-                pform = prettyForm(*pform.right(u'\u2a02' + u' '))
+            if i != length - 1:
+                if printer._use_unicode:
+                    pform = prettyForm(*pform.right('\N{N-ARY CIRCLED TIMES OPERATOR}' + ' '))
+                else:
+                    pform = prettyForm(*pform.right('x' + ' '))
         return pform
 
     def _latex(self, printer, *args):
+
+        if (_combined_printing and
+                (all(isinstance(arg, Ket) for arg in self.args) or
+                 all(isinstance(arg, Bra) for arg in self.args))):
+
+            def _label_wrap(label, nlabels):
+                return label if nlabels == 1 else r"\left\{%s\right\}" % label
+
+            s = r", ".join([_label_wrap(arg._print_label_latex(printer, *args),
+                                        len(arg.args)) for arg in self.args])
+
+            return r"{%s%s%s}" % (self.args[0].lbracket_latex, s,
+                                  self.args[0].rbracket_latex)
+
         length = len(self.args)
         s = ''
         for i in range(length):
@@ -162,7 +231,7 @@ class TensorProduct(Expr):
             s = s + '{' + printer._print(self.args[i], *args) + '}'
             if isinstance(self.args[i], (Add, Mul)):
                 s = s + '\\right)'
-            if i != length-1:
+            if i != length - 1:
                 s = s + '\\otimes '
         return s
 
@@ -173,25 +242,29 @@ class TensorProduct(Expr):
         """Distribute TensorProducts across addition."""
         args = self.args
         add_args = []
-        stop = False
         for i in range(len(args)):
             if isinstance(args[i], Add):
                 for aa in args[i].args:
-                    add_args.append(
-                        TensorProduct(
-                            *args[:i]+(aa,)+args[i+1:]
-                        ).expand(**hints)
-                    )
-                stop = True
-            if stop: break
+                    tp = TensorProduct(*args[:i] + (aa,) + args[i + 1:])
+                    if isinstance(tp, TensorProduct):
+                        tp = tp._eval_expand_tensorproduct()
+                    add_args.append(tp)
+                break
+
         if add_args:
-            return Add(*add_args).expand(**hints)
+            return Add(*add_args)
         else:
             return self
 
-    def expand(self, **hints):
-        tp = TensorProduct(*[sympify(item).expand(**hints) for item in self.args])
-        return Expr.expand(tp, **hints)
+    def _eval_trace(self, **kwargs):
+        indices = kwargs.get('indices', None)
+        exp = tensor_product_simp(self)
+
+        if indices is None or len(indices) == 0:
+            return Mul(*[Tr(arg).doit() for arg in exp.args])
+        else:
+            return Mul(*[Tr(value).doit() if idx in indices else value
+                         for idx, value in enumerate(exp.args)])
 
 
 def tensor_product_simp_Mul(e):
@@ -221,7 +294,8 @@ def tensor_product_simp_Mul(e):
     This is an example of the type of simplification that this function
     performs::
 
-        >>> from sympy.physics.quantum.tensorproduct import tensor_product_simp_Mul, TensorProduct
+        >>> from sympy.physics.quantum.tensorproduct import \
+                    tensor_product_simp_Mul, TensorProduct
         >>> from sympy import Symbol
         >>> A = Symbol('A',commutative=False)
         >>> B = Symbol('B',commutative=False)
@@ -235,18 +309,26 @@ def tensor_product_simp_Mul(e):
 
     """
     # TODO: This won't work with Muls that have other composites of
-    # TensorProducts, like an Add, Pow, Commutator, etc.
+    # TensorProducts, like an Add, Commutator, etc.
     # TODO: This only works for the equivalent of single Qbit gates.
     if not isinstance(e, Mul):
         return e
     c_part, nc_part = e.args_cnc()
     n_nc = len(nc_part)
-    if n_nc == 0 or n_nc == 1:
+    if n_nc == 0:
+        return e
+    elif n_nc == 1:
+        if isinstance(nc_part[0], Pow):
+            return  Mul(*c_part) * tensor_product_simp_Pow(nc_part[0])
         return e
     elif e.has(TensorProduct):
         current = nc_part[0]
         if not isinstance(current, TensorProduct):
-            raise TypeError('TensorProduct expected, got: %r' % current)
+            if isinstance(current, Pow):
+                if isinstance(current.base, TensorProduct):
+                    current = tensor_product_simp_Pow(current)
+            else:
+                raise TypeError('TensorProduct expected, got: %r' % current)
         n_terms = len(current.args)
         new_args = list(current.args)
         for next in nc_part[1:]:
@@ -254,20 +336,38 @@ def tensor_product_simp_Mul(e):
             if isinstance(next, TensorProduct):
                 if n_terms != len(next.args):
                     raise QuantumError(
-                        'TensorProducts of different lengths: %r and %r' % \
+                        'TensorProducts of different lengths: %r and %r' %
                         (current, next)
                     )
                 for i in range(len(new_args)):
-                    new_args[i] = new_args[i]*next.args[i]
+                    new_args[i] = new_args[i] * next.args[i]
             else:
-                # this won't quite work as we don't want next in the TensorProduct
-                for i in range(len(new_args)):
-                    new_args[i] = new_args[i]*next
+                if isinstance(next, Pow):
+                    if isinstance(next.base, TensorProduct):
+                        new_tp = tensor_product_simp_Pow(next)
+                        for i in range(len(new_args)):
+                            new_args[i] = new_args[i] * new_tp.args[i]
+                    else:
+                        raise TypeError('TensorProduct expected, got: %r' % next)
+                else:
+                    raise TypeError('TensorProduct expected, got: %r' % next)
             current = next
-        return Mul(*c_part)*TensorProduct(*new_args)
+        return Mul(*c_part) * TensorProduct(*new_args)
+    elif e.has(Pow):
+        new_args = [ tensor_product_simp_Pow(nc) for nc in nc_part ]
+        return tensor_product_simp_Mul(Mul(*c_part) * TensorProduct(*new_args))
     else:
         return e
 
+def tensor_product_simp_Pow(e):
+    """Evaluates ``Pow`` expressions whose base is ``TensorProduct``"""
+    if not isinstance(e, Pow):
+        return e
+
+    if isinstance(e.base, TensorProduct):
+        return TensorProduct(*[ b**e.exp for b in e.base.args])
+    else:
+        return e
 
 def tensor_product_simp(e, **hints):
     """Try to simplify and combine TensorProducts.
@@ -306,7 +406,10 @@ def tensor_product_simp(e, **hints):
     if isinstance(e, Add):
         return Add(*[tensor_product_simp(arg) for arg in e.args])
     elif isinstance(e, Pow):
-        return tensor_product_simp(e.base)**e.exp
+        if isinstance(e.base, TensorProduct):
+            return tensor_product_simp_Pow(e)
+        else:
+            return tensor_product_simp(e.base) ** e.exp
     elif isinstance(e, Mul):
         return tensor_product_simp_Mul(e)
     elif isinstance(e, Commutator):

@@ -8,8 +8,12 @@ Todo:
 * Implement _represent_ZGate in OracleGate
 """
 
-from sympy import floor, pi, sqrt, sympify
-from sympy.core.compatibility import callable
+from sympy.core.numbers import pi
+from sympy.core.sympify import sympify
+from sympy.functions.elementary.integers import floor
+from sympy.functions.elementary.miscellaneous import sqrt
+from sympy.matrices.dense import eye
+from sympy.core.numbers import NegativeOne
 from sympy.physics.quantum.qapply import qapply
 from sympy.physics.quantum.qexpr import QuantumError
 from sympy.physics.quantum.hilbert import ComplexSpace
@@ -24,6 +28,7 @@ __all__ = [
     'grover_iteration',
     'apply_grover'
 ]
+
 
 def superposition_basis(nqubits):
     """Creates an equal superposition of the computational basis.
@@ -51,7 +56,8 @@ def superposition_basis(nqubits):
     """
 
     amp = 1/sqrt(2**nqubits)
-    return sum([amp*IntQubit(n, nqubits) for n in range(2**nqubits)])
+    return sum([amp*IntQubit(n, nqubits=nqubits) for n in range(2**nqubits)])
+
 
 class OracleGate(Gate):
     """A black box gate.
@@ -85,8 +91,8 @@ class OracleGate(Gate):
         |3>
     """
 
-    gate_name = u'V'
-    gate_name_latex = u'V'
+    gate_name = 'V'
+    gate_name_latex = 'V'
 
     #-------------------------------------------------------------------------
     # Initialization/creation
@@ -94,24 +100,25 @@ class OracleGate(Gate):
 
     @classmethod
     def _eval_args(cls, args):
+        # TODO: args[1] is not a subclass of Basic
         if len(args) != 2:
             raise QuantumError(
                 'Insufficient/excessive arguments to Oracle.  Please ' +
-                    'supply the number of qubits and an unknown function.'
+                'supply the number of qubits and an unknown function.'
             )
-        sub_args = args[0],
+        sub_args = (args[0],)
         sub_args = UnitaryOperator._eval_args(sub_args)
         if not sub_args[0].is_Integer:
             raise TypeError('Integer expected, got: %r' % sub_args[0])
+
         if not callable(args[1]):
             raise TypeError('Callable expected, got: %r' % args[1])
-        sub_args = UnitaryOperator._eval_args(tuple(range(args[0])))
-        return (sub_args, args[1])
+        return (sub_args[0], args[1])
 
     @classmethod
     def _eval_hilbert_space(cls, args):
         """This returns the smallest possible Hilbert space."""
-        return ComplexSpace(2)**(max(args[0])+1)
+        return ComplexSpace(2)**args[0]
 
     #-------------------------------------------------------------------------
     # Properties
@@ -125,7 +132,7 @@ class OracleGate(Gate):
     @property
     def targets(self):
         """A tuple of target qubits."""
-        return self.label[0]
+        return sympify(tuple(range(self.args[0])))
 
     #-------------------------------------------------------------------------
     # Apply
@@ -149,7 +156,7 @@ class OracleGate(Gate):
         if qubits.nqubits != self.nqubits:
             raise QuantumError(
                 'OracleGate operates on %r qubits, got: %r'
-                    (self.nqubits, qubits.nqubits)
+                % (self.nqubits, qubits.nqubits)
             )
         # If function returns 1 on qubits
             # return the negative of the qubits (flip the sign)
@@ -163,9 +170,17 @@ class OracleGate(Gate):
     #-------------------------------------------------------------------------
 
     def _represent_ZGate(self, basis, **options):
-        raise NotImplementedError(
-            "Represent for the Oracle has not been implemented yet"
-        )
+        """
+        Represent the OracleGate in the computational basis.
+        """
+        nbasis = 2**self.nqubits  # compute it only once
+        matrixOracle = eye(nbasis)
+        # Flip the sign given the output of the oracle function
+        for i in range(nbasis):
+            if self.search_function(IntQubit(i, nqubits=self.nqubits)):
+                matrixOracle[i, i] = NegativeOne()
+        return matrixOracle
+
 
 class WGate(Gate):
     """General n qubit W Gate in Grover's algorithm.
@@ -181,20 +196,28 @@ class WGate(Gate):
 
     """
 
-    gate_name = u'W'
-    gate_name_latex = u'W'
+    gate_name = 'W'
+    gate_name_latex = 'W'
 
     @classmethod
     def _eval_args(cls, args):
         if len(args) != 1:
             raise QuantumError(
                 'Insufficient/excessive arguments to W gate.  Please ' +
-                    'supply the number of qubits to operate on.'
+                'supply the number of qubits to operate on.'
             )
         args = UnitaryOperator._eval_args(args)
         if not args[0].is_Integer:
             raise TypeError('Integer expected, got: %r' % args[0])
-        return sympify(tuple(reversed(range(args[0]))))
+        return args
+
+    #-------------------------------------------------------------------------
+    # Properties
+    #-------------------------------------------------------------------------
+
+    @property
+    def targets(self):
+        return sympify(tuple(reversed(range(self.args[0]))))
 
     #-------------------------------------------------------------------------
     # Apply
@@ -208,7 +231,7 @@ class WGate(Gate):
         if qubits.nqubits != self.nqubits:
             raise QuantumError(
                 'WGate operates on %r qubits, got: %r'
-                    (self.nqubits, qubits.nqubits)
+                % (self.nqubits, qubits.nqubits)
             )
 
         # See 'Quantum Computer Science' by David Mermin p.92 -> W|a> result
@@ -218,6 +241,7 @@ class WGate(Gate):
         basis_states = superposition_basis(self.nqubits)
         change_to_basis = (2/sqrt(2**self.nqubits))*basis_states
         return change_to_basis - qubits
+
 
 def grover_iteration(qstate, oracle):
     """Applies one application of the Oracle and W Gate, WV.
@@ -256,6 +280,7 @@ def grover_iteration(qstate, oracle):
     wgate = WGate(oracle.nqubits)
     return wgate*oracle*qstate
 
+
 def apply_grover(oracle, nqubits, iterations=None):
     """Applies grover's algorithm.
 
@@ -288,7 +313,7 @@ def apply_grover(oracle, nqubits, iterations=None):
     if nqubits <= 0:
         raise QuantumError(
             'Grover\'s algorithm needs nqubits > 0, received %r qubits'
-                % nqubits
+            % nqubits
         )
     if iterations is None:
         iterations = floor(sqrt(2**nqubits)*(pi/4))

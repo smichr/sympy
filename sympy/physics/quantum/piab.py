@@ -1,6 +1,11 @@
 """1D quantum particle in a box."""
 
-from sympy import Symbol, pi, sqrt, sin, Interval, S
+from sympy.core.numbers import pi
+from sympy.core.singleton import S
+from sympy.core.symbol import Symbol
+from sympy.functions.elementary.miscellaneous import sqrt
+from sympy.functions.elementary.trigonometric import sin
+from sympy.sets.sets import Interval
 
 from sympy.physics.quantum.operator import HermitianOperator
 from sympy.physics.quantum.state import Ket, Bra
@@ -24,7 +29,7 @@ class PIABHamiltonian(HermitianOperator):
 
     @classmethod
     def _eval_hilbert_space(cls, label):
-        return L2(Interval(S.NegativeInfinity,S.Infinity))
+        return L2(Interval(S.NegativeInfinity, S.Infinity))
 
     def _apply_operator_PIABKet(self, ket, **options):
         n = ket.label[0]
@@ -36,7 +41,7 @@ class PIABKet(Ket):
 
     @classmethod
     def _eval_hilbert_space(cls, args):
-        return L2(Interval(S.NegativeInfinity,S.Infinity))
+        return L2(Interval(S.NegativeInfinity, S.Infinity))
 
     @classmethod
     def dual_class(self):
@@ -48,7 +53,7 @@ class PIABKet(Ket):
     def _represent_XOp(self, basis, **options):
         x = Symbol('x')
         n = Symbol('n')
-        subs_info = options.get('subs',{})
+        subs_info = options.get('subs', {})
         return sqrt(2/L)*sin(n*pi*x/L).subs(subs_info)
 
     def _eval_innerproduct_PIABBra(self, bra):
@@ -60,7 +65,7 @@ class PIABBra(Bra):
 
     @classmethod
     def _eval_hilbert_space(cls, label):
-        return L2(Interval(S.NegativeInfinity,S.Infinity))
+        return L2(Interval(S.NegativeInfinity, S.Infinity))
 
     @classmethod
     def dual_class(self):

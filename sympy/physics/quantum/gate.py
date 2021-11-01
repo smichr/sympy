@@ -16,9 +16,14 @@ Medium Term Todo:
 from itertools import chain
 import random
 
-from sympy import Add, I, Integer, Matrix, Mul, Pow, sqrt, Tuple
+from sympy.core.add import Add
+from sympy.core.containers import Tuple
+from sympy.core.mul import Mul
+from sympy.core.numbers import (I, Integer)
+from sympy.core.power import Pow
+from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.core.numbers import Number
-from sympy.core.compatibility import is_sequence
+from sympy.core.sorting import default_sort_key
 from sympy.printing.pretty.stringpict import prettyForm, stringPict
 
 from sympy.physics.quantum.anticommutator import AntiCommutator
@@ -31,6 +36,8 @@ from sympy.physics.quantum.matrixutils import matrix_tensor_product, matrix_eye
 from sympy.physics.quantum.matrixcache import matrix_cache
 
 from sympy.matrices.matrices import MatrixBase
+
+from sympy.utilities.iterables import is_sequence
 
 __all__ = [
     'Gate',
@@ -61,6 +68,8 @@ __all__ = [
     'gate_sort',
     'gate_simp',
     'random_circuit',
+    'CPHASE',
+    'CGateS',
 ]
 
 #-----------------------------------------------------------------------------
@@ -69,11 +78,24 @@ __all__ = [
 
 _normalized = True
 
+
+def _max(*args, **kwargs):
+    if "key" not in kwargs:
+        kwargs["key"] = default_sort_key
+    return max(*args, **kwargs)
+
+
+def _min(*args, **kwargs):
+    if "key" not in kwargs:
+        kwargs["key"] = default_sort_key
+    return min(*args, **kwargs)
+
+
 def normalized(normalize):
-    """Should Hadamard gates be normalized by a 1/sqrt(2).
+    """Set flag controlling normalization of Hadamard gates by 1/sqrt(2).
 
     This is a global setting that can be used to simplify the look of various
-    expressions, by leaving of the leading 1/sqrt(2) of the Hadamard gate.
+    expressions, by leaving off the leading 1/sqrt(2) of the Hadamard gate.
 
     Parameters
     ----------
@@ -90,7 +112,7 @@ def _validate_targets_controls(tandc):
     tandc = list(tandc)
     # Check for integers
     for bit in tandc:
-        if not bit.is_Integer:
+        if not bit.is_Integer and not bit.is_Symbol:
             raise TypeError('Integer expected, got: %r' % tandc[bit])
     # Detect duplicates
     if len(list(set(tandc))) != len(tandc):
@@ -111,15 +133,15 @@ class Gate(UnitaryOperator):
         A list of the target qubits (as ints) that the gate will apply to.
 
     Examples
-    --------
+    ========
 
 
     """
 
     _label_separator = ','
 
-    gate_name = u'G'
-    gate_name_latex = u'G'
+    gate_name = 'G'
+    gate_name_latex = 'G'
 
     #-------------------------------------------------------------------------
     # Initialization/creation
@@ -134,7 +156,7 @@ class Gate(UnitaryOperator):
     @classmethod
     def _eval_hilbert_space(cls, args):
         """This returns the smallest possible Hilbert space."""
-        return ComplexSpace(2)**(max(args)+1)
+        return ComplexSpace(2)**(_max(args) + 1)
 
     #-------------------------------------------------------------------------
     # Properties
@@ -152,7 +174,7 @@ class Gate(UnitaryOperator):
     @property
     def min_qubits(self):
         """The minimum number of qubits this gate needs to act on."""
-        return max(self.targets)+1
+        return _max(self.targets) + 1
 
     @property
     def targets(self):
@@ -175,7 +197,8 @@ class Gate(UnitaryOperator):
         format : str
             The format string ('sympy','numpy', etc.)
         """
-        raise NotImplementedError('get_target_matrix is not implemented in Gate.')
+        raise NotImplementedError(
+            'get_target_matrix is not implemented in Gate.')
 
     #-------------------------------------------------------------------------
     # Apply
@@ -191,8 +214,8 @@ class Gate(UnitaryOperator):
         # Check number of qubits this gate acts on.
         if qubits.nqubits < self.min_qubits:
             raise QuantumError(
-                'Gate needs a minimum of %r qubits to act on, got: %r' %\
-                    (self.min_qubits, qubits.nqubits)
+                'Gate needs a minimum of %r qubits to act on, got: %r' %
+                (self.min_qubits, qubits.nqubits)
             )
 
         # If the controls are not met, just return
@@ -208,8 +231,8 @@ class Gate(UnitaryOperator):
         n = 1
         for target in targets:
             column_index += n*qubits[target]
-            n = n<<1
-        column = target_matrix[:,int(column_index)]
+            n = n << 1
+        column = target_matrix[:, int(column_index)]
 
         # Now apply each column element to the qubit.
         result = 0
@@ -221,7 +244,7 @@ class Gate(UnitaryOperator):
             new_qubit = qubits.__class__(*qubits.args)
             # Flip the bits that need to be flipped.
             for bit in range(len(targets)):
-                if new_qubit[targets[bit]] != (index>>bit)&1:
+                if new_qubit[targets[bit]] != (index >> bit) & 1:
                     new_qubit = new_qubit.flip(targets[bit])
             # The value in that row and column times the flipped-bit qubit
             # is the result for that part.
@@ -236,10 +259,11 @@ class Gate(UnitaryOperator):
         return self._represent_ZGate(None, **options)
 
     def _represent_ZGate(self, basis, **options):
-        format = options.get('format','sympy')
-        nqubits = options.get('nqubits',0)
+        format = options.get('format', 'sympy')
+        nqubits = options.get('nqubits', 0)
         if nqubits == 0:
-            raise QuantumError('The number of qubits must be given as nqubits.')
+            raise QuantumError(
+                'The number of qubits must be given as nqubits.')
 
         # Make sure we have enough qubits for the gate.
         if nqubits < self.min_qubits:
@@ -262,22 +286,21 @@ class Gate(UnitaryOperator):
     # Print methods
     #-------------------------------------------------------------------------
 
-    def _print_contents(self, printer, *args):
+    def _sympystr(self, printer, *args):
         label = self._print_label(printer, *args)
         return '%s(%s)' % (self.gate_name, label)
 
-    def _print_contents_pretty(self, printer, *args):
-        a = stringPict(unicode(self.gate_name))
+    def _pretty(self, printer, *args):
+        a = stringPict(self.gate_name)
         b = self._print_label_pretty(printer, *args)
         return self._print_subscript_pretty(a, b)
 
-    def _print_contents_latex(self, printer, *args):
+    def _latex(self, printer, *args):
         label = self._print_label(printer, *args)
         return '%s_{%s}' % (self.gate_name_latex, label)
 
     def plot_gate(self, axes, gate_idx, gate_grid, wire_grid):
         raise NotImplementedError('plot_gate is not implemented.')
-
 
 
 class CGate(Gate):
@@ -295,15 +318,17 @@ class CGate(Gate):
         instance that is the target operator.
 
     Examples
-    --------
+    ========
 
     """
 
-    gate_name = u'C'
-    gate_name_latex = u'C'
+    gate_name = 'C'
+    gate_name_latex = 'C'
 
     # The values this class controls for.
     control_value = Integer(1)
+
+    simplify_cgate=False
 
     #-------------------------------------------------------------------------
     # Initialization
@@ -317,13 +342,13 @@ class CGate(Gate):
         if not is_sequence(controls):
             controls = (controls,)
         controls = UnitaryOperator._eval_args(controls)
-        _validate_targets_controls(chain(controls,gate.targets))
+        _validate_targets_controls(chain(controls, gate.targets))
         return (Tuple(*controls), gate)
 
     @classmethod
     def _eval_hilbert_space(cls, args):
         """This returns the smallest possible Hilbert space."""
-        return ComplexSpace(2)**max(max(args[0])+1,args[1].min_qubits)
+        return ComplexSpace(2)**_max(_max(args[0]) + 1, args[1].min_qubits)
 
     #-------------------------------------------------------------------------
     # Properties
@@ -336,12 +361,12 @@ class CGate(Gate):
         For controlled gate subclasses this includes both target and control
         qubits, so that, for examples the CNOT gate acts on 2 qubits.
         """
-        return len(self.targets)+len(self.controls)
+        return len(self.targets) + len(self.controls)
 
     @property
     def min_qubits(self):
         """The minimum number of qubits this gate needs to act on."""
-        return max(max(self.controls),max(self.targets))+1
+        return _max(_max(self.controls), _max(self.targets)) + 1
 
     @property
     def targets(self):
@@ -367,7 +392,7 @@ class CGate(Gate):
 
     def eval_controls(self, qubit):
         """Return True/False to indicate if the controls are satisfied."""
-        return all(qubit[bit]==self.control_value for bit in self.controls)
+        return all(qubit[bit] == self.control_value for bit in self.controls)
 
     def decompose(self, **options):
         """Decompose the controlled gate into CNOT and single qubits gates."""
@@ -392,34 +417,79 @@ class CGate(Gate):
     # Print methods
     #-------------------------------------------------------------------------
 
-    def _print_contents(self, printer, *args):
+    def _print_label(self, printer, *args):
         controls = self._print_sequence(self.controls, ',', printer, *args)
         gate = printer._print(self.gate, *args)
-        return '%s((%s),%s)' %\
-            (self.gate_name, controls, gate)
+        return '(%s),%s' % (controls, gate)
 
-    def _print_contents_pretty(self, printer, *args):
-        controls = self._print_sequence_pretty(self.controls, ',', printer, *args)
+    def _pretty(self, printer, *args):
+        controls = self._print_sequence_pretty(
+            self.controls, ',', printer, *args)
         gate = printer._print(self.gate)
-        gate_name = stringPict(unicode(self.gate_name))
+        gate_name = stringPict(self.gate_name)
         first = self._print_subscript_pretty(gate_name, controls)
         gate = self._print_parens_pretty(gate)
-        final = prettyForm(*first.right((gate)))
+        final = prettyForm(*first.right(gate))
         return final
 
-    def _print_contents_latex(self, printer, *args):
+    def _latex(self, printer, *args):
         controls = self._print_sequence(self.controls, ',', printer, *args)
         gate = printer._print(self.gate, *args)
-        return r'%s_{%s}{\left(%s\right)}' %\
+        return r'%s_{%s}{\left(%s\right)}' % \
             (self.gate_name_latex, controls, gate)
 
     def plot_gate(self, circ_plot, gate_idx):
-        min_wire = int(min(chain(self.controls, self.targets)))
-        max_wire = int(max(chain(self.controls, self.targets)))
+        """
+        Plot the controlled gate. If *simplify_cgate* is true, simplify
+        C-X and C-Z gates into their more familiar forms.
+        """
+        min_wire = int(_min(chain(self.controls, self.targets)))
+        max_wire = int(_max(chain(self.controls, self.targets)))
         circ_plot.control_line(gate_idx, min_wire, max_wire)
         for c in self.controls:
             circ_plot.control_point(gate_idx, int(c))
-        self.gate.plot_gate(circ_plot, gate_idx)
+        if self.simplify_cgate:
+            if self.gate.gate_name == 'X':
+                self.gate.plot_gate_plus(circ_plot, gate_idx)
+            elif self.gate.gate_name == 'Z':
+                circ_plot.control_point(gate_idx, self.targets[0])
+            else:
+                self.gate.plot_gate(circ_plot, gate_idx)
+        else:
+            self.gate.plot_gate(circ_plot, gate_idx)
+
+    #-------------------------------------------------------------------------
+    # Miscellaneous
+    #-------------------------------------------------------------------------
+
+    def _eval_dagger(self):
+        if isinstance(self.gate, HermitianOperator):
+            return self
+        else:
+            return Gate._eval_dagger(self)
+
+    def _eval_inverse(self):
+        if isinstance(self.gate, HermitianOperator):
+            return self
+        else:
+            return Gate._eval_inverse(self)
+
+    def _eval_power(self, exp):
+        if isinstance(self.gate, HermitianOperator):
+            if exp == -1:
+                return Gate._eval_power(self, exp)
+            elif abs(exp) % 2 == 0:
+                return self*(Gate._eval_inverse(self))
+            else:
+                return self
+        else:
+            return Gate._eval_power(self, exp)
+
+class CGateS(CGate):
+    """Version of CGate that allows gate simplifications.
+    I.e. cnot looks like an oplus, cphase has dots, etc.
+    """
+    simplify_cgate=True
 
 
 class UGate(Gate):
@@ -432,8 +502,8 @@ class UGate(Gate):
         target qubits and U is a unitary matrix with dimension of
         len(targets).
     """
-    gate_name = u'U'
-    gate_name_latex = u'U'
+    gate_name = 'U'
+    gate_name_latex = 'U'
 
     #-------------------------------------------------------------------------
     # Initialization
@@ -452,7 +522,7 @@ class UGate(Gate):
         dim = 2**len(targets)
         if not all(dim == shape for shape in mat.shape):
             raise IndexError(
-                'Number of targets must match the matrix size: %r %r' %\
+                'Number of targets must match the matrix size: %r %r' %
                 (targets, mat)
             )
         return (targets, mat)
@@ -460,7 +530,7 @@ class UGate(Gate):
     @classmethod
     def _eval_hilbert_space(cls, args):
         """This returns the smallest possible Hilbert space."""
-        return ComplexSpace(2)**(max(args[0])+1)
+        return ComplexSpace(2)**(_max(args[0]) + 1)
 
     #-------------------------------------------------------------------------
     # Properties
@@ -488,17 +558,13 @@ class UGate(Gate):
     #-------------------------------------------------------------------------
     # Print methods
     #-------------------------------------------------------------------------
-
-    def _print_contents(self, printer, *args):
-        targets = self._print_targets(printer, *args)
-        return '%s(%s)' % (self.gate_name, targets)
-
-    def _print_contents_pretty(self, printer, *args):
-        targets = self._print_sequence_pretty(self.targets, ',', printer, *args)
-        gate_name = stringPict(unicode(self.gate_name))
+    def _pretty(self, printer, *args):
+        targets = self._print_sequence_pretty(
+            self.targets, ',', printer, *args)
+        gate_name = stringPict(self.gate_name)
         return self._print_subscript_pretty(gate_name, targets)
 
-    def _print_contents_latex(self, printer, *args):
+    def _latex(self, printer, *args):
         targets = self._print_sequence(self.targets, ',', printer, *args)
         return r'%s_{%s}' % (self.gate_name_latex, targets)
 
@@ -532,11 +598,11 @@ class OneQubitGate(Gate):
                 return Integer(2)*self*other
         return Operator._eval_anticommutator(self, other, **hints)
 
+
 class TwoQubitGate(Gate):
     """A two qubit unitary gate base class."""
 
     nqubits = Integer(2)
-
 
 #-----------------------------------------------------------------------------
 # Single Qubit Gates
@@ -552,11 +618,11 @@ class IdentityGate(OneQubitGate):
         The target qubit this gate will apply to.
 
     Examples
-    --------
+    ========
 
     """
-    gate_name = u'1'
-    gate_name_latex = u'1'
+    gate_name = '1'
+    gate_name_latex = '1'
 
     def get_target_matrix(self, format='sympy'):
         return matrix_cache.get_matrix('eye2', format)
@@ -568,7 +634,7 @@ class IdentityGate(OneQubitGate):
         return Integer(2)*other
 
 
-class HadamardGate(OneQubitGate):
+class HadamardGate(HermitianOperator, OneQubitGate):
     """The single qubit Hadamard gate.
 
     Parameters
@@ -577,11 +643,22 @@ class HadamardGate(OneQubitGate):
         The target qubit this gate will apply to.
 
     Examples
-    --------
+    ========
+
+    >>> from sympy import sqrt
+    >>> from sympy.physics.quantum.qubit import Qubit
+    >>> from sympy.physics.quantum.gate import HadamardGate
+    >>> from sympy.physics.quantum.qapply import qapply
+    >>> qapply(HadamardGate(0)*Qubit('1'))
+    sqrt(2)*|0>/2 - sqrt(2)*|1>/2
+    >>> # Hadamard on bell state, applied on 2 qubits.
+    >>> psi = 1/sqrt(2)*(Qubit('00')+Qubit('11'))
+    >>> qapply(HadamardGate(0)*HadamardGate(1)*psi)
+    sqrt(2)*|00>/2 + sqrt(2)*|11>/2
 
     """
-    gate_name = u'H'
-    gate_name_latex = u'H'
+    gate_name = 'H'
+    gate_name_latex = 'H'
 
     def get_target_matrix(self, format='sympy'):
         if _normalized:
@@ -593,7 +670,7 @@ class HadamardGate(OneQubitGate):
         return I*sqrt(2)*YGate(self.targets[0])
 
     def _eval_commutator_YGate(self, other, **hints):
-        return I*sqrt(2)*(ZGate(self.targets[0])-XGate(self.targets[0]))
+        return I*sqrt(2)*(ZGate(self.targets[0]) - XGate(self.targets[0]))
 
     def _eval_commutator_ZGate(self, other, **hints):
         return -I*sqrt(2)*YGate(self.targets[0])
@@ -617,16 +694,19 @@ class XGate(HermitianOperator, OneQubitGate):
         The target qubit this gate will apply to.
 
     Examples
-    --------
+    ========
 
     """
-    gate_name = u'X'
-    gate_name_latex = u'X'
+    gate_name = 'X'
+    gate_name_latex = 'X'
 
     def get_target_matrix(self, format='sympy'):
         return matrix_cache.get_matrix('X', format)
 
     def plot_gate(self, circ_plot, gate_idx):
+        OneQubitGate.plot_gate(self,circ_plot,gate_idx)
+
+    def plot_gate_plus(self, circ_plot, gate_idx):
         circ_plot.not_point(
             gate_idx, int(self.label[0])
         )
@@ -644,7 +724,6 @@ class XGate(HermitianOperator, OneQubitGate):
         return Integer(0)
 
 
-
 class YGate(HermitianOperator, OneQubitGate):
     """The single qubit Y gate.
 
@@ -654,11 +733,11 @@ class YGate(HermitianOperator, OneQubitGate):
         The target qubit this gate will apply to.
 
     Examples
-    --------
+    ========
 
     """
-    gate_name = u'Y'
-    gate_name_latex = u'Y'
+    gate_name = 'Y'
+    gate_name_latex = 'Y'
 
     def get_target_matrix(self, format='sympy'):
         return matrix_cache.get_matrix('Y', format)
@@ -682,11 +761,11 @@ class ZGate(HermitianOperator, OneQubitGate):
         The target qubit this gate will apply to.
 
     Examples
-    --------
+    ========
 
     """
-    gate_name = u'Z'
-    gate_name_latex = u'Z'
+    gate_name = 'Z'
+    gate_name_latex = 'Z'
 
     def get_target_matrix(self, format='sympy'):
         return matrix_cache.get_matrix('Z', format)
@@ -710,11 +789,11 @@ class PhaseGate(OneQubitGate):
         The target qubit this gate will apply to.
 
     Examples
-    --------
+    ========
 
     """
-    gate_name = u'S'
-    gate_name_latex = u'S'
+    gate_name = 'S'
+    gate_name_latex = 'S'
 
     def get_target_matrix(self, format='sympy'):
         return matrix_cache.get_matrix('S', format)
@@ -738,11 +817,11 @@ class TGate(OneQubitGate):
         The target qubit this gate will apply to.
 
     Examples
-    --------
+    ========
 
     """
-    gate_name = u'T'
-    gate_name_latex = u'T'
+    gate_name = 'T'
+    gate_name_latex = 'T'
 
     def get_target_matrix(self, format='sympy'):
         return matrix_cache.get_matrix('T', format)
@@ -768,7 +847,7 @@ Phase = S = PhaseGate
 #-----------------------------------------------------------------------------
 
 
-class CNotGate(CGate, TwoQubitGate):
+class CNotGate(HermitianOperator, CGate, TwoQubitGate):
     """Two qubit controlled-NOT.
 
     This gate performs the NOT or X gate on the target qubit if the control
@@ -780,11 +859,19 @@ class CNotGate(CGate, TwoQubitGate):
         A tuple of the form (control, target).
 
     Examples
-    --------
+    ========
+
+    >>> from sympy.physics.quantum.gate import CNOT
+    >>> from sympy.physics.quantum.qapply import qapply
+    >>> from sympy.physics.quantum.qubit import Qubit
+    >>> c = CNOT(1,0)
+    >>> qapply(c*Qubit('10')) # note that qubits are indexed from right to left
+    |11>
 
     """
     gate_name = 'CNOT'
-    gate_name_latex = u'CNOT'
+    gate_name_latex = 'CNOT'
+    simplify_cgate = True
 
     #-------------------------------------------------------------------------
     # Initialization
@@ -798,7 +885,7 @@ class CNotGate(CGate, TwoQubitGate):
     @classmethod
     def _eval_hilbert_space(cls, args):
         """This returns the smallest possible Hilbert space."""
-        return ComplexSpace(2)**(max(args)+1)
+        return ComplexSpace(2)**(_max(args) + 1)
 
     #-------------------------------------------------------------------------
     # Properties
@@ -807,7 +894,7 @@ class CNotGate(CGate, TwoQubitGate):
     @property
     def min_qubits(self):
         """The minimum number of qubits this gate needs to act on."""
-        return max(self.label)+1
+        return _max(self.label) + 1
 
     @property
     def targets(self):
@@ -831,14 +918,14 @@ class CNotGate(CGate, TwoQubitGate):
     # The default printing of Gate works better than those of CGate, so we
     # go around the overridden methods in CGate.
 
-    def _print_contents(self, printer, *args):
-        return Gate._print_contents(self, printer, *args)
+    def _print_label(self, printer, *args):
+        return Gate._print_label(self, printer, *args)
 
-    def _print_contents_pretty(self, printer, *args):
-        return Gate._print_contents_pretty(self, printer, *args)
+    def _pretty(self, printer, *args):
+        return Gate._pretty(self, printer, *args)
 
-    def _print_contents_latex(self, printer, *args):
-        return Gate._print_contents_latex(self, printer, *args)
+    def _latex(self, printer, *args):
+        return Gate._latex(self, printer, *args)
 
     #-------------------------------------------------------------------------
     # Commutator/AntiCommutator
@@ -885,25 +972,25 @@ class SwapGate(TwoQubitGate):
         A tuple of the form (target1, target2).
 
     Examples
-    --------
+    ========
 
     """
     gate_name = 'SWAP'
-    gate_name_latex = u'SWAP'
+    gate_name_latex = 'SWAP'
 
     def get_target_matrix(self, format='sympy'):
         return matrix_cache.get_matrix('SWAP', format)
 
     def decompose(self, **options):
         """Decompose the SWAP gate into CNOT gates."""
-        i,j = self.targets[0], self.targets[1]
+        i, j = self.targets[0], self.targets[1]
         g1 = CNotGate(i, j)
         g2 = CNotGate(j, i)
         return g1*g2*g1
 
     def plot_gate(self, circ_plot, gate_idx):
-        min_wire = int(min(self.targets))
-        max_wire = int(max(self.targets))
+        min_wire = int(_min(self.targets))
+        max_wire = int(_max(self.targets))
         circ_plot.control_line(gate_idx, min_wire, max_wire)
         circ_plot.swap_point(gate_idx, min_wire)
         circ_plot.swap_point(gate_idx, max_wire)
@@ -917,9 +1004,9 @@ class SwapGate(TwoQubitGate):
         """
         format = options.get('format', 'sympy')
         targets = [int(t) for t in self.targets]
-        min_target = min(targets)
-        max_target = max(targets)
-        nqubits = options.get('nqubits',self.min_qubits)
+        min_target = _min(targets)
+        max_target = _max(targets)
+        nqubits = options.get('nqubits', self.min_qubits)
 
         op01 = matrix_cache.get_matrix('op01', format)
         op10 = matrix_cache.get_matrix('op10', format)
@@ -928,10 +1015,10 @@ class SwapGate(TwoQubitGate):
         eye2 = matrix_cache.get_matrix('eye2', format)
 
         result = None
-        for i, j in ((op01,op10),(op10,op01),(op00,op00),(op11,op11)):
+        for i, j in ((op01, op10), (op10, op01), (op00, op00), (op11, op11)):
             product = nqubits*[eye2]
-            product[nqubits-min_target-1] = i
-            product[nqubits-max_target-1] = j
+            product[nqubits - min_target - 1] = i
+            product[nqubits - max_target - 1] = j
             new_result = matrix_tensor_product(*product)
             if result is None:
                 result = new_result
@@ -944,6 +1031,8 @@ class SwapGate(TwoQubitGate):
 # Aliases for gate names.
 CNOT = CNotGate
 SWAP = SwapGate
+def CPHASE(a,b): return CGateS((a,),Z(b))
+
 
 #-----------------------------------------------------------------------------
 # Represent
@@ -980,7 +1069,7 @@ def represent_zbasis(controls, targets, target_matrix, nqubits, format='sympy'):
         The format of the final matrix ('sympy', 'numpy', 'scipy.sparse').
 
     Examples
-    --------
+    ========
 
     References
     ----------
@@ -1000,8 +1089,8 @@ def represent_zbasis(controls, targets, target_matrix, nqubits, format='sympy'):
         bit = targets[0]
         # Fill product with [I1,Gate,I2] such that the unitaries,
         # I, cause the gate to be applied to the correct Qubit
-        if bit != nqubits-1:
-            product.append(matrix_eye(2**(nqubits-bit-1), format=format))
+        if bit != nqubits - 1:
+            product.append(matrix_eye(2**(nqubits - bit - 1), format=format))
         product.append(target_matrix)
         if bit != 0:
             product.append(matrix_eye(2**bit, format=format))
@@ -1009,18 +1098,18 @@ def represent_zbasis(controls, targets, target_matrix, nqubits, format='sympy'):
 
     # Single target, multiple controls.
     elif len(targets) == 1 and len(controls) >= 1:
-        target =  targets[0]
+        target = targets[0]
 
         # Build the non-trivial part.
         product2 = []
         for i in range(nqubits):
             product2.append(matrix_eye(2, format=format))
         for control in controls:
-            product2[nqubits-1-control] = op11
-        product2[nqubits-1-target] = target_matrix - eye2
+            product2[nqubits - 1 - control] = op11
+        product2[nqubits - 1 - target] = target_matrix - eye2
 
-        return matrix_eye(2**nqubits, format=format) +\
-               matrix_tensor_product(*product2)
+        return matrix_eye(2**nqubits, format=format) + \
+            matrix_tensor_product(*product2)
 
     # Multi-target, multi-control is not yet implemented.
     else:
@@ -1059,18 +1148,18 @@ def gate_simp(circuit):
         return circuit
 
     # Iterate through each element in circuit, simplify if possible.
-    for i in xrange(len(circuit_args)):
+    for i in range(len(circuit_args)):
         # H,X,Y or Z squared is 1.
         # T**2 = S, S**2 = Z
         if isinstance(circuit_args[i], Pow):
             if isinstance(circuit_args[i].base,
-                (HadamardGate, XGate, YGate, ZGate))\
-                and isinstance(circuit_args[i].exp, Number):
+                (HadamardGate, XGate, YGate, ZGate)) \
+                    and isinstance(circuit_args[i].exp, Number):
                 # Build a new circuit taking replacing the
                 # H,X,Y,Z squared with one.
-                newargs = (circuit_args[:i] +\
-                          (circuit_args[i].base**(circuit_args[i].exp % 2),) +\
-                           circuit_args[i+1:])
+                newargs = (circuit_args[:i] +
+                          (circuit_args[i].base**(circuit_args[i].exp % 2),) +
+                           circuit_args[i + 1:])
                 # Recursively simplify the new circuit.
                 circuit = gate_simp(Mul(*newargs))
                 break
@@ -1079,27 +1168,27 @@ def gate_simp(circuit):
                 # in simplification.
                 newargs = circuit_args[:i]
                 # Replace PhaseGate**2 with ZGate.
-                newargs = newargs + (ZGate(circuit_args[i].base.args[0])**\
-                (Integer(circuit_args[i].exp/2)), circuit_args[i].base**\
+                newargs = newargs + (ZGate(circuit_args[i].base.args[0])**
+                (Integer(circuit_args[i].exp/2)), circuit_args[i].base**
                 (circuit_args[i].exp % 2))
                 # Append the last elements.
-                newargs = newargs + circuit_args[i+1:]
+                newargs = newargs + circuit_args[i + 1:]
                 # Recursively simplify the new circuit.
-                circuit =  gate_simp(Mul(*newargs))
+                circuit = gate_simp(Mul(*newargs))
                 break
             elif isinstance(circuit_args[i].base, TGate):
                 # Build a new circuit taking all the old elements.
                 newargs = circuit_args[:i]
 
                 # Put an Phasegate in place of any TGate**2.
-                newargs = newargs + (PhaseGate(circuit_args[i].base.args[0])**\
-                Integer(circuit_args[i].exp/2), circuit_args[i].base**\
-                (circuit_args[i].exp % 2))
+                newargs = newargs + (PhaseGate(circuit_args[i].base.args[0])**
+                Integer(circuit_args[i].exp/2), circuit_args[i].base**
+                    (circuit_args[i].exp % 2))
 
                 # Append the last elements.
-                newargs = newargs + circuit_args[i+1:]
+                newargs = newargs + circuit_args[i + 1:]
                 # Recursively simplify the new circuit.
-                circuit =  gate_simp(Mul(*newargs))
+                circuit = gate_simp(Mul(*newargs))
                 break
     return circuit
 
@@ -1128,31 +1217,29 @@ def gate_sort(circuit):
     while changes:
         changes = False
         circ_array = circuit.args
-        for i in xrange(len(circ_array)-1):
+        for i in range(len(circ_array) - 1):
             # Go through each element and switch ones that are in wrong order
-            if isinstance(circ_array[i], (Gate, Pow)) and\
-               isinstance(circ_array[i+1], (Gate, Pow)):
+            if isinstance(circ_array[i], (Gate, Pow)) and \
+                    isinstance(circ_array[i + 1], (Gate, Pow)):
                 # If we have a Pow object, look at only the base
                 first_base, first_exp = circ_array[i].as_base_exp()
-                second_base, second_exp = circ_array[i+1].as_base_exp()
+                second_base, second_exp = circ_array[i + 1].as_base_exp()
 
-                # Use sympy's hash based sorting. This is not mathematical
+                # Use SymPy's hash based sorting. This is not mathematical
                 # sorting, but is rather based on comparing hashes of objects.
                 # See Basic.compare for details.
                 if first_base.compare(second_base) > 0:
                     if Commutator(first_base, second_base).doit() == 0:
-                        new_args = (circuit.args[:i] + (circuit.args[i+1],) +\
-                                   (circuit.args[i],) + circuit.args[i+2:])
+                        new_args = (circuit.args[:i] + (circuit.args[i + 1],) +
+                                   (circuit.args[i],) + circuit.args[i + 2:])
                         circuit = Mul(*new_args)
-                        circ_array = circuit.args
                         changes = True
                         break
                     if AntiCommutator(first_base, second_base).doit() == 0:
-                        new_args = (circuit.args[:i] + (circuit.args[i+1],) +\
-                                   (circuit.args[i],) + circuit.args[i+2:])
+                        new_args = (circuit.args[:i] + (circuit.args[i + 1],) +
+                                   (circuit.args[i],) + circuit.args[i + 2:])
                         sign = Integer(-1)**(first_exp*second_exp)
                         circuit = sign*Mul(*new_args)
-                        circ_array = circuit.args
                         changes = True
                         break
     return circuit
@@ -1182,10 +1269,10 @@ def random_circuit(ngates, nqubits, gate_space=(X, Y, Z, S, T, H, CNOT, SWAP)):
     """
     qubit_space = range(nqubits)
     result = []
-    for i in xrange(ngates):
+    for i in range(ngates):
         g = random.choice(gate_space)
         if g == CNotGate or g == SwapGate:
-            qubits = random.sample(qubit_space,2)
+            qubits = random.sample(qubit_space, 2)
             g = g(*qubits)
         else:
             qubit = random.choice(qubit_space)

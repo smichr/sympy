@@ -21,14 +21,9 @@
 # incorporation in various projects. The tests below assume that the binary cc
 # is somewhere in the path and that it can compile ANSI C code.
 
-
-from __future__ import with_statement
-
-from sympy import symbols
-from sympy.utilities.pytest import skip
-from sympy.utilities.codegen import(
-        codegen, Routine, InputArgument, Result, get_code_generator
-        )
+from sympy.abc import x, y, z
+from sympy.testing.pytest import skip
+from sympy.utilities.codegen import codegen, make_routine, get_code_generator
 import sys
 import os
 import tempfile
@@ -50,7 +45,7 @@ program main
 end program
 """
 
-main_template['C'] = """
+main_template['C89'] = """
 #include "codegen.h"
 #include <stdio.h>
 #include <math.h>
@@ -63,16 +58,17 @@ int main() {
   return result;
 }
 """
-
+main_template['C99'] = main_template['C89']
 # templates for the numerical tests
 
 numerical_test_template = {}
-numerical_test_template['C'] = """
+numerical_test_template['C89'] = """
   if (fabs(%(call)s)>%(threshold)s) {
     printf("Numerical validation failed: %(call)s=%%e threshold=%(threshold)s\\n", %(call)s);
     result = -1;
   }
 """
+numerical_test_template['C99'] = numerical_test_template['C89']
 
 numerical_test_template['F95'] = """
   if (abs(%(call)s)>%(threshold)s) then
@@ -85,35 +81,37 @@ numerical_test_template['F95'] = """
 
 compile_commands = {}
 compile_commands['cc'] = [
-        "cc -c codegen.c -o codegen.o",
-        "cc -c main.c -o main.o",
-        "cc main.o codegen.o -lm -o test.exe"
-        ]
+    "cc -c codegen.c -o codegen.o",
+    "cc -c main.c -o main.o",
+    "cc main.o codegen.o -lm -o test.exe"
+]
 
 compile_commands['gfortran'] = [
-        "gfortran -c codegen.f90 -o codegen.o",
-        "gfortran -ffree-line-length-none -c main.f90 -o main.o",
-        "gfortran main.o codegen.o -o test.exe"
-        ]
+    "gfortran -c codegen.f90 -o codegen.o",
+    "gfortran -ffree-line-length-none -c main.f90 -o main.o",
+    "gfortran main.o codegen.o -o test.exe"
+]
 
 compile_commands['g95'] = [
-        "g95 -c codegen.f90 -o codegen.o",
-        "g95 -ffree-line-length-huge -c main.f90 -o main.o",
-        "g95 main.o codegen.o -o test.exe"
-        ]
+    "g95 -c codegen.f90 -o codegen.o",
+    "g95 -ffree-line-length-huge -c main.f90 -o main.o",
+    "g95 main.o codegen.o -o test.exe"
+]
 
 compile_commands['ifort'] = [
-        "ifort -c codegen.f90 -o codegen.o",
-        "ifort -c main.f90 -o main.o",
-        "ifort main.o codegen.o -o test.exe"
-        ]
+    "ifort -c codegen.f90 -o codegen.o",
+    "ifort -c main.f90 -o main.o",
+    "ifort main.o codegen.o -o test.exe"
+]
 
 combinations_lang_compiler = [
-        ('C',   'cc'),
-        ('F95', 'ifort'),
-        ('F95', 'gfortran'),
-        ('F95', 'g95')
-        ]
+    ('C89', 'cc'),
+    ('C99', 'cc'),
+    ('F95', 'ifort'),
+    ('F95', 'gfortran'),
+    ('F95', 'g95')
+]
+
 
 def try_run(commands):
     """Run a series of commands and only return True if all ran fine."""
@@ -141,7 +139,7 @@ def run_test(label, routines, numerical_tests, language, commands, friendly=True
     assert language in main_template
     assert language in numerical_test_template
 
-    # Check that evironment variable makes sense
+    # Check that environment variable makes sense
     clean = os.getenv('SYMPY_TEST_CLEAN_TEMP', 'always').lower()
     if clean not in ('always', 'success', 'never'):
         raise ValueError("SYMPY_TEST_CLEAN_TEMP must be one of the following: 'always', 'success' or 'never'.")
@@ -165,7 +163,8 @@ def run_test(label, routines, numerical_tests, language, commands, friendly=True
     #    includes the numerical tests
     test_strings = []
     for fn_name, args, expected, threshold in numerical_tests:
-        call_string = "%s(%s)-(%s)" % (fn_name, ",".join(str(arg) for arg in args), expected)
+        call_string = "%s(%s)-(%s)" % (
+            fn_name, ",".join(str(arg) for arg in args), expected)
         if language == "F95":
             call_string = fortranize_double_constants(call_string)
             threshold = fortranize_double_constants(str(threshold))
@@ -176,14 +175,15 @@ def run_test(label, routines, numerical_tests, language, commands, friendly=True
 
     if language == "F95":
         f_name = "main.f90"
-    elif language == "C":
+    elif language.startswith("C"):
         f_name = "main.c"
     else:
-        raise NotImplemented(
-                "FIXME: filename extension unknown for language: %s"%language)
+        raise NotImplementedError(
+            "FIXME: filename extension unknown for language: %s" % language)
 
     with open(f_name, "w") as f:
-        f.write(main_template[language] % {'statements': "".join(test_strings)})
+        f.write(
+            main_template[language] % {'statements': "".join(test_strings)})
 
     # 4) Compile and link
     compiled = try_run(commands)
@@ -210,23 +210,26 @@ def run_test(label, routines, numerical_tests, language, commands, friendly=True
         os.chdir(oldwork)
         os.rmdir(work)
     else:
-        print >> sys.stderr, "TEST NOT REMOVED: %s" % work
+        print("TEST NOT REMOVED: %s" % work, file=sys.stderr)
         os.chdir(oldwork)
 
     # 7) Do the assertions in the end
-    assert compiled, "failed to compile %s code with:\n%s" %(language, "\n".join(commands))
-    assert executed, "failed to execute %s code from:\n%s" %(language, "\n".join(commands))
+    assert compiled, "failed to compile %s code with:\n%s" % (
+        language, "\n".join(commands))
+    assert executed, "failed to execute %s code from:\n%s" % (
+        language, "\n".join(commands))
+
 
 def fortranize_double_constants(code_string):
     """
     Replaces every literal float with literal doubles
     """
     import re
-    pattern_exp = re.compile('\d+(\.)?\d*[eE]-?\d+')
-    pattern_float = re.compile('\d+\.\d*(?!\d*d)')
+    pattern_exp = re.compile(r'\d+(\.)?\d*[eE]-?\d+')
+    pattern_float = re.compile(r'\d+\.\d*(?!\d*d)')
 
     def subs_exp(matchobj):
-        return re.sub('[eE]','d',matchobj.group(0))
+        return re.sub('[eE]', 'd', matchobj.group(0))
 
     def subs_float(matchobj):
         return "%sd0" % matchobj.group(0)
@@ -237,18 +240,16 @@ def fortranize_double_constants(code_string):
     return code_string
 
 
-
 def is_feasible(language, commands):
     # This test should always work, otherwise the compiler is not present.
-    x = symbols('x')
-    routine = Routine("test", x)
+    routine = make_routine("test", x)
     numerical_tests = [
-        ("test", ( 1.0,),  1.0, 1e-15),
+        ("test", ( 1.0,), 1.0, 1e-15),
         ("test", (-1.0,), -1.0, 1e-15),
     ]
     try:
         run_test("is_feasible", [routine], numerical_tests, language, commands,
-                friendly=False)
+                 friendly=False)
         return True
     except AssertionError:
         return False
@@ -264,17 +265,25 @@ for lang, compiler in combinations_lang_compiler:
 
 # We test all language-compiler combinations, just to report what is skipped
 
-def test_C_cc():
-    if ("C", 'cc') in invalid_lang_compilers:
-        skip("`cc' command didn't work as expected")
+def test_C89_cc():
+    if ("C89", 'cc') in invalid_lang_compilers:
+        skip("`cc' command didn't work as expected (C89)")
+
+
+def test_C99_cc():
+    if ("C99", 'cc') in invalid_lang_compilers:
+        skip("`cc' command didn't work as expected (C99)")
+
 
 def test_F95_ifort():
     if ("F95", 'ifort') in invalid_lang_compilers:
         skip("`ifort' command didn't work as expected")
 
+
 def test_F95_gfortran():
     if ("F95", 'gfortran') in invalid_lang_compilers:
         skip("`gfortran' command didn't work as expected")
+
 
 def test_F95_g95():
     if ("F95", 'g95') in invalid_lang_compilers:
@@ -282,21 +291,26 @@ def test_F95_g95():
 
 # Here comes the actual tests
 
+
 def test_basic_codegen():
-    x,y,z = symbols('x,y,z')
     numerical_tests = [
         ("test", (1.0, 6.0, 3.0), 21.0, 1e-15),
         ("test", (-1.0, 2.0, -2.5), -2.5, 1e-15),
     ]
-    name_expr = [("test", (x+y)*z)]
+    name_expr = [("test", (x + y)*z)]
     for lang, commands in valid_lang_commands:
         run_test("basic_codegen", name_expr, numerical_tests, lang, commands)
 
+
 def test_intrinsic_math1_codegen():
     # not included: log10
-    from sympy import acos, asin, atan, ceiling, cos, cosh, floor, log, ln, \
-        sin, sinh, sqrt, tan, tanh, N
-    x = symbols('x')
+    from sympy.core.evalf import N
+    from sympy.functions import ln
+    from sympy.functions.elementary.exponential import log
+    from sympy.functions.elementary.hyperbolic import (cosh, sinh, tanh)
+    from sympy.functions.elementary.integers import (ceiling, floor)
+    from sympy.functions.elementary.miscellaneous import sqrt
+    from sympy.functions.elementary.trigonometric import (acos, asin, atan, cos, sin, tan)
     name_expr = [
         ("test_fabs", abs(x)),
         ("test_acos", acos(x)),
@@ -318,39 +332,43 @@ def test_intrinsic_math1_codegen():
             expected = N(expr.subs(x, xval))
             numerical_tests.append((name, (xval,), expected, 1e-14))
     for lang, commands in valid_lang_commands:
-        if lang == "C":
+        if lang.startswith("C"):
             name_expr_C = [("test_floor", floor(x)), ("test_ceil", ceiling(x))]
         else:
             name_expr_C = []
-        run_test("intrinsic_math1", name_expr + name_expr_C, numerical_tests, lang, commands)
+        run_test("intrinsic_math1", name_expr + name_expr_C,
+                 numerical_tests, lang, commands)
+
 
 def test_instrinsic_math2_codegen():
     # not included: frexp, ldexp, modf, fmod
-    from sympy import atan2, N
-    x, y = symbols('x,y')
+    from sympy.core.evalf import N
+    from sympy.functions.elementary.trigonometric import atan2
     name_expr = [
-        ("test_atan2", atan2(x,y)),
+        ("test_atan2", atan2(x, y)),
         ("test_pow", x**y),
     ]
     numerical_tests = []
     for name, expr in name_expr:
-        for xval,yval in (0.2, 1.3), (0.5, -0.2), (0.8, 0.8):
+        for xval, yval in (0.2, 1.3), (0.5, -0.2), (0.8, 0.8):
             expected = N(expr.subs(x, xval).subs(y, yval))
-            numerical_tests.append((name, (xval,yval), expected, 1e-14))
+            numerical_tests.append((name, (xval, yval), expected, 1e-14))
     for lang, commands in valid_lang_commands:
         run_test("intrinsic_math2", name_expr, numerical_tests, lang, commands)
 
+
 def test_complicated_codegen():
-    from sympy import sin, cos, tan, N
-    x,y,z = symbols('x,y,z')
+    from sympy.core.evalf import N
+    from sympy.functions.elementary.trigonometric import (cos, sin, tan)
     name_expr = [
-        ("test1", ((sin(x)+cos(y)+tan(z))**7).expand()),
-        ("test2", cos(cos(cos(cos(cos(cos(cos(cos(x+y+z))))))))),
+        ("test1", ((sin(x) + cos(y) + tan(z))**7).expand()),
+        ("test2", cos(cos(cos(cos(cos(cos(cos(cos(x + y + z))))))))),
     ]
     numerical_tests = []
     for name, expr in name_expr:
-        for xval,yval,zval in (0.2, 1.3, -0.3), (0.5, -0.2, 0.0), (0.8, 2.1, 0.8):
+        for xval, yval, zval in (0.2, 1.3, -0.3), (0.5, -0.2, 0.0), (0.8, 2.1, 0.8):
             expected = N(expr.subs(x, xval).subs(y, yval).subs(z, zval))
-            numerical_tests.append((name, (xval,yval,zval), expected, 1e-12))
+            numerical_tests.append((name, (xval, yval, zval), expected, 1e-12))
     for lang, commands in valid_lang_commands:
-        run_test("complicated_codegen", name_expr, numerical_tests, lang, commands)
+        run_test(
+            "complicated_codegen", name_expr, numerical_tests, lang, commands)

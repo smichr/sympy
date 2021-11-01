@@ -1,10 +1,10 @@
 """Symbolic inner product."""
 
-
-from sympy import Expr, conjugate
+from sympy.core.expr import Expr
+from sympy.functions.elementary.complexes import conjugate
 from sympy.printing.pretty.stringpict import prettyForm
 from sympy.physics.quantum.dagger import Dagger
-from sympy.physics.quantum.state import KetBase, BraBase, _lbracket
+from sympy.physics.quantum.state import KetBase, BraBase
 
 __all__ = [
     'InnerProduct'
@@ -34,7 +34,7 @@ class InnerProduct(Expr):
 
     Create an InnerProduct and check its properties:
 
-        >>> from sympy.physics.quantum import Bra, Ket, InnerProduct
+        >>> from sympy.physics.quantum import Bra, Ket
         >>> b = Bra('b')
         >>> k = Ket('k')
         >>> ip = b*k
@@ -69,7 +69,7 @@ class InnerProduct(Expr):
     References
     ==========
 
-    .. [1] http://en.wikipedia.org/wiki/Inner_product
+    .. [1] https://en.wikipedia.org/wiki/Inner_product
     """
     is_complex = True
 
@@ -89,28 +89,36 @@ class InnerProduct(Expr):
     def ket(self):
         return self.args[1]
 
-    def _eval_dagger(self):
-        return InnerProduct(Dagger(self.ket), Dagger(self.bra))
-
     def _eval_conjugate(self):
-        return self._eval_dagger()
+        return InnerProduct(Dagger(self.ket), Dagger(self.bra))
 
     def _sympyrepr(self, printer, *args):
         return '%s(%s,%s)' % (self.__class__.__name__,
             printer._print(self.bra, *args), printer._print(self.ket, *args))
 
     def _sympystr(self, printer, *args):
-        sbra = str(self.bra)
-        sket = str(self.ket)
+        sbra = printer._print(self.bra)
+        sket = printer._print(self.ket)
         return '%s|%s' % (sbra[:-1], sket[1:])
 
     def _pretty(self, printer, *args):
-        pform = prettyForm(_lbracket)
-        pform = prettyForm(*pform.right(self.bra._print_label_pretty(printer, *args)))
-        return prettyForm(*pform.right(self.ket._pretty(printer, *args)))
+        # Print state contents
+        bra = self.bra._print_contents_pretty(printer, *args)
+        ket = self.ket._print_contents_pretty(printer, *args)
+        # Print brackets
+        height = max(bra.height(), ket.height())
+        use_unicode = printer._use_unicode
+        lbracket, _ = self.bra._pretty_brackets(height, use_unicode)
+        cbracket, rbracket = self.ket._pretty_brackets(height, use_unicode)
+        # Build innerproduct
+        pform = prettyForm(*bra.left(lbracket))
+        pform = prettyForm(*pform.right(cbracket))
+        pform = prettyForm(*pform.right(ket))
+        pform = prettyForm(*pform.right(rbracket))
+        return pform
 
     def _latex(self, printer, *args):
-        bra_label = self.bra._print_label_latex(printer, *args)
+        bra_label = self.bra._print_contents_latex(printer, *args)
         ket = printer._print(self.ket, *args)
         return r'\left\langle %s \right. %s' % (bra_label, ket)
 

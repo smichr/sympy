@@ -1,9 +1,14 @@
 """Tools for manipulation of rational expressions. """
 
+
 from sympy.core import Basic, Add, sympify
 from sympy.core.exprtools import gcd_terms
+from sympy.utilities import public
+from sympy.utilities.iterables import iterable
 
-def together(expr, deep=False):
+
+@public
+def together(expr, deep=False, fraction=True):
     """
     Denest and combine rational expressions using symbolic methods.
 
@@ -11,7 +16,7 @@ def together(expr, deep=False):
     and puts it (them) together by denesting and combining rational
     subexpressions. No heroic measures are taken to minimize degree
     of the resulting numerator and denominator. To obtain completely
-    reduced expression use :func:`cancel`. However, :func:`together`
+    reduced expression use :func:`~.cancel`. However, :func:`~.together`
     can preserve as much as possible of the structure of the input
     expression in the output (no expansion is performed).
 
@@ -20,11 +25,11 @@ def together(expr, deep=False):
     also possible to transform interior of function applications,
     by setting ``deep`` flag to ``True``.
 
-    By definition, :func:`together` is a complement to :func:`apart`,
+    By definition, :func:`~.together` is a complement to :func:`~.apart`,
     so ``apart(together(expr))`` should return expr unchanged. Note
-    however, that :func:`together` uses only symbolic methods, so
-    it might be necessary to use :func:`cancel` to perform algebraic
-    simplification and minimise degree of the numerator and denominator.
+    however, that :func:`~.together` uses only symbolic methods, so
+    it might be necessary to use :func:`~.cancel` to perform algebraic
+    simplification and minimize degree of the numerator and denominator.
 
     Examples
     ========
@@ -57,13 +62,10 @@ def together(expr, deep=False):
     """
     def _together(expr):
         if isinstance(expr, Basic):
-            if expr.is_commutative is False:
-                numer, denom = expr.as_numer_denom()
-                return numer/denom
-            elif expr.is_Atom or (expr.is_Function and not deep):
+            if expr.is_Atom or (expr.is_Function and not deep):
                 return expr
             elif expr.is_Add:
-                return gcd_terms(map(_together, Add.make_args(expr)))
+                return gcd_terms(list(map(_together, Add.make_args(expr))), fraction=fraction)
             elif expr.is_Pow:
                 base = _together(expr.base)
 
@@ -75,7 +77,7 @@ def together(expr, deep=False):
                 return expr.__class__(base, exp)
             else:
                 return expr.__class__(*[ _together(arg) for arg in expr.args ])
-        elif hasattr(expr, '__iter__'):
+        elif iterable(expr):
             return expr.__class__([ _together(ex) for ex in expr ])
 
         return expr

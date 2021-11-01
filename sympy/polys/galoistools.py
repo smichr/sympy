@@ -1,18 +1,15 @@
 """Dense univariate polynomials with coefficients in Galois fields. """
 
+
 from random import uniform
 from math import ceil as _ceil, sqrt as _sqrt
 
 from sympy.core.mul import prod
-from sympy.polys.polyutils import _sort_factors
-from sympy.polys.polyconfig import query
-
-from sympy.polys.polyerrors import ExactQuotientFailed
-
-from sympy.utilities import cythonized
-
+from sympy.external.gmpy import SYMPY_INTS
 from sympy.ntheory import factorint
-
+from sympy.polys.polyconfig import query
+from sympy.polys.polyerrors import ExactQuotientFailed
+from sympy.polys.polyutils import _sort_factors
 
 
 def gf_crt(U, M, K=None):
@@ -23,12 +20,14 @@ def gf_crt(U, M, K=None):
     co-prime integer moduli ``m_0,...,m_n``, returns an integer
     ``u``, such that ``u = u_i mod m_i`` for ``i = ``0,...,n``.
 
-    As an example consider a set of residues ``U = [49, 76, 65]``
+    Examples
+    ========
+
+    Consider a set of residues ``U = [49, 76, 65]``
     and a set of moduli ``M = [99, 97, 95]``. Then we have::
 
        >>> from sympy.polys.domains import ZZ
        >>> from sympy.polys.galoistools import gf_crt
-       >>> from sympy.ntheory.modular import solve_congruence
 
        >>> gf_crt([49, 76, 65], [99, 97, 95], ZZ)
        639985
@@ -57,6 +56,7 @@ def gf_crt(U, M, K=None):
 
     return v % p
 
+
 def gf_crt1(M, K):
     """
     First part of the Chinese Remainder Theorem.
@@ -79,6 +79,7 @@ def gf_crt1(M, K):
         S.append(K.gcdex(E[-1], m)[0] % m)
 
     return p, E, S
+
 
 def gf_crt2(U, M, p, E, S, K):
     """
@@ -107,9 +108,10 @@ def gf_crt2(U, M, p, E, S, K):
 
     return v % p
 
+
 def gf_int(a, p):
     """
-    Coerce ``a mod p`` to an integer in ``[-p/2, p/2]`` range.
+    Coerce ``a mod p`` to an integer in the range ``[-p/2, p/2]``.
 
     Examples
     ========
@@ -127,9 +129,10 @@ def gf_int(a, p):
     else:
         return a - p
 
+
 def gf_degree(f):
     """
-    Return leading degree of ``f``.
+    Return the leading degree of ``f``.
 
     Examples
     ========
@@ -142,11 +145,12 @@ def gf_degree(f):
     -1
 
     """
-    return len(f)-1
+    return len(f) - 1
+
 
 def gf_LC(f, K):
     """
-    Return leading coefficient of ``f``.
+    Return the leading coefficient of ``f``.
 
     Examples
     ========
@@ -163,9 +167,10 @@ def gf_LC(f, K):
     else:
         return f[0]
 
+
 def gf_TC(f, K):
     """
-    Return trailing coefficient of ``f``.
+    Return the trailing coefficient of ``f``.
 
     Examples
     ========
@@ -182,7 +187,7 @@ def gf_TC(f, K):
     else:
         return f[-1]
 
-@cythonized("k")
+
 def gf_strip(f):
     """
     Remove leading zeros from ``f``.
@@ -210,6 +215,7 @@ def gf_strip(f):
 
     return f[k:]
 
+
 def gf_trunc(f, p):
     """
     Reduce all coefficients modulo ``p``.
@@ -225,6 +231,7 @@ def gf_trunc(f, p):
     """
     return gf_strip([ a % p for a in f ])
 
+
 def gf_normal(f, p, K):
     """
     Normalize all coefficients in ``K``.
@@ -239,29 +246,12 @@ def gf_normal(f, p, K):
     [1, 2]
 
     """
-    return gf_trunc(map(K, f), p)
-
-def gf_convert(f, p, K0, K1):
-    """
-    Normalize all coefficients in ``K``.
+    return gf_trunc(list(map(K, f)), p)
 
 
-    Examples
-    ========
-
-    >>> from sympy.polys.domains import ZZ, QQ
-    >>> from sympy.polys.galoistools import gf_convert
-
-    >>> gf_convert([QQ(1), QQ(4), QQ(0)], 3, QQ, ZZ)
-    [1, 1, 0]
-
-    """
-    return gf_trunc([ K1.convert(c, K0) for c in f ], p)
-
-@cythonized("k,n")
 def gf_from_dict(f, p, K):
     """
-    Create ``GF(p)[x]`` polynomial from a dict.
+    Create a ``GF(p)[x]`` polynomial from a dict.
 
     Examples
     ========
@@ -269,27 +259,27 @@ def gf_from_dict(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_from_dict
 
-    >>> gf_from_dict({10: 4, 4: 33, 0: -1}, 5, ZZ)
+    >>> gf_from_dict({10: ZZ(4), 4: ZZ(33), 0: ZZ(-1)}, 5, ZZ)
     [4, 0, 0, 0, 0, 0, 3, 0, 0, 0, 4]
 
     """
-    n, h = max(f.iterkeys()), []
+    n, h = max(f.keys()), []
 
-    if type(n) is int:
-        for k in xrange(n, -1, -1):
+    if isinstance(n, SYMPY_INTS):
+        for k in range(n, -1, -1):
             h.append(f.get(k, K.zero) % p)
     else:
         (n,) = n
 
-        for k in xrange(n, -1, -1):
+        for k in range(n, -1, -1):
             h.append(f.get((k,), K.zero) % p)
 
     return gf_trunc(h, p)
 
-@cythonized("k,n")
+
 def gf_to_dict(f, p, symmetric=True):
     """
-    Convert ``GF(p)[x]`` polynomial to a dict.
+    Convert a ``GF(p)[x]`` polynomial to a dict.
 
     Examples
     ========
@@ -304,24 +294,25 @@ def gf_to_dict(f, p, symmetric=True):
     """
     n, result = gf_degree(f), {}
 
-    for k in xrange(0, n+1):
+    for k in range(0, n + 1):
         if symmetric:
-            a = gf_int(f[n-k], p)
+            a = gf_int(f[n - k], p)
         else:
-            a = f[n-k]
+            a = f[n - k]
 
-        if a: result[k] = a
+        if a:
+            result[k] = a
 
     return result
 
+
 def gf_from_int_poly(f, p):
     """
-    Create ``GF(p)[x]`` polynomial from ``Z[x]``.
+    Create a ``GF(p)[x]`` polynomial from ``Z[x]``.
 
     Examples
     ========
 
-    >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_from_int_poly
 
     >>> gf_from_int_poly([7, -2, 3], 5)
@@ -330,9 +321,10 @@ def gf_from_int_poly(f, p):
     """
     return gf_trunc(f, p)
 
+
 def gf_to_int_poly(f, p, symmetric=True):
     """
-    Convert ``GF(p)[x]`` polynomial to ``Z[x]``.
+    Convert a ``GF(p)[x]`` polynomial to ``Z[x]``.
 
 
     Examples
@@ -351,6 +343,7 @@ def gf_to_int_poly(f, p, symmetric=True):
     else:
         return f
 
+
 def gf_neg(f, p, K):
     """
     Negate a polynomial in ``GF(p)[x]``.
@@ -366,6 +359,7 @@ def gf_neg(f, p, K):
 
     """
     return [ -coeff % p for coeff in f ]
+
 
 def gf_add_ground(f, a, p, K):
     """
@@ -394,6 +388,7 @@ def gf_add_ground(f, a, p, K):
     else:
         return [a]
 
+
 def gf_sub_ground(f, a, p, K):
     """
     Compute ``f - a`` where ``f`` in ``GF(p)[x]`` and ``a`` in ``GF(p)``.
@@ -421,6 +416,7 @@ def gf_sub_ground(f, a, p, K):
     else:
         return [a]
 
+
 def gf_mul_ground(f, a, p, K):
     """
     Compute ``f * a`` where ``f`` in ``GF(p)[x]`` and ``a`` in ``GF(p)``.
@@ -440,6 +436,7 @@ def gf_mul_ground(f, a, p, K):
     else:
         return [ (a*b) % p for b in f ]
 
+
 def gf_quo_ground(f, a, p, K):
     """
     Compute ``f/a`` where ``f`` in ``GF(p)[x]`` and ``a`` in ``GF(p)``.
@@ -450,13 +447,13 @@ def gf_quo_ground(f, a, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_quo_ground
 
-    >>> gf_quo_ground([3, 2, 4], 2, 5, ZZ)
+    >>> gf_quo_ground(ZZ.map([3, 2, 4]), ZZ(2), 5, ZZ)
     [4, 1, 2]
 
     """
     return gf_mul_ground(f, K.invert(a, p), p, K)
 
-@cythonized("df,dg,k")
+
 def gf_add(f, g, p, K):
     """
     Add polynomials in ``GF(p)[x]``.
@@ -491,7 +488,7 @@ def gf_add(f, g, p, K):
 
         return h + [ (a + b) % p for a, b in zip(f, g) ]
 
-@cythonized("df,dg,k")
+
 def gf_sub(f, g, p, K):
     """
     Subtract polynomials in ``GF(p)[x]``.
@@ -526,7 +523,7 @@ def gf_sub(f, g, p, K):
 
         return h + [ (a - b) % p for a, b in zip(f, g) ]
 
-@cythonized("df,dg,dh,i,j")
+
 def gf_mul(f, g, p, K):
     """
     Multiply polynomials in ``GF(p)[x]``.
@@ -545,19 +542,19 @@ def gf_mul(f, g, p, K):
     dg = gf_degree(g)
 
     dh = df + dg
-    h = [0]*(dh+1)
+    h = [0]*(dh + 1)
 
-    for i in xrange(0, dh+1):
+    for i in range(0, dh + 1):
         coeff = K.zero
 
-        for j in xrange(max(0, i-dg), min(i, df)+1):
-            coeff += f[j]*g[i-j]
+        for j in range(max(0, i - dg), min(i, df) + 1):
+            coeff += f[j]*g[i - j]
 
         h[i] = coeff % p
 
     return gf_strip(h)
 
-@cythonized("df,dh,i,j,jmin,jmax,n")
+
 def gf_sqr(f, p, K):
     """
     Square polynomials in ``GF(p)[x]``.
@@ -575,30 +572,31 @@ def gf_sqr(f, p, K):
     df = gf_degree(f)
 
     dh = 2*df
-    h = [0]*(dh+1)
+    h = [0]*(dh + 1)
 
-    for i in xrange(0, dh+1):
+    for i in range(0, dh + 1):
         coeff = K.zero
 
-        jmin = max(0, i-df)
+        jmin = max(0, i - df)
         jmax = min(i, df)
 
         n = jmax - jmin + 1
 
         jmax = jmin + n // 2 - 1
 
-        for j in xrange(jmin, jmax+1):
-            coeff += f[j]*f[i-j]
+        for j in range(jmin, jmax + 1):
+            coeff += f[j]*f[i - j]
 
         coeff += coeff
 
         if n & 1:
-            elem = f[jmax+1]
+            elem = f[jmax + 1]
             coeff += elem**2
 
         h[i] = coeff % p
 
     return gf_strip(h)
+
 
 def gf_add_mul(f, g, h, p, K):
     """
@@ -613,6 +611,7 @@ def gf_add_mul(f, g, h, p, K):
     [2, 3, 2, 2]
     """
     return gf_add(f, gf_mul(g, h, p, K), p, K)
+
 
 def gf_sub_mul(f, g, h, p, K):
     """
@@ -630,10 +629,10 @@ def gf_sub_mul(f, g, h, p, K):
     """
     return gf_sub(f, gf_mul(g, h, p, K), p, K)
 
-@cythonized("k")
+
 def gf_expand(F, p, K):
     """
-    Expand results of :func:`factor` in ``GF(p)[x]``.
+    Expand results of :func:`~.factor` in ``GF(p)[x]``.
 
     Examples
     ========
@@ -645,7 +644,7 @@ def gf_expand(F, p, K):
     [4, 3, 0, 3, 0, 1, 4, 1]
 
     """
-    if type(F) is tuple:
+    if isinstance(F, tuple):
         lc, F = F
     else:
         lc = K.one
@@ -658,7 +657,7 @@ def gf_expand(F, p, K):
 
     return g
 
-@cythonized("df,dg,dq,dr,i,j")
+
 def gf_div(f, g, p, K):
     """
     Division with remainder in ``GF(p)[x]``.
@@ -672,19 +671,19 @@ def gf_div(f, g, p, K):
        >>> from sympy.polys.domains import ZZ
        >>> from sympy.polys.galoistools import gf_div, gf_add_mul
 
-       >>> gf_div([1, 0, 1, 1], [1, 1, 0], 2, ZZ)
+       >>> gf_div(ZZ.map([1, 0, 1, 1]), ZZ.map([1, 1, 0]), 2, ZZ)
        ([1, 1], [1])
 
     As result we obtained quotient ``x + 1`` and remainder ``1``, thus::
 
-       >>> gf_add_mul([1], [1, 1], [1, 1, 0], 2, ZZ)
+       >>> gf_add_mul(ZZ.map([1]), ZZ.map([1, 1]), ZZ.map([1, 1, 0]), 2, ZZ)
        [1, 0, 1, 1]
 
     References
     ==========
 
-    1. [Monagan93]_
-    2. [Gathen99]_
+    .. [1] [Monagan93]_
+    .. [2] [Gathen99]_
 
     """
     df = gf_degree(f)
@@ -697,20 +696,21 @@ def gf_div(f, g, p, K):
 
     inv = K.invert(g[0], p)
 
-    h, dq, dr = list(f), df-dg, dg-1
+    h, dq, dr = list(f), df - dg, dg - 1
 
-    for i in xrange(0, df+1):
+    for i in range(0, df + 1):
         coeff = h[i]
 
-        for j in xrange(max(0, dg-i), min(df-i, dr)+1):
-            coeff -= h[i+j-dg] * g[dg-j]
+        for j in range(max(0, dg - i), min(df - i, dr) + 1):
+            coeff -= h[i + j - dg] * g[dg - j]
 
         if i <= dq:
             coeff *= inv
 
         h[i] = coeff % p
 
-    return h[:dq+1], gf_strip(h[dq+1:])
+    return h[:dq + 1], gf_strip(h[dq + 1:])
+
 
 def gf_rem(f, g, p, K):
     """
@@ -722,13 +722,13 @@ def gf_rem(f, g, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_rem
 
-    >>> gf_rem([1, 0, 1, 1], [1, 1, 0], 2, ZZ)
+    >>> gf_rem(ZZ.map([1, 0, 1, 1]), ZZ.map([1, 1, 0]), 2, ZZ)
     [1]
 
     """
     return gf_div(f, g, p, K)[1]
 
-@cythonized("df,dg,dq,dr,i,j")
+
 def gf_quo(f, g, p, K):
     """
     Compute exact quotient in ``GF(p)[x]``.
@@ -739,9 +739,9 @@ def gf_quo(f, g, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_quo
 
-    >>> gf_quo([1, 0, 1, 1], [1, 1, 0], 2, ZZ)
+    >>> gf_quo(ZZ.map([1, 0, 1, 1]), ZZ.map([1, 1, 0]), 2, ZZ)
     [1, 1]
-    >>> gf_quo([1, 0, 3, 2, 3], [2, 2, 2], 5, ZZ)
+    >>> gf_quo(ZZ.map([1, 0, 3, 2, 3]), ZZ.map([2, 2, 2]), 5, ZZ)
     [3, 2, 4]
 
     """
@@ -755,17 +755,18 @@ def gf_quo(f, g, p, K):
 
     inv = K.invert(g[0], p)
 
-    h, dq, dr = f[:], df-dg, dg-1
+    h, dq, dr = f[:], df - dg, dg - 1
 
-    for i in xrange(0, dq+1):
+    for i in range(0, dq + 1):
         coeff = h[i]
 
-        for j in xrange(max(0, dg-i), min(df-i, dr)+1):
-            coeff -= h[i+j-dg] * g[dg-j]
+        for j in range(max(0, dg - i), min(df - i, dr) + 1):
+            coeff -= h[i + j - dg] * g[dg - j]
 
         h[i] = (coeff * inv) % p
 
-    return h[:dq+1]
+    return h[:dq + 1]
+
 
 def gf_exquo(f, g, p, K):
     """
@@ -777,10 +778,10 @@ def gf_exquo(f, g, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_exquo
 
-    >>> gf_exquo([1, 0, 3, 2, 3], [2, 2, 2], 5, ZZ)
+    >>> gf_exquo(ZZ.map([1, 0, 3, 2, 3]), ZZ.map([2, 2, 2]), 5, ZZ)
     [3, 2, 4]
 
-    >>> gf_exquo([1, 0, 1, 1], [1, 1, 0], 2, ZZ)
+    >>> gf_exquo(ZZ.map([1, 0, 1, 1]), ZZ.map([1, 1, 0]), 2, ZZ)
     Traceback (most recent call last):
     ...
     ExactQuotientFailed: [1, 1, 0] does not divide [1, 0, 1, 1]
@@ -793,7 +794,7 @@ def gf_exquo(f, g, p, K):
     else:
         raise ExactQuotientFailed(f, g)
 
-@cythonized("n")
+
 def gf_lshift(f, n, K):
     """
     Efficiently multiply ``f`` by ``x**n``.
@@ -813,7 +814,7 @@ def gf_lshift(f, n, K):
     else:
         return f + [K.zero]*n
 
-@cythonized("n")
+
 def gf_rshift(f, n, K):
     """
     Efficiently divide ``f`` by ``x**n``.
@@ -832,6 +833,7 @@ def gf_rshift(f, n, K):
         return f, []
     else:
         return f[:-n], f[-n:]
+
 
 def gf_pow(f, n, p, K):
     """
@@ -870,13 +872,99 @@ def gf_pow(f, n, p, K):
 
     return h
 
+def gf_frobenius_monomial_base(g, p, K):
+    """
+    return the list of ``x**(i*p) mod g in Z_p`` for ``i = 0, .., n - 1``
+    where ``n = gf_degree(g)``
+
+    Examples
+    ========
+
+    >>> from sympy.polys.domains import ZZ
+    >>> from sympy.polys.galoistools import gf_frobenius_monomial_base
+    >>> g = ZZ.map([1, 0, 2, 1])
+    >>> gf_frobenius_monomial_base(g, 5, ZZ)
+    [[1], [4, 4, 2], [1, 2]]
+
+    """
+    n = gf_degree(g)
+    if n == 0:
+        return []
+    b = [0]*n
+    b[0] = [1]
+    if p < n:
+        for i in range(1, n):
+            mon = gf_lshift(b[i - 1], p, K)
+            b[i] = gf_rem(mon, g, p, K)
+    elif n > 1:
+        b[1] = gf_pow_mod([K.one, K.zero], p, g, p, K)
+        for i in range(2, n):
+            b[i] = gf_mul(b[i - 1], b[1], p, K)
+            b[i] = gf_rem(b[i], g, p, K)
+
+    return b
+
+def gf_frobenius_map(f, g, b, p, K):
+    """
+    compute gf_pow_mod(f, p, g, p, K) using the Frobenius map
+
+    Parameters
+    ==========
+
+    f, g : polynomials in ``GF(p)[x]``
+    b : frobenius monomial base
+    p : prime number
+    K : domain
+
+    Examples
+    ========
+
+    >>> from sympy.polys.domains import ZZ
+    >>> from sympy.polys.galoistools import gf_frobenius_monomial_base, gf_frobenius_map
+    >>> f = ZZ.map([2, 1, 0, 1])
+    >>> g = ZZ.map([1, 0, 2, 1])
+    >>> p = 5
+    >>> b = gf_frobenius_monomial_base(g, p, ZZ)
+    >>> r = gf_frobenius_map(f, g, b, p, ZZ)
+    >>> gf_frobenius_map(f, g, b, p, ZZ)
+    [4, 0, 3]
+    """
+    m = gf_degree(g)
+    if gf_degree(f) >= m:
+        f = gf_rem(f, g, p, K)
+    if not f:
+        return []
+    n = gf_degree(f)
+    sf = [f[-1]]
+    for i in range(1, n + 1):
+        v = gf_mul_ground(b[i], f[n - i], p, K)
+        sf = gf_add(sf, v, p, K)
+    return sf
+
+def _gf_pow_pnm1d2(f, n, g, b, p, K):
+    """
+    utility function for ``gf_edf_zassenhaus``
+    Compute ``f**((p**n - 1) // 2)`` in ``GF(p)[x]/(g)``
+    ``f**((p**n - 1) // 2) = (f*f**p*...*f**(p**n - 1))**((p - 1) // 2)``
+    """
+    f = gf_rem(f, g, p, K)
+    h = f
+    r = f
+    for i in range(1, n):
+        h = gf_frobenius_map(h, g, b, p, K)
+        r = gf_mul(r, h, p, K)
+        r = gf_rem(r, g, p, K)
+
+    res = gf_pow_mod(r, (p - 1)//2, g, p, K)
+    return res
+
 def gf_pow_mod(f, n, g, p, K):
     """
     Compute ``f**n`` in ``GF(p)[x]/(g)`` using repeated squaring.
 
     Given polynomials ``f`` and ``g`` in ``GF(p)[x]`` and a non-negative
-    integer ``n``, efficiently computes ``f**n (mod g)`` i.e. remainder
-    from division ``f**n`` by ``g`` using repeated squaring algorithm.
+    integer ``n``, efficiently computes ``f**n (mod g)`` i.e. the remainder
+    of ``f**n`` from division by ``g``, using the repeated squaring algorithm.
 
     Examples
     ========
@@ -884,13 +972,13 @@ def gf_pow_mod(f, n, g, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_pow_mod
 
-    >>> gf_pow_mod([3, 2, 4], 3, [1, 1], 5, ZZ)
+    >>> gf_pow_mod(ZZ.map([3, 2, 4]), 3, ZZ.map([1, 1]), 5, ZZ)
     []
 
     References
     ==========
 
-    1. [Gathen99]_
+    .. [1] [Gathen99]_
 
     """
     if not n:
@@ -918,6 +1006,7 @@ def gf_pow_mod(f, n, g, p, K):
 
     return h
 
+
 def gf_gcd(f, g, p, K):
     """
     Euclidean Algorithm in ``GF(p)[x]``.
@@ -928,7 +1017,7 @@ def gf_gcd(f, g, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_gcd
 
-    >>> gf_gcd([3, 2, 4], [2, 2, 3], 5, ZZ)
+    >>> gf_gcd(ZZ.map([3, 2, 4]), ZZ.map([2, 2, 3]), 5, ZZ)
     [1, 3]
 
     """
@@ -936,6 +1025,7 @@ def gf_gcd(f, g, p, K):
         f, g = g, gf_rem(f, g, p, K)
 
     return gf_monic(f, p, K)[1]
+
 
 def gf_lcm(f, g, p, K):
     """
@@ -947,7 +1037,7 @@ def gf_lcm(f, g, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_lcm
 
-    >>> gf_lcm([3, 2, 4], [2, 2, 3], 5, ZZ)
+    >>> gf_lcm(ZZ.map([3, 2, 4]), ZZ.map([2, 2, 3]), 5, ZZ)
     [1, 2, 0, 4]
 
     """
@@ -959,6 +1049,7 @@ def gf_lcm(f, g, p, K):
 
     return gf_monic(h, p, K)[1]
 
+
 def gf_cofactors(f, g, p, K):
     """
     Compute polynomial GCD and cofactors in ``GF(p)[x]``.
@@ -969,7 +1060,7 @@ def gf_cofactors(f, g, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_cofactors
 
-    >>> gf_cofactors([3, 2, 4], [2, 2, 3], 5, ZZ)
+    >>> gf_cofactors(ZZ.map([3, 2, 4]), ZZ.map([2, 2, 3]), 5, ZZ)
     ([1, 3], [3, 3], [2, 1])
 
     """
@@ -979,7 +1070,8 @@ def gf_cofactors(f, g, p, K):
     h = gf_gcd(f, g, p, K)
 
     return (h, gf_quo(f, h, p, K),
-               gf_quo(g, h, p, K))
+            gf_quo(g, h, p, K))
+
 
 def gf_gcdex(f, g, p, K):
     """
@@ -995,15 +1087,15 @@ def gf_gcdex(f, g, p, K):
        >>> from sympy.polys.domains import ZZ
        >>> from sympy.polys.galoistools import gf_gcdex, gf_mul, gf_add
 
-       >>> s, t, g = gf_gcdex([1,8,7], [1,7,1,7], 11, ZZ)
+       >>> s, t, g = gf_gcdex(ZZ.map([1, 8, 7]), ZZ.map([1, 7, 1, 7]), 11, ZZ)
        >>> s, t, g
        ([5, 6], [6], [1, 7])
 
     As result we obtained polynomials ``s = 5*x + 6`` and ``t = 6``, and
     additionally ``gcd(f, g) = x + 7``. This is correct because::
 
-       >>> S = gf_mul(s,   [1,8,7], 11, ZZ)
-       >>> T = gf_mul(t, [1,7,1,7], 11, ZZ)
+       >>> S = gf_mul(s, ZZ.map([1, 8, 7]), 11, ZZ)
+       >>> T = gf_mul(t, ZZ.map([1, 7, 1, 7]), 11, ZZ)
 
        >>> gf_add(S, T, 11, ZZ) == [1, 7]
        True
@@ -1011,7 +1103,7 @@ def gf_gcdex(f, g, p, K):
     References
     ==========
 
-    1. [Gathen99]_
+    .. [1] [Gathen99]_
 
     """
     if not (f or g):
@@ -1046,6 +1138,7 @@ def gf_gcdex(f, g, p, K):
 
     return s1, t1, r1
 
+
 def gf_monic(f, p, K):
     """
     Compute LC and a monic polynomial in ``GF(p)[x]``.
@@ -1056,7 +1149,7 @@ def gf_monic(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_monic
 
-    >>> gf_monic([3, 2, 4], 5, ZZ)
+    >>> gf_monic(ZZ.map([3, 2, 4]), 5, ZZ)
     (3, [1, 4, 3])
 
     """
@@ -1070,7 +1163,7 @@ def gf_monic(f, p, K):
         else:
             return lc, gf_quo_ground(f, lc, p, K)
 
-@cythonized("df,n")
+
 def gf_diff(f, p, K):
     """
     Differentiate polynomial in ``GF(p)[x]``.
@@ -1094,11 +1187,12 @@ def gf_diff(f, p, K):
         coeff %= p
 
         if coeff:
-            h[df-n] = coeff
+            h[df - n] = coeff
 
         n -= 1
 
     return gf_strip(h)
+
 
 def gf_eval(f, a, p, K):
     """
@@ -1123,6 +1217,7 @@ def gf_eval(f, a, p, K):
 
     return result
 
+
 def gf_multi_eval(f, A, p, K):
     """
     Evaluate ``f(a)`` for ``a`` in ``[a_1, ..., a_n]``.
@@ -1138,6 +1233,7 @@ def gf_multi_eval(f, A, p, K):
 
     """
     return [ gf_eval(f, a, p, K) for a in A ]
+
 
 def gf_compose(f, g, p, K):
     """
@@ -1167,6 +1263,7 @@ def gf_compose(f, g, p, K):
 
     return h
 
+
 def gf_compose_mod(g, h, f, p, K):
     """
     Compute polynomial composition ``g(h)`` in ``GF(p)[x]/(f)``.
@@ -1177,7 +1274,7 @@ def gf_compose_mod(g, h, f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_compose_mod
 
-    >>> gf_compose_mod([3, 2, 4], [2, 2, 2], [4, 3], 5, ZZ)
+    >>> gf_compose_mod(ZZ.map([3, 2, 4]), ZZ.map([2, 2, 2]), ZZ.map([4, 3]), 5, ZZ)
     [4]
 
     """
@@ -1193,7 +1290,7 @@ def gf_compose_mod(g, h, f, p, K):
 
     return comp
 
-@cythonized("n")
+
 def gf_trace_map(a, b, c, n, f, p, K):
     """
     Compute polynomial trace map in ``GF(p)[x]/(f)``.
@@ -1222,7 +1319,7 @@ def gf_trace_map(a, b, c, n, f, p, K):
     References
     ==========
 
-    1. [Gathen92]_
+    .. [1] [Gathen92]_
 
     """
     u = gf_compose_mod(a, b, f, p, K)
@@ -1249,7 +1346,20 @@ def gf_trace_map(a, b, c, n, f, p, K):
 
     return gf_compose_mod(a, V, f, p, K), U
 
-@cythonized("i,n")
+def _gf_trace_map(f, n, g, b, p, K):
+    """
+    utility for ``gf_edf_shoup``
+    """
+    f = gf_rem(f, g, p, K)
+    h = f
+    r = f
+    for i in range(1, n):
+        h = gf_frobenius_map(h, g, b, p, K)
+        r = gf_add(r, h, p, K)
+        r = gf_rem(r, g, p, K)
+    return r
+
+
 def gf_random(n, p, K):
     """
     Generate a random polynomial in ``GF(p)[x]`` of degree ``n``.
@@ -1263,9 +1373,9 @@ def gf_random(n, p, K):
     [1, 2, 3, 2, 1, 1, 1, 2, 0, 4, 2]
 
     """
-    return [K.one] + [ K(int(uniform(0, p))) for i in xrange(0, n) ]
+    return [K.one] + [ K(int(uniform(0, p))) for i in range(0, n) ]
 
-@cythonized("i,n")
+
 def gf_irreducible(n, p, K):
     """
     Generate random irreducible polynomial of degree ``n`` in ``GF(p)[x]``.
@@ -1281,11 +1391,10 @@ def gf_irreducible(n, p, K):
     """
     while True:
         f = gf_random(n, p, K)
-
         if gf_irreducible_p(f, p, K):
             return f
 
-@cythonized("i,n")
+
 def gf_irred_p_ben_or(f, p, K):
     """
     Ben-Or's polynomial irreducibility test over finite fields.
@@ -1296,9 +1405,9 @@ def gf_irred_p_ben_or(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_irred_p_ben_or
 
-    >>> gf_irred_p_ben_or([1, 4, 2, 2, 3, 2, 4, 1, 4, 0, 4], 5, ZZ)
+    >>> gf_irred_p_ben_or(ZZ.map([1, 4, 2, 2, 3, 2, 4, 1, 4, 0, 4]), 5, ZZ)
     True
-    >>> gf_irred_p_ben_or([3, 2, 4], 5, ZZ)
+    >>> gf_irred_p_ben_or(ZZ.map([3, 2, 4]), 5, ZZ)
     False
 
     """
@@ -1308,20 +1417,29 @@ def gf_irred_p_ben_or(f, p, K):
         return True
 
     _, f = gf_monic(f, p, K)
+    if n < 5:
+        H = h = gf_pow_mod([K.one, K.zero], p, f, p, K)
 
-    H = h = gf_pow_mod([K.one, K.zero], p, f, p, K)
+        for i in range(0, n//2):
+            g = gf_sub(h, [K.one, K.zero], p, K)
 
-    for i in xrange(0, n//2):
-        g = gf_sub(h, [K.one, K.zero], p, K)
-
-        if gf_gcd(f, g, p, K) == [K.one]:
-            h = gf_compose_mod(h, H, f, p, K)
-        else:
-            return False
+            if gf_gcd(f, g, p, K) == [K.one]:
+                h = gf_compose_mod(h, H, f, p, K)
+            else:
+                return False
+    else:
+        b = gf_frobenius_monomial_base(f, p, K)
+        H = h = gf_frobenius_map([K.one, K.zero], f, b, p, K)
+        for i in range(0, n//2):
+            g = gf_sub(h, [K.one, K.zero], p, K)
+            if gf_gcd(f, g, p, K) == [K.one]:
+                h = gf_frobenius_map(h, f, b, p, K)
+            else:
+                return False
 
     return True
 
-@cythonized("i,n,d")
+
 def gf_irred_p_rabin(f, p, K):
     """
     Rabin's polynomial irreducibility test over finite fields.
@@ -1332,9 +1450,9 @@ def gf_irred_p_rabin(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_irred_p_rabin
 
-    >>> gf_irred_p_rabin([1, 4, 2, 2, 3, 2, 4, 1, 4, 0, 4], 5, ZZ)
+    >>> gf_irred_p_rabin(ZZ.map([1, 4, 2, 2, 3, 2, 4, 1, 4, 0, 4]), 5, ZZ)
     True
-    >>> gf_irred_p_rabin([3, 2, 4], 5, ZZ)
+    >>> gf_irred_p_rabin(ZZ.map([3, 2, 4]), 5, ZZ)
     False
 
     """
@@ -1347,25 +1465,27 @@ def gf_irred_p_rabin(f, p, K):
 
     x = [K.one, K.zero]
 
-    H = h = gf_pow_mod(x, p, f, p, K)
+    indices = { n//d for d in factorint(n) }
 
-    indices = set([ n//d for d in factorint(n) ])
+    b = gf_frobenius_monomial_base(f, p, K)
+    h = b[1]
 
-    for i in xrange(1, n):
+    for i in range(1, n):
         if i in indices:
             g = gf_sub(h, x, p, K)
 
             if gf_gcd(f, g, p, K) != [K.one]:
                 return False
 
-        h = gf_compose_mod(h, H, f, p, K)
+        h = gf_frobenius_map(h, f, b, p, K)
 
     return h == x
 
 _irred_methods = {
-    'ben-or' : gf_irred_p_ben_or,
-    'rabin'  : gf_irred_p_rabin,
+    'ben-or': gf_irred_p_ben_or,
+    'rabin': gf_irred_p_rabin,
 }
+
 
 def gf_irreducible_p(f, p, K):
     """
@@ -1377,9 +1497,9 @@ def gf_irreducible_p(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_irreducible_p
 
-    >>> gf_irreducible_p([1, 4, 2, 2, 3, 2, 4, 1, 4, 0, 4], 5, ZZ)
+    >>> gf_irreducible_p(ZZ.map([1, 4, 2, 2, 3, 2, 4, 1, 4, 0, 4]), 5, ZZ)
     True
-    >>> gf_irreducible_p([3, 2, 4], 5, ZZ)
+    >>> gf_irreducible_p(ZZ.map([3, 2, 4]), 5, ZZ)
     False
 
     """
@@ -1392,6 +1512,7 @@ def gf_irreducible_p(f, p, K):
 
     return irred
 
+
 def gf_sqf_p(f, p, K):
     """
     Return ``True`` if ``f`` is square-free in ``GF(p)[x]``.
@@ -1402,9 +1523,9 @@ def gf_sqf_p(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_sqf_p
 
-    >>> gf_sqf_p([3, 2, 4], 5, ZZ)
+    >>> gf_sqf_p(ZZ.map([3, 2, 4]), 5, ZZ)
     True
-    >>> gf_sqf_p([2, 4, 4, 2, 2, 1, 4], 5, ZZ)
+    >>> gf_sqf_p(ZZ.map([2, 4, 4, 2, 2, 1, 4]), 5, ZZ)
     False
 
     """
@@ -1414,6 +1535,7 @@ def gf_sqf_p(f, p, K):
         return True
     else:
         return gf_gcd(f, gf_diff(f, p, K), p, K) == [K.one]
+
 
 def gf_sqf_part(f, p, K):
     """
@@ -1425,7 +1547,7 @@ def gf_sqf_part(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_sqf_part
 
-    >>> gf_sqf_part([1, 1, 3, 0, 1, 0, 2, 2, 1], 5, ZZ)
+    >>> gf_sqf_part(ZZ.map([1, 1, 3, 0, 1, 0, 2, 2, 1]), 5, ZZ)
     [1, 4, 3]
 
     """
@@ -1438,10 +1560,10 @@ def gf_sqf_part(f, p, K):
 
     return g
 
-@cythonized("i,n,d,r")
+
 def gf_sqf_list(f, p, K, all=False):
     """
-    Return square-free decomposition of a ``GF(p)[x]`` polynomial.
+    Return the square-free decomposition of a ``GF(p)[x]`` polynomial.
 
     Given a polynomial ``f`` in ``GF(p)[x]``, returns the leading coefficient
     of ``f`` and a square-free decomposition ``f_1**e_1 f_2**e_2 ... f_k**e_k``
@@ -1458,7 +1580,7 @@ def gf_sqf_list(f, p, K, all=False):
        ... )
        ... # doctest: +NORMALIZE_WHITESPACE
 
-       >>> f = gf_from_dict({11: 1, 0: 1}, 11, ZZ)
+       >>> f = gf_from_dict({11: ZZ(1), 0: ZZ(1)}, 11, ZZ)
 
     Note that ``f'(x) = 0``::
 
@@ -1479,7 +1601,7 @@ def gf_sqf_list(f, p, K, all=False):
     References
     ==========
 
-    1. [Geddes92]_
+    .. [1] [Geddes92]_
 
     """
     n, sqf, factors, r = 1, False, [], int(p)
@@ -1505,7 +1627,7 @@ def gf_sqf_list(f, p, K, all=False):
                 if gf_degree(H) > 0:
                     factors.append((H, i*n))
 
-                g, h, i = gf_quo(g, G, p, K), G, i+1
+                g, h, i = gf_quo(g, G, p, K), G, i + 1
 
             if g == [K.one]:
                 sqf = True
@@ -1515,10 +1637,10 @@ def gf_sqf_list(f, p, K, all=False):
         if not sqf:
             d = gf_degree(f) // r
 
-            for i in xrange(0, d+1):
+            for i in range(0, d + 1):
                 f[i] = f[i*r]
 
-            f, n = f[:d+1], n*r
+            f, n = f[:d + 1], n*r
         else:
             break
 
@@ -1527,7 +1649,7 @@ def gf_sqf_list(f, p, K, all=False):
 
     return lc, factors
 
-@cythonized("n,i,j,r")
+
 def gf_Qmatrix(f, p, K):
     """
     Calculate Berlekamp's ``Q`` matrix.
@@ -1551,14 +1673,14 @@ def gf_Qmatrix(f, p, K):
     """
     n, r = gf_degree(f), int(p)
 
-    q = [K.one] + [K.zero]*(n-1)
-    Q = [list(q)] + [[]]*(n-1)
+    q = [K.one] + [K.zero]*(n - 1)
+    Q = [list(q)] + [[]]*(n - 1)
 
-    for i in xrange(1, (n-1)*r + 1):
+    for i in range(1, (n - 1)*r + 1):
         qq, c = [(-q[-1]*f[-1]) % p], q[-1]
 
-        for j in xrange(1, n):
-            qq.append((q[j-1] - c*f[-j-1]) % p)
+        for j in range(1, n):
+            qq.append((q[j - 1] - c*f[-j - 1]) % p)
 
         if not (i % r):
             Q[i//r] = list(qq)
@@ -1567,7 +1689,7 @@ def gf_Qmatrix(f, p, K):
 
     return Q
 
-@cythonized("n,i,j,k")
+
 def gf_Qbasis(Q, p, K):
     """
     Compute a basis of the kernel of ``Q``.
@@ -1587,11 +1709,11 @@ def gf_Qbasis(Q, p, K):
     """
     Q, n = [ list(q) for q in Q ], len(Q)
 
-    for k in xrange(0, n):
+    for k in range(0, n):
         Q[k][k] = (Q[k][k] - K.one) % p
 
-    for k in xrange(0, n):
-        for i in xrange(k, n):
+    for k in range(0, n):
+        for i in range(k, n):
             if Q[k][i]:
                 break
         else:
@@ -1599,23 +1721,23 @@ def gf_Qbasis(Q, p, K):
 
         inv = K.invert(Q[k][i], p)
 
-        for j in xrange(0, n):
+        for j in range(0, n):
             Q[j][i] = (Q[j][i]*inv) % p
 
-        for j in xrange(0, n):
+        for j in range(0, n):
             t = Q[j][k]
             Q[j][k] = Q[j][i]
             Q[j][i] = t
 
-        for i in xrange(0, n):
+        for i in range(0, n):
             if i != k:
                 q = Q[k][i]
 
-                for j in xrange(0, n):
+                for j in range(0, n):
                     Q[j][i] = (Q[j][i] - Q[j][k]*q) % p
 
-    for i in xrange(0, n):
-        for j in xrange(0, n):
+    for i in range(0, n):
+        for j in range(0, n):
             if i == j:
                 Q[i][j] = (K.one - Q[i][j]) % p
             else:
@@ -1629,7 +1751,7 @@ def gf_Qbasis(Q, p, K):
 
     return basis
 
-@cythonized("i,k")
+
 def gf_berlekamp(f, p, K):
     """
     Factor a square-free ``f`` in ``GF(p)[x]`` for small ``p``.
@@ -1652,7 +1774,7 @@ def gf_berlekamp(f, p, K):
 
     factors = [f]
 
-    for k in xrange(1, len(V)):
+    for k in range(1, len(V)):
         for f in list(factors):
             s = K.zero
 
@@ -1673,7 +1795,7 @@ def gf_berlekamp(f, p, K):
 
     return _sort_factors(factors, multiple=False)
 
-@cythonized("i")
+
 def gf_ddf_zassenhaus(f, p, K):
     """
     Cantor-Zassenhaus: Deterministic Distinct Degree Factorization
@@ -1689,7 +1811,7 @@ def gf_ddf_zassenhaus(f, p, K):
        >>> from sympy.polys.domains import ZZ
        >>> from sympy.polys.galoistools import gf_from_dict
 
-       >>> f = gf_from_dict({15: 1, 0: -1}, 11, ZZ)
+       >>> f = gf_from_dict({15: ZZ(1), 0: ZZ(-1)}, 11, ZZ)
 
     Distinct degree factorization gives::
 
@@ -1705,14 +1827,15 @@ def gf_ddf_zassenhaus(f, p, K):
     References
     ==========
 
-    1. [Gathen99]_
-    2. [Geddes92]_
+    .. [1] [Gathen99]_
+    .. [2] [Geddes92]_
 
     """
     i, g, factors = 1, [K.one, K.zero], []
 
+    b = gf_frobenius_monomial_base(f, p, K)
     while 2*i <= gf_degree(f):
-        g = gf_pow_mod(g, int(p), f, p, K)
+        g = gf_frobenius_map(g, f, b, p, K)
         h = gf_gcd(f, gf_sub(g, [K.one, K.zero], p, K), p, K)
 
         if h != [K.one]:
@@ -1720,6 +1843,7 @@ def gf_ddf_zassenhaus(f, p, K):
 
             f = gf_quo(f, h, p, K)
             g = gf_rem(g, f, p, K)
+            b = gf_frobenius_monomial_base(f, p, K)
 
         i += 1
 
@@ -1728,7 +1852,7 @@ def gf_ddf_zassenhaus(f, p, K):
     else:
         return factors
 
-@cythonized("n,N,i")
+
 def gf_edf_zassenhaus(f, n, p, K):
     """
     Cantor-Zassenhaus: Probabilistic Equal Degree Factorization
@@ -1750,39 +1874,41 @@ def gf_edf_zassenhaus(f, n, p, K):
     References
     ==========
 
-    1. [Gathen99]_
-    2. [Geddes92]_
+    .. [1] [Gathen99]_
+    .. [2] [Geddes92]_
 
     """
-    factors, q = [f], int(p)
+    factors = [f]
 
     if gf_degree(f) <= n:
         return factors
 
     N = gf_degree(f) // n
+    if p != 2:
+        b = gf_frobenius_monomial_base(f, p, K)
 
     while len(factors) < N:
-        r = gf_random(2*n-1, p, K)
+        r = gf_random(2*n - 1, p, K)
 
         if p == 2:
             h = r
 
-            for i in xrange(0, 2**(n*N-1)):
+            for i in range(0, 2**(n*N - 1)):
                 r = gf_pow_mod(r, 2, f, p, K)
                 h = gf_add(h, r, p, K)
 
             g = gf_gcd(f, h, p, K)
         else:
-            h = gf_pow_mod(r, (q**n-1) // 2, f, p, K)
+            h = _gf_pow_pnm1d2(r, n, f, b, p, K)
             g = gf_gcd(f, gf_sub_ground(h, K.one, p, K), p, K)
 
         if g != [K.one] and g != f:
             factors = gf_edf_zassenhaus(g, n, p, K) \
-                    + gf_edf_zassenhaus(gf_quo(f, g, p, K), n, p, K)
+                + gf_edf_zassenhaus(gf_quo(f, g, p, K), n, p, K)
 
     return _sort_factors(factors, multiple=False)
 
-@cythonized("n,k,i,j")
+
 def gf_ddf_shoup(f, p, K):
     """
     Kaltofen-Shoup: Deterministic Distinct Degree Factorization
@@ -1802,7 +1928,7 @@ def gf_ddf_shoup(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_ddf_shoup, gf_from_dict
 
-    >>> f = gf_from_dict({6: 1, 5: -1, 4: 1, 3: 1, 1: -1}, 3, ZZ)
+    >>> f = gf_from_dict({6: ZZ(1), 5: ZZ(-1), 4: ZZ(1), 3: ZZ(1), 1: ZZ(-1)}, 3, ZZ)
 
     >>> gf_ddf_shoup(f, 3, ZZ)
     [([1, 1, 0], 1), ([1, 1, 0, 1, 2], 2)]
@@ -1810,31 +1936,32 @@ def gf_ddf_shoup(f, p, K):
     References
     ==========
 
-    1. [Kaltofen98]_
-    2. [Shoup95]_
-    3. [Gathen92]_
+    .. [1] [Kaltofen98]_
+    .. [2] [Shoup95]_
+    .. [3] [Gathen92]_
 
     """
     n = gf_degree(f)
     k = int(_ceil(_sqrt(n//2)))
+    b = gf_frobenius_monomial_base(f, p, K)
+    h = gf_frobenius_map([K.one, K.zero], f, b, p, K)
+    # U[i] = x**(p**i)
+    U = [[K.one, K.zero], h] + [K.zero]*(k - 1)
 
-    h = gf_pow_mod([K.one, K.zero], int(p), f, p, K)
-
-    U = [[K.one,K.zero], h] + [K.zero]*(k-1)
-
-    for i in xrange(2, k+1):
-        U[i] = gf_compose_mod(U[i-1], h, f, p, K)
+    for i in range(2, k + 1):
+        U[i] = gf_frobenius_map(U[i-1], f, b, p, K)
 
     h, U = U[k], U[:k]
-    V = [h] + [K.zero]*(k-1)
+    # V[i] = x**(p**(k*(i+1)))
+    V = [h] + [K.zero]*(k - 1)
 
-    for i in xrange(1, k):
-        V[i] = gf_compose_mod(V[i-1], h, f, p, K)
+    for i in range(1, k):
+        V[i] = gf_compose_mod(V[i - 1], h, f, p, K)
 
     factors = []
 
     for i, v in enumerate(V):
-        h, j = [K.one], k-1
+        h, j = [K.one], k - 1
 
         for u in U:
             g = gf_sub(v, u, p, K)
@@ -1849,16 +1976,15 @@ def gf_ddf_shoup(f, p, K):
             F = gf_gcd(g, h, p, K)
 
             if F != [K.one]:
-                factors.append((F, k*(i+1)-j))
+                factors.append((F, k*(i + 1) - j))
 
-            g, j = gf_quo(g, F, p, K), j-1
+            g, j = gf_quo(g, F, p, K), j - 1
 
     if f != [K.one]:
         factors.append((f, gf_degree(f)))
 
     return factors
 
-@cythonized("n,N,q")
 def gf_edf_shoup(f, n, p, K):
     """
     Gathen-Shoup: Probabilistic Equal Degree Factorization
@@ -1877,14 +2003,14 @@ def gf_edf_shoup(f, n, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_edf_shoup
 
-    >>> gf_edf_shoup([1, 2837, 2277], 1, 2917, ZZ)
+    >>> gf_edf_shoup(ZZ.map([1, 2837, 2277]), 1, 2917, ZZ)
     [[1, 852], [1, 1985]]
 
     References
     ==========
 
-    1. [Shoup91]_
-    2. [Gathen92]_
+    .. [1] [Shoup91]_
+    .. [2] [Gathen92]_
 
     """
     N, q = gf_degree(f), int(p)
@@ -1896,31 +2022,32 @@ def gf_edf_shoup(f, n, p, K):
 
     factors, x = [f], [K.one, K.zero]
 
-    r = gf_random(N-1, p, K)
-
-    h = gf_pow_mod(x, q, f, p, K)
-    H = gf_trace_map(r, h, x, n-1, f, p, K)[1]
+    r = gf_random(N - 1, p, K)
 
     if p == 2:
+        h = gf_pow_mod(x, q, f, p, K)
+        H = gf_trace_map(r, h, x, n - 1, f, p, K)[1]
         h1 = gf_gcd(f, H, p, K)
         h2 = gf_quo(f, h1, p, K)
 
         factors = gf_edf_shoup(h1, n, p, K) \
-                + gf_edf_shoup(h2, n, p, K)
+            + gf_edf_shoup(h2, n, p, K)
     else:
-        h = gf_pow_mod(H, (q-1)//2, f, p, K)
+        b = gf_frobenius_monomial_base(f, p, K)
+        H = _gf_trace_map(r, n, f, b, p, K)
+        h = gf_pow_mod(H, (q - 1)//2, f, p, K)
 
         h1 = gf_gcd(f, h, p, K)
         h2 = gf_gcd(f, gf_sub_ground(h, K.one, p, K), p, K)
         h3 = gf_quo(f, gf_mul(h1, h2, p, K), p, K)
 
         factors = gf_edf_shoup(h1, n, p, K) \
-                + gf_edf_shoup(h2, n, p, K) \
-                + gf_edf_shoup(h3, n, p, K)
+            + gf_edf_shoup(h2, n, p, K) \
+            + gf_edf_shoup(h3, n, p, K)
 
     return _sort_factors(factors, multiple=False)
 
-@cythonized("n")
+
 def gf_zassenhaus(f, p, K):
     """
     Factor a square-free ``f`` in ``GF(p)[x]`` for medium ``p``.
@@ -1931,7 +2058,7 @@ def gf_zassenhaus(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_zassenhaus
 
-    >>> gf_zassenhaus([1, 4, 3], 5, ZZ)
+    >>> gf_zassenhaus(ZZ.map([1, 4, 3]), 5, ZZ)
     [[1, 1], [1, 3]]
 
     """
@@ -1942,7 +2069,7 @@ def gf_zassenhaus(f, p, K):
 
     return _sort_factors(factors, multiple=False)
 
-@cythonized("n")
+
 def gf_shoup(f, p, K):
     """
     Factor a square-free ``f`` in ``GF(p)[x]`` for large ``p``.
@@ -1953,7 +2080,7 @@ def gf_shoup(f, p, K):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_shoup
 
-    >>> gf_shoup([1, 4, 3], 5, ZZ)
+    >>> gf_shoup(ZZ.map([1, 4, 3]), 5, ZZ)
     [[1, 1], [1, 3]]
 
     """
@@ -1965,10 +2092,11 @@ def gf_shoup(f, p, K):
     return _sort_factors(factors, multiple=False)
 
 _factor_methods = {
-    'berlekamp'  : gf_berlekamp,  # ``p`` : small
-    'zassenhaus' : gf_zassenhaus, # ``p`` : medium
-    'shoup'      : gf_shoup,      # ``p`` : large
+    'berlekamp': gf_berlekamp,  # ``p`` : small
+    'zassenhaus': gf_zassenhaus,  # ``p`` : medium
+    'shoup': gf_shoup,      # ``p`` : large
 }
+
 
 def gf_factor_sqf(f, p, K, method=None):
     """
@@ -1980,7 +2108,7 @@ def gf_factor_sqf(f, p, K, method=None):
     >>> from sympy.polys.domains import ZZ
     >>> from sympy.polys.galoistools import gf_factor_sqf
 
-    >>> gf_factor_sqf([3, 2, 4], 5, ZZ)
+    >>> gf_factor_sqf(ZZ.map([3, 2, 4]), 5, ZZ)
     (3, [[1, 1], [1, 3]])
 
     """
@@ -1998,7 +2126,7 @@ def gf_factor_sqf(f, p, K, method=None):
 
     return lc, factors
 
-@cythonized("n")
+
 def gf_factor(f, p, K):
     """
     Factor (non square-free) polynomials in ``GF(p)[x]``.
@@ -2022,7 +2150,7 @@ def gf_factor(f, p, K):
        >>> from sympy.polys.domains import ZZ
        >>> from sympy.polys.galoistools import gf_factor
 
-       >>> gf_factor([5, 2, 7, 2], 11, ZZ)
+       >>> gf_factor(ZZ.map([5, 2, 7, 2]), 11, ZZ)
        (5, [([1, 2], 1), ([1, 8], 2)])
 
     We arrived with factorization ``f = 5 (x + 2) (x + 8)**2``. We didn't
@@ -2046,7 +2174,7 @@ def gf_factor(f, p, K):
     References
     ==========
 
-    1. [Gathen99]_
+    .. [1] [Gathen99]_
 
     """
     lc, f = gf_monic(f, p, K)
@@ -2082,6 +2210,7 @@ def gf_value(f, a):
         result += c
     return result
 
+
 def linear_congruence(a, b, m):
     """
     Returns the values of x satisfying a*x congruent b mod(m)
@@ -2099,20 +2228,23 @@ def linear_congruence(a, b, m):
 
     There are 3 solutions distinct mod(15) since gcd(a, m) = gcd(3, 15) = 3.
 
-    **Reference**
-    1) Wikipedia http://en.wikipedia.org/wiki/Linear_congruence_theorem
+    References
+    ==========
+
+    .. [1] https://en.wikipedia.org/wiki/Linear_congruence_theorem
 
     """
     from sympy.polys.polytools import gcdex
     if a % m == 0:
         if b % m == 0:
-            return range(m)
+            return list(range(m))
         else:
             return []
     r, _, g = gcdex(a, m)
     if b % g != 0:
         return []
-    return [(r * b // g + t * m // g) % m for t in range (g)]
+    return [(r * b // g + t * m // g) % m for t in range(g)]
+
 
 def _raise_mod_power(x, s, p, f):
     """
@@ -2153,6 +2285,7 @@ def _raise_mod_power(x, s, p, f):
     beta = - gf_value(f, x) // p**s
     return linear_congruence(alpha, beta, p)
 
+
 def csolve_prime(f, p, e=1):
     """
     Solutions of f(x) congruent 0 mod(p**e).
@@ -2175,7 +2308,7 @@ def csolve_prime(f, p, e=1):
     if e == 1:
         return X1
     X = []
-    S = zip(X1, [1]*len(X1))
+    S = list(zip(X1, [1]*len(X1)))
     while S:
         x, s = S.pop()
         if s == e:
@@ -2185,6 +2318,7 @@ def csolve_prime(f, p, e=1):
             ps = p**s
             S.extend([(x + v*ps, s1) for v in _raise_mod_power(x, s, p, f)])
     return sorted(X)
+
 
 def gf_csolve(f, n):
     """
@@ -2197,22 +2331,25 @@ def gf_csolve(f, n):
     Examples
     ========
 
-    >>> from sympy.polys.galoistools import gf_csolve
+    Solve [1, 1, 7] congruent 0 mod(189):
 
+    >>> from sympy.polys.galoistools import gf_csolve
     >>> gf_csolve([1, 1, 7], 189)
     [13, 49, 76, 112, 139, 175]
 
-    **Reference**
-    [1] 'An introduction to the Theory of Numbers' 5th Edition by Ivan Niven,
-        Zuckerman and Montgomery.
+    References
+    ==========
+
+    .. [1] 'An introduction to the Theory of Numbers' 5th Edition by Ivan Niven,
+           Zuckerman and Montgomery.
 
     """
     from sympy.polys.domains import ZZ
     P = factorint(n)
-    X = [csolve_prime(f, p, e) for p, e in P.iteritems()]
-    pools = map(tuple, X)
+    X = [csolve_prime(f, p, e) for p, e in P.items()]
+    pools = list(map(tuple, X))
     perms = [[]]
     for pool in pools:
         perms = [x + [y] for x in perms for y in pool]
-    dist_factors = [pow(p, e) for p, e in P.iteritems()]
+    dist_factors = [pow(p, e) for p, e in P.items()]
     return sorted([gf_crt(per, dist_factors, ZZ) for per in perms])

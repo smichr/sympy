@@ -1,18 +1,28 @@
-from sympy.core.decorators import wraps
-from sympy.core.compatibility import iterable
+"""Useful utility decorators. """
 
+import sys
+import types
+import inspect
+from functools import wraps, update_wrapper
+
+from sympy.testing.runtests import DependencyError, SymPyDocTests, PyTestReporter
+from sympy.utilities.exceptions import SymPyDeprecationWarning
 
 def threaded_factory(func, use_add):
     """A factory for ``threaded`` decorators. """
-    from sympy.core import sympify, Add
-    from sympy.matrices import Matrix
+    from sympy.core import sympify
+    from sympy.matrices import MatrixBase
+    from sympy.utilities.iterables import iterable
 
     @wraps(func)
     def threaded_func(expr, *args, **kwargs):
-        if isinstance(expr, Matrix):
+        if isinstance(expr, MatrixBase):
             return expr.applyfunc(lambda f: func(f, *args, **kwargs))
         elif iterable(expr):
-            return expr.__class__([ func(f, *args, **kwargs) for f in expr ])
+            try:
+                return expr.__class__([func(f, *args, **kwargs) for f in expr])
+            except TypeError:
+                return expr
         else:
             expr = sympify(expr)
 
@@ -26,55 +36,234 @@ def threaded_factory(func, use_add):
 
     return threaded_func
 
+
 def threaded(func):
-    """Apply ``func`` to sub--elements of an object, including :class:`Add`.
+    """Apply ``func`` to sub--elements of an object, including :class:`~.Add`.
 
-       This decorator is intended to make it uniformly possible to apply a
-       function to all elements of composite objects, e.g. matrices, lists,
-       tuples and other iterable containers, or just expressions.
+    This decorator is intended to make it uniformly possible to apply a
+    function to all elements of composite objects, e.g. matrices, lists, tuples
+    and other iterable containers, or just expressions.
 
-       This version of :func:`threaded` decorator allows threading over
-       elements of :class:`Add` class. If this behavior is not desirable
-       use :func:`xthreaded` decorator.
+    This version of :func:`threaded` decorator allows threading over
+    elements of :class:`~.Add` class. If this behavior is not desirable
+    use :func:`xthreaded` decorator.
 
-       Functions using this decorator must have the following signature::
+    Functions using this decorator must have the following signature::
 
-          @threaded
-          def function(expr, *args, **kwargs):
+      @threaded
+      def function(expr, *args, **kwargs):
 
     """
     return threaded_factory(func, True)
 
+
 def xthreaded(func):
-    """Apply ``func`` to sub--elements of an object, excluding :class:`Add`.
+    """Apply ``func`` to sub--elements of an object, excluding :class:`~.Add`.
 
-       This decorator is intended to make it uniformly possible to apply a
-       function to all elements of composite objects, e.g. matrices, lists,
-       tuples and other iterable containers, or just expressions.
+    This decorator is intended to make it uniformly possible to apply a
+    function to all elements of composite objects, e.g. matrices, lists, tuples
+    and other iterable containers, or just expressions.
 
-       This version of :func:`threaded` decorator disallows threading over
-       elements of :class:`Add` class. If this behavior is not desirable
-       use :func:`threaded` decorator.
+    This version of :func:`threaded` decorator disallows threading over
+    elements of :class:`~.Add` class. If this behavior is not desirable
+    use :func:`threaded` decorator.
 
-       Functions using this decorator must have the following signature::
+    Functions using this decorator must have the following signature::
 
-          @xthreaded
-          def function(expr, *args, **kwargs):
+      @xthreaded
+      def function(expr, *args, **kwargs):
 
     """
     return threaded_factory(func, False)
 
-def conserve_mpmath_dps(func):
-    """After the function finishes, resets the value of mpmath.mp.dps to the value it had before the function was run."""
-    import functools
-    from sympy import mpmath
 
-    def func_wrapper():
+def conserve_mpmath_dps(func):
+    """After the function finishes, resets the value of mpmath.mp.dps to
+    the value it had before the function was run."""
+    import mpmath
+
+    def func_wrapper(*args, **kwargs):
         dps = mpmath.mp.dps
         try:
-            func()
+            return func(*args, **kwargs)
         finally:
             mpmath.mp.dps = dps
 
-    func_wrapper = functools.update_wrapper(func_wrapper, func)
+    func_wrapper = update_wrapper(func_wrapper, func)
     return func_wrapper
+
+
+class no_attrs_in_subclass:
+    """Don't 'inherit' certain attributes from a base class
+
+    >>> from sympy.utilities.decorator import no_attrs_in_subclass
+
+    >>> class A(object):
+    ...     x = 'test'
+
+    >>> A.x = no_attrs_in_subclass(A, A.x)
+
+    >>> class B(A):
+    ...     pass
+
+    >>> hasattr(A, 'x')
+    True
+    >>> hasattr(B, 'x')
+    False
+
+    """
+    def __init__(self, cls, f):
+        self.cls = cls
+        self.f = f
+
+    def __get__(self, instance, owner=None):
+        if owner == self.cls:
+            if hasattr(self.f, '__get__'):
+                return self.f.__get__(instance, owner)
+            return self.f
+        raise AttributeError
+
+
+def doctest_depends_on(exe=None, modules=None, disable_viewers=None, python_version=None):
+    """
+    Adds metadata about the dependencies which need to be met for doctesting
+    the docstrings of the decorated objects.
+
+    exe should be a list of executables
+
+    modules should be a list of modules
+
+    disable_viewers should be a list of viewers for preview() to disable
+
+    python_version should be the minimum Python version required, as a tuple
+    (like (3, 0))
+    """
+
+    dependencies = {}
+    if exe is not None:
+        dependencies['executables'] = exe
+    if modules is not None:
+        dependencies['modules'] = modules
+    if disable_viewers is not None:
+        dependencies['disable_viewers'] = disable_viewers
+    if python_version is not None:
+        dependencies['python_version'] = python_version
+
+    def skiptests():
+        r = PyTestReporter()
+        t = SymPyDocTests(r, None)
+        try:
+            t._check_dependencies(**dependencies)
+        except DependencyError:
+            return True  # Skip doctests
+        else:
+            return False # Run doctests
+
+    def depends_on_deco(fn):
+        fn._doctest_depends_on = dependencies
+        fn.__doctest_skip__ = skiptests
+
+        if inspect.isclass(fn):
+            fn._doctest_depdends_on = no_attrs_in_subclass(
+                fn, fn._doctest_depends_on)
+            fn.__doctest_skip__ = no_attrs_in_subclass(
+                fn, fn.__doctest_skip__)
+        return fn
+
+    return depends_on_deco
+
+
+def public(obj):
+    """
+    Append ``obj``'s name to global ``__all__`` variable (call site).
+
+    By using this decorator on functions or classes you achieve the same goal
+    as by filling ``__all__`` variables manually, you just do not have to repeat
+    yourself (object's name). You also know if object is public at definition
+    site, not at some random location (where ``__all__`` was set).
+
+    Note that in multiple decorator setup (in almost all cases) ``@public``
+    decorator must be applied before any other decorators, because it relies
+    on the pointer to object's global namespace. If you apply other decorators
+    first, ``@public`` may end up modifying the wrong namespace.
+
+    Examples
+    ========
+
+    >>> from sympy.utilities.decorator import public
+
+    >>> __all__ # noqa: F821
+    Traceback (most recent call last):
+    ...
+    NameError: name '__all__' is not defined
+
+    >>> @public
+    ... def some_function():
+    ...     pass
+
+    >>> __all__ # noqa: F821
+    ['some_function']
+
+    """
+    if isinstance(obj, types.FunctionType):
+        ns = obj.__globals__
+        name = obj.__name__
+    elif isinstance(obj, (type(type), type)):
+        ns = sys.modules[obj.__module__].__dict__
+        name = obj.__name__
+    else:
+        raise TypeError("expected a function or a class, got %s" % obj)
+
+    if "__all__" not in ns:
+        ns["__all__"] = [name]
+    else:
+        ns["__all__"].append(name)
+
+    return obj
+
+
+def memoize_property(propfunc):
+    """Property decorator that caches the value of potentially expensive
+    `propfunc` after the first evaluation. The cached value is stored in
+    the corresponding property name with an attached underscore."""
+    attrname = '_' + propfunc.__name__
+    sentinel = object()
+
+    @wraps(propfunc)
+    def accessor(self):
+        val = getattr(self, attrname, sentinel)
+        if val is sentinel:
+            val = propfunc(self)
+            setattr(self, attrname, val)
+        return val
+
+    return property(accessor)
+
+
+def deprecated(**decorator_kwargs):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used."""
+
+    def _warn_deprecation(wrapped, stacklevel):
+        decorator_kwargs.setdefault('feature', wrapped.__name__)
+        SymPyDeprecationWarning(**decorator_kwargs).warn(stacklevel=stacklevel)
+
+    def deprecated_decorator(wrapped):
+        if hasattr(wrapped, '__mro__'):  # wrapped is actually a class
+            class wrapper(wrapped):
+                __doc__ = wrapped.__doc__
+                __name__ = wrapped.__name__
+                __module__ = wrapped.__module__
+                _sympy_deprecated_func = wrapped
+                def __init__(self, *args, **kwargs):
+                    _warn_deprecation(wrapped, 4)
+                    super().__init__(*args, **kwargs)
+        else:
+            @wraps(wrapped)
+            def wrapper(*args, **kwargs):
+                _warn_deprecation(wrapped, 3)
+                return wrapped(*args, **kwargs)
+            wrapper._sympy_deprecated_func = wrapped
+        return wrapper
+    return deprecated_decorator

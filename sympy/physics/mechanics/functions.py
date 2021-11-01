@@ -1,59 +1,58 @@
-__all__ = ['cross',
-           'dot',
-           'express',
-           'outer',
-           'inertia',
+from sympy.utilities import dict_merge
+from sympy.utilities.iterables import iterable
+from sympy.physics.vector import (Dyadic, Vector, ReferenceFrame,
+                                  Point, dynamicsymbols)
+from sympy.physics.vector.printing import (vprint, vsprint, vpprint, vlatex,
+                                           init_vprinting)
+from sympy.physics.mechanics.particle import Particle
+from sympy.physics.mechanics.rigidbody import RigidBody
+from sympy.simplify.simplify import simplify
+from sympy.core.backend import (Matrix, sympify, Mul, Derivative, sin, cos,
+                                tan, AppliedUndef, S)
+
+__all__ = ['inertia',
+           'inertia_of_point_mass',
+           'linear_momentum',
+           'angular_momentum',
+           'kinetic_energy',
+           'potential_energy',
+           'Lagrangian',
            'mechanics_printing',
            'mprint',
+           'msprint',
            'mpprint',
            'mlatex',
-           'kinematic_equations',
-           'inertia_of_point_mass']
+           'msubs',
+           'find_dynamicsymbols']
 
-from sympy.physics.mechanics.essential import (Vector, Dyadic, ReferenceFrame,
-                                               MechanicsStrPrinter,
-                                               MechanicsPrettyPrinter,
-                                               MechanicsLatexPrinter,
-                                               dynamicsymbols)
-from sympy import sympify, diff, sin, cos, Matrix
+# These are functions that we've moved and renamed during extracting the
+# basic vector calculus code from the mechanics packages.
 
-def cross(vec1, vec2):
-    """Cross product convenience wrapper for Vector.cross(): \n"""
-    if not isinstance(vec1, (Vector, Dyadic)):
-        raise TypeError('Cross product is between two vectors')
-    return vec1 ^ vec2
-cross.__doc__ += Vector.cross.__doc__
+mprint = vprint
+msprint = vsprint
+mpprint = vpprint
+mlatex = vlatex
 
-def dot(vec1, vec2):
-    """Dot product convenience wrapper for Vector.dot(): \n"""
-    if not isinstance(vec1, (Vector, Dyadic)):
-        raise TypeError('Dot product is between two vectors')
-    return vec1 & vec2
-dot.__doc__ += Vector.dot.__doc__
 
-def express(vec, frame, frame2=None):
-    """Express convenience wrapper for Vector.express(): \n"""
-    if not isinstance(vec, (Vector, Dyadic)):
-        raise TypeError('Can only express Vectors')
-    if isinstance(vec, Vector):
-        return vec.express(frame)
-    else:
-        return vec.express(frame, frame2)
+def mechanics_printing(**kwargs):
+    """
+    Initializes time derivative printing for all SymPy objects in
+    mechanics module.
+    """
 
-express.__doc__ += Vector.express.__doc__
+    init_vprinting(**kwargs)
 
-def outer(vec1, vec2):
-    """Outer prodcut convenience wrapper for Vector.outer():\n"""
-    if not isinstance(vec1, Vector):
-        raise TypeError('Outer product is between two Vectors')
-    return vec1 | vec2
-outer.__doc__ += Vector.express.__doc__
+mechanics_printing.__doc__ = init_vprinting.__doc__
+
 
 def inertia(frame, ixx, iyy, izz, ixy=0, iyz=0, izx=0):
     """Simple way to create inertia Dyadic object.
 
+    Explanation
+    ===========
+
     If you don't know what a Dyadic is, just treat this like the inertia
-    tensor.  Then, do the easy thing and define it in a body-fixed frame.
+    tensor. Then, do the easy thing and define it in a body-fixed frame.
 
     Parameters
     ==========
@@ -85,7 +84,7 @@ def inertia(frame, ixx, iyy, izz, ixy=0, iyz=0, izx=0):
 
     if not isinstance(frame, ReferenceFrame):
         raise TypeError('Need to define the inertia in a frame')
-    ol  = sympify(ixx) * (frame.x | frame.x)
+    ol = sympify(ixx) * (frame.x | frame.x)
     ol += sympify(ixy) * (frame.x | frame.y)
     ol += sympify(izx) * (frame.x | frame.z)
     ol += sympify(ixy) * (frame.y | frame.x)
@@ -96,8 +95,9 @@ def inertia(frame, ixx, iyy, izz, ixy=0, iyz=0, izx=0):
     ol += sympify(izz) * (frame.z | frame.z)
     return ol
 
+
 def inertia_of_point_mass(mass, pos_vec, frame):
-    """Inertia dyadic of a point mass realtive to point O.
+    """Inertia dyadic of a point mass relative to point O.
 
     Parameters
     ==========
@@ -126,273 +126,600 @@ def inertia_of_point_mass(mass, pos_vec, frame):
                    (frame.z | frame.z)) * (pos_vec & pos_vec) -
                    (pos_vec | pos_vec))
 
-def mechanics_printing():
-    """Sets up interactive printing for mechanics' derivatives.
 
-    The main benefit of this is for printing of time derivatives;
-    instead of displaying as Derivative(f(t),t), it will display f'
-    This is only actually needed for when derivatives are present and are not
-    in a physics.mechanics object.
+def linear_momentum(frame, *body):
+    """Linear momentum of the system.
 
-    Examples
-    ========
+    Explanation
+    ===========
 
-    >>> # 2 lines below are for tests to function properly
-    >>> import sys
-    >>> sys.displayhook = sys.__displayhook__
-    >>> from sympy import Function, Symbol, diff
-    >>> from sympy.physics.mechanics import mechanics_printing
-    >>> f = Function('f')
-    >>> t = Symbol('t')
-    >>> x = Symbol('x')
-    >>> diff(f(t), t)
-    Derivative(f(t), t)
-    >>> mechanics_printing()
-    >>> diff(f(t), t)
-    f'
-    >>> diff(f(x), x)
-    Derivative(f(x), x)
-    >>> # 2 lines below are for tests to function properly
-    >>> import sys
-    >>> sys.displayhook = sys.__displayhook__
+    This function returns the linear momentum of a system of Particle's and/or
+    RigidBody's. The linear momentum of a system is equal to the vector sum of
+    the linear momentum of its constituents. Consider a system, S, comprised of
+    a rigid body, A, and a particle, P. The linear momentum of the system, L,
+    is equal to the vector sum of the linear momentum of the particle, L1, and
+    the linear momentum of the rigid body, L2, i.e.
 
-    """
-
-    import sys
-    sys.displayhook = mprint
-
-def mprint(expr, **settings):
-    r"""Function for printing of expressions generated in mechanics.
-
-    Extends SymPy's StrPrinter; mprint is equivalent to:
-    print sstr()
-    mprint takes the same options as sstr.
+    L = L1 + L2
 
     Parameters
     ==========
 
-    expr : valid sympy object
-        SymPy expression to print
-    settings : args
-        Same as print for SymPy
+    frame : ReferenceFrame
+        The frame in which linear momentum is desired.
+    body1, body2, body3... : Particle and/or RigidBody
+        The body (or bodies) whose linear momentum is required.
 
     Examples
     ========
 
-    >>> from sympy.physics.mechanics import mprint, dynamicsymbols
-    >>> u1 = dynamicsymbols('u1')
-    >>> print(u1)
-    u1(t)
-    >>> mprint(u1)
-    u1
-
-    """
-
-    pr = MechanicsStrPrinter(settings)
-    outstr = pr.doprint(expr)
-
-    import __builtin__
-    if (outstr != 'None'):
-        __builtin__._ = outstr
-        print(outstr)
-
-def mpprint(expr, **settings):
-    r"""Function for pretty printing of expressions generated in mechanics.
-
-    Mainly used for expressions not inside a vector; the output of running
-    scripts and generating equations of motion. Takes the same options as
-    SymPy's pretty_print(); see that function for more information.
-
-    Parameters
-    ==========
-
-    expr : valid sympy object
-        SymPy expression to pretty print
-    settings : args
-        Same as pretty print
-
-    Examples
-    ========
-
-    Use in the same way as pprint
-
-    """
-
-    mp = MechanicsPrettyPrinter(settings)
-    print(mp.doprint(expr))
-
-def mlatex(expr, **settings):
-    r"""Function for printing latex representation of mechanics objects.
-
-    For latex representation of Vectors, Dyadics, and dynamicsymbols. Takes the
-    same options as SymPy's latex(); see that function for more information;
-
-    Parameters
-    ==========
-
-    expr : valid sympy object
-        SymPy expression to represent in LaTeX form
-    settings : args
-        Same as latex()
-
-    Examples
-    ========
-
-    >>> from sympy.physics.mechanics import mlatex, ReferenceFrame
+    >>> from sympy.physics.mechanics import Point, Particle, ReferenceFrame
+    >>> from sympy.physics.mechanics import RigidBody, outer, linear_momentum
     >>> N = ReferenceFrame('N')
-    >>> mlatex(N.x + N.y)
-    '\\mathbf{\\hat{n}_x} + \\mathbf{\\hat{n}_y}'
+    >>> P = Point('P')
+    >>> P.set_vel(N, 10 * N.x)
+    >>> Pa = Particle('Pa', P, 1)
+    >>> Ac = Point('Ac')
+    >>> Ac.set_vel(N, 25 * N.y)
+    >>> I = outer(N.x, N.x)
+    >>> A = RigidBody('A', Ac, N, 20, (I, Ac))
+    >>> linear_momentum(N, A, Pa)
+    10*N.x + 500*N.y
 
     """
 
-    return MechanicsLatexPrinter(settings).doprint(expr)
+    if not isinstance(frame, ReferenceFrame):
+        raise TypeError('Please specify a valid ReferenceFrame')
+    else:
+        linear_momentum_sys = Vector(0)
+        for e in body:
+            if isinstance(e, (RigidBody, Particle)):
+                linear_momentum_sys += e.linear_momentum(frame)
+            else:
+                raise TypeError('*body must have only Particle or RigidBody')
+    return linear_momentum_sys
 
-def kinematic_equations(speeds, coords, rot_type, rot_order=''):
-    """Gives equations relating the qdot's to u's for a rotation type.
 
-    Supply rotation type and order as in orient. Speeds are assumed to be
-    body-fixed; if we are defining the orientation of B in A using by rot_type,
-    the angular velocity of B in A is assumed to be in the form: speed[0]*B.x +
-    speed[1]*B.y + speed[2]*B.z
+def angular_momentum(point, frame, *body):
+    """Angular momentum of a system.
+
+    Explanation
+    ===========
+
+    This function returns the angular momentum of a system of Particle's and/or
+    RigidBody's. The angular momentum of such a system is equal to the vector
+    sum of the angular momentum of its constituents. Consider a system, S,
+    comprised of a rigid body, A, and a particle, P. The angular momentum of
+    the system, H, is equal to the vector sum of the angular momentum of the
+    particle, H1, and the angular momentum of the rigid body, H2, i.e.
+
+    H = H1 + H2
 
     Parameters
     ==========
 
-    speeds : list of length 3
-        The body fixed angular velocity measure numbers.
-    coords : list of length 3 or 4
-        The coordinates used to define the orientation of the two frames.
-    rot_type : str
-        The type of rotation used to create the equations. Body, Space, or
-        Quaternion only
-    rot_order : str
-        If applicable, the order of a series of rotations.
+    point : Point
+        The point about which angular momentum of the system is desired.
+    frame : ReferenceFrame
+        The frame in which angular momentum is desired.
+    body1, body2, body3... : Particle and/or RigidBody
+        The body (or bodies) whose angular momentum is required.
 
     Examples
     ========
 
-    >>> from sympy.physics.mechanics import dynamicsymbols
-    >>> from sympy.physics.mechanics import kinematic_equations, mprint
-    >>> u1, u2, u3 = dynamicsymbols('u1 u2 u3')
-    >>> q1, q2, q3 = dynamicsymbols('q1 q2 q3')
-    >>> mprint(kinematic_equations([u1,u2,u3], [q1,q2,q3], 'body', '313'),
-    ...     order=None)
-    [-(u1*sin(q3) + u2*cos(q3))/sin(q2) + q1', -u1*cos(q3) + u2*sin(q3) + q2', (u1*sin(q3) + u2*cos(q3))*cos(q2)/sin(q2) - u3 + q3']
+    >>> from sympy.physics.mechanics import Point, Particle, ReferenceFrame
+    >>> from sympy.physics.mechanics import RigidBody, outer, angular_momentum
+    >>> N = ReferenceFrame('N')
+    >>> O = Point('O')
+    >>> O.set_vel(N, 0 * N.x)
+    >>> P = O.locatenew('P', 1 * N.x)
+    >>> P.set_vel(N, 10 * N.x)
+    >>> Pa = Particle('Pa', P, 1)
+    >>> Ac = O.locatenew('Ac', 2 * N.y)
+    >>> Ac.set_vel(N, 5 * N.y)
+    >>> a = ReferenceFrame('a')
+    >>> a.set_ang_vel(N, 10 * N.z)
+    >>> I = outer(N.z, N.z)
+    >>> A = RigidBody('A', Ac, a, 20, (I, Ac))
+    >>> angular_momentum(O, N, Pa, A)
+    10*N.z
 
     """
 
-    # Code below is checking and sanitizing input
-    approved_orders = ('123', '231', '312', '132', '213', '321', '121', '131',
-                       '212', '232', '313', '323', '1', '2', '3', '')
-    rot_order = str(rot_order).upper() # Now we need to make sure XYZ = 123
-    rot_type  = rot_type.upper()
-    rot_order = [i.replace('X', '1') for i in rot_order]
-    rot_order = [i.replace('Y', '2') for i in rot_order]
-    rot_order = [i.replace('Z', '3') for i in rot_order]
-    rot_order = ''.join(rot_order)
-
-    if not isinstance(speeds,(list, tuple)):
-        raise TypeError('Need to supply speeds in a list')
-    if len(speeds) != 3:
-        raise TypeError('Need to supply 3 body-fixed speeds')
-    if not isinstance(coords,(list, tuple)):
-        raise TypeError('Need to supply coordinates in a list')
-    if rot_type.lower() in ['body', 'space']:
-        if rot_order not in approved_orders:
-            raise ValueError('Not an acceptable rotation order')
-        if len(coords) != 3:
-            raise ValueError('Need 3 coordinates for body or space')
-        # Actual hard-coded kinematic differential equations
-        q1, q2, q3 = coords
-        q1d, q2d, q3d = [diff(i, dynamicsymbols._t) for i in coords]
-        w1, w2, w3 = speeds
-        s1, s2, s3 = [sin(q1), sin(q2), sin(q3)]
-        c1, c2, c3 = [cos(q1), cos(q2), cos(q3)]
-        if rot_type.lower() == 'body':
-            if rot_order == '123':
-                return [q1d - (w1 * c3 - w2 * s3) / c2, q2d - w1 * s3 - w2 *
-                        c3, q3d - (-w1 * c3 + w2 * s3) * s2 / c2 - w3]
-            if rot_order == '231':
-                return [q1d - (w2 * c3 - w3 * s3) / c2, q2d - w2 * s3 - w3 *
-                        c3, q3d - w1 - (- w2 * c3 + w3 * s3) * s2 / c2]
-            if rot_order == '312':
-                return [q1d - (-w1 * s3 + w3 * c3) / c2, q2d - w1 * c3 - w3 *
-                        s3, q3d - (w1 * s3 - w3 * c3) * s2 / c2 - w2]
-            if rot_order == '132':
-                return [q1d - (w1 * c3 + w3 * s3) / c2, q2d + w1 * s3 - w3 *
-                        c3, q3d - (w1 * c3 + w3 * s3) * s2 / c2 - w2]
-            if rot_order == '213':
-                return [q1d - (w1 * s3 + w2 * c3) / c2, q2d - w1 * c3 + w2 *
-                        s3, q3d - (w1 * s3 + w2 * c3) * s2 / c2 - w3]
-            if rot_order == '321':
-                return [q1d - (w2 * s3 + w3 * c3) / c2, q2d - w2 * c3 + w3 *
-                        s3, q3d - w1 - (w2 * s3 + w3 * c3) * s2 / c2]
-            if rot_order == '121':
-                return [q1d - (w2 * s3 + w3 * c3) / s2, q2d - w2 * c3 + w3 *
-                        s3, q3d - w1 + (w2 * s3 + w3 * c3) * c2 / s2]
-            if rot_order == '131':
-                return [q1d - (-w2 * c3 + w3 * s3) / s2, q2d - w2 * s3 - w3 *
-                        c3, q3d - w1 - (w2 * c3 - w3 * s3) * c2 / s2]
-            if rot_order == '212':
-                return [q1d - (w1 * s3 - w3 * c3) / s2, q2d - w1 * c3 - w3 *
-                        s3, q3d - (-w1 * s3 + w3 * c3) * c2 / s2 - w2]
-            if rot_order == '232':
-                return [q1d - (w1 * c3 + w3 * s3) / s2, q2d + w1 * s3 - w3 *
-                        c3, q3d + (w1 * c3 + w3 * s3) * c2 / s2 - w2]
-            if rot_order == '313':
-                return [q1d - (w1 * s3 + w2 * c3) / s2, q2d - w1 * c3 + w2 *
-                        s3, q3d + (w1 * s3 + w2 * c3) * c2 / s2 - w3]
-            if rot_order == '323':
-                return [q1d - (-w1 * c3 + w2 * s3) / s2, q2d - w1 * s3 - w2 *
-                        c3, q3d - (w1 * c3 - w2 * s3) * c2 / s2 - w3]
-        if rot_type.lower() == 'space':
-            if rot_order == '123':
-                return [q1d - w1 - (w2 * s1 + w3 * c1) * s2 / c2, q2d - w2 *
-                        c1 + w3 * s1, q3d - (w2 * s1 + w3 * c1) / c2]
-            if rot_order == '231':
-                return [q1d - (w1 * c1 + w3 * s1) * s2 / c2 - w2, q2d + w1 *
-                        s1 - w3 * c1, q3d - (w1 * c1 + w3 * s1) / c2]
-            if rot_order == '312':
-                return [q1d - (w1 * s1 + w2 * c1) * s2 / c2 - w3, q2d - w1 *
-                        c1 + w2 * s1, q3d - (w1 * s1 + w2 * c1) / c2]
-            if rot_order == '132':
-                return [q1d - w1 - (-w2 * c1 + w3 * s1) * s2 / c2, q2d - w2 *
-                        s1 - w3 * c1, q3d - (w2 * c1 - w3 * s1) / c2]
-            if rot_order == '213':
-                return [q1d - (w1 * s1 - w3 * c1) * s2 / c2 - w2, q2d - w1 *
-                        c1 - w3 * s1, q3d - (-w1 * s1 + w3 * c1) / c2]
-            if rot_order == '321':
-                return [q1d - (-w1 * c1 + w2 * s1) * s2 / c2 - w3, q2d - w1 *
-                        s1 - w2 * c1, q3d - (w1 * c1 - w2 * s1) / c2]
-            if rot_order == '121':
-                return [q1d - w1 + (w2 * s1 + w3 * c1) * c2 / s2, q2d - w2 *
-                        c1 + w3 * s1, q3d - (w2 * s1 + w3 * c1) / s2]
-            if rot_order == '131':
-                return [q1d - w1 - (w2 * c1 - w3 * s1) * c2 / s2, q2d - w2 *
-                        s1 - w3 * c1, q3d - (-w2 * c1 + w3 * s1) / s2]
-            if rot_order == '212':
-                return [q1d - (-w1 * s1 + w3 * c1) * c2 / s2 - w2, q2d - w1 *
-                        c1 - w3 * s1, q3d - (w1 * s1 - w3 * c1) / s2]
-            if rot_order == '232':
-                return [q1d + (w1 * c1 + w3 * s1) * c2 / s2 - w2, q2d + w1 *
-                        s1 - w3 * c1, q3d - (w1 * c1 + w3 * s1) / s2]
-            if rot_order == '313':
-                return [q1d + (w1 * s1 + w2 * c1) * c2 / s2 - w3, q2d - w1 *
-                        c1 + w2 * s1, q3d - (w1 * s1 + w2 * c1) / s2]
-            if rot_order == '323':
-                return [q1d - (w1 * c1 - w2 * s1) * c2 / s2 - w3, q2d - w1 *
-                        s1 - w2 * c1, q3d - (-w1 * c1 + w2 * s1) / s2]
-    elif rot_type.lower() == 'quaternion':
-        if rot_order != '':
-            raise ValueError('Cannot have rotation order for quaternion')
-        if len(coords) != 4:
-            raise ValueError('Need 4 coordinates for quaternion')
-        # Actual hard-coded kinematic differential equations
-        e0, e1, e2, e3 = coords
-        w = Matrix(speeds + [0])
-        E = Matrix([[e0, -e3, e2, e1], [e3, e0, -e1, e2], [-e2, e1, e0, e3],
-            [-e1, -e2, -e3, e0]])
-        edots = Matrix([diff(i, dynamicsymbols._t) for i in [e1, e2, e3, e0]])
-        return list(edots.T - 0.5 * w.T * E.T)
+    if not isinstance(frame, ReferenceFrame):
+        raise TypeError('Please enter a valid ReferenceFrame')
+    if not isinstance(point, Point):
+        raise TypeError('Please specify a valid Point')
     else:
-        raise ValueError('Not an approved rotation type for this function')
+        angular_momentum_sys = Vector(0)
+        for e in body:
+            if isinstance(e, (RigidBody, Particle)):
+                angular_momentum_sys += e.angular_momentum(point, frame)
+            else:
+                raise TypeError('*body must have only Particle or RigidBody')
+    return angular_momentum_sys
+
+
+def kinetic_energy(frame, *body):
+    """Kinetic energy of a multibody system.
+
+    Explanation
+    ===========
+
+    This function returns the kinetic energy of a system of Particle's and/or
+    RigidBody's. The kinetic energy of such a system is equal to the sum of
+    the kinetic energies of its constituents. Consider a system, S, comprising
+    a rigid body, A, and a particle, P. The kinetic energy of the system, T,
+    is equal to the vector sum of the kinetic energy of the particle, T1, and
+    the kinetic energy of the rigid body, T2, i.e.
+
+    T = T1 + T2
+
+    Kinetic energy is a scalar.
+
+    Parameters
+    ==========
+
+    frame : ReferenceFrame
+        The frame in which the velocity or angular velocity of the body is
+        defined.
+    body1, body2, body3... : Particle and/or RigidBody
+        The body (or bodies) whose kinetic energy is required.
+
+    Examples
+    ========
+
+    >>> from sympy.physics.mechanics import Point, Particle, ReferenceFrame
+    >>> from sympy.physics.mechanics import RigidBody, outer, kinetic_energy
+    >>> N = ReferenceFrame('N')
+    >>> O = Point('O')
+    >>> O.set_vel(N, 0 * N.x)
+    >>> P = O.locatenew('P', 1 * N.x)
+    >>> P.set_vel(N, 10 * N.x)
+    >>> Pa = Particle('Pa', P, 1)
+    >>> Ac = O.locatenew('Ac', 2 * N.y)
+    >>> Ac.set_vel(N, 5 * N.y)
+    >>> a = ReferenceFrame('a')
+    >>> a.set_ang_vel(N, 10 * N.z)
+    >>> I = outer(N.z, N.z)
+    >>> A = RigidBody('A', Ac, a, 20, (I, Ac))
+    >>> kinetic_energy(N, Pa, A)
+    350
+
+    """
+
+    if not isinstance(frame, ReferenceFrame):
+        raise TypeError('Please enter a valid ReferenceFrame')
+    ke_sys = S.Zero
+    for e in body:
+        if isinstance(e, (RigidBody, Particle)):
+            ke_sys += e.kinetic_energy(frame)
+        else:
+            raise TypeError('*body must have only Particle or RigidBody')
+    return ke_sys
+
+
+def potential_energy(*body):
+    """Potential energy of a multibody system.
+
+    Explanation
+    ===========
+
+    This function returns the potential energy of a system of Particle's and/or
+    RigidBody's. The potential energy of such a system is equal to the sum of
+    the potential energy of its constituents. Consider a system, S, comprising
+    a rigid body, A, and a particle, P. The potential energy of the system, V,
+    is equal to the vector sum of the potential energy of the particle, V1, and
+    the potential energy of the rigid body, V2, i.e.
+
+    V = V1 + V2
+
+    Potential energy is a scalar.
+
+    Parameters
+    ==========
+
+    body1, body2, body3... : Particle and/or RigidBody
+        The body (or bodies) whose potential energy is required.
+
+    Examples
+    ========
+
+    >>> from sympy.physics.mechanics import Point, Particle, ReferenceFrame
+    >>> from sympy.physics.mechanics import RigidBody, outer, potential_energy
+    >>> from sympy import symbols
+    >>> M, m, g, h = symbols('M m g h')
+    >>> N = ReferenceFrame('N')
+    >>> O = Point('O')
+    >>> O.set_vel(N, 0 * N.x)
+    >>> P = O.locatenew('P', 1 * N.x)
+    >>> Pa = Particle('Pa', P, m)
+    >>> Ac = O.locatenew('Ac', 2 * N.y)
+    >>> a = ReferenceFrame('a')
+    >>> I = outer(N.z, N.z)
+    >>> A = RigidBody('A', Ac, a, M, (I, Ac))
+    >>> Pa.potential_energy = m * g * h
+    >>> A.potential_energy = M * g * h
+    >>> potential_energy(Pa, A)
+    M*g*h + g*h*m
+
+    """
+
+    pe_sys = S.Zero
+    for e in body:
+        if isinstance(e, (RigidBody, Particle)):
+            pe_sys += e.potential_energy
+        else:
+            raise TypeError('*body must have only Particle or RigidBody')
+    return pe_sys
+
+
+def gravity(acceleration, *bodies):
+    """
+    Returns a list of gravity forces given the acceleration
+    due to gravity and any number of particles or rigidbodies.
+
+    Example
+    =======
+
+    >>> from sympy.physics.mechanics import ReferenceFrame, Point, Particle, outer, RigidBody
+    >>> from sympy.physics.mechanics.functions import gravity
+    >>> from sympy import symbols
+    >>> N = ReferenceFrame('N')
+    >>> m, M, g = symbols('m M g')
+    >>> F1, F2 = symbols('F1 F2')
+    >>> po = Point('po')
+    >>> pa = Particle('pa', po, m)
+    >>> A = ReferenceFrame('A')
+    >>> P = Point('P')
+    >>> I = outer(A.x, A.x)
+    >>> B = RigidBody('B', P, A, M, (I, P))
+    >>> forceList = [(po, F1), (P, F2)]
+    >>> forceList.extend(gravity(g*N.y, pa, B))
+    >>> forceList
+    [(po, F1), (P, F2), (po, g*m*N.y), (P, M*g*N.y)]
+    """
+
+    gravity_force = []
+    if not bodies:
+        raise TypeError("No bodies(instances of Particle or Rigidbody) were passed.")
+
+    for e in bodies:
+        point = getattr(e, 'masscenter', None)
+        if point is None:
+            point = e.point
+
+        gravity_force.append((point, e.mass*acceleration))
+
+    return gravity_force
+
+
+def center_of_mass(point, *bodies):
+    """
+    Returns the position vector from the given point to the center of mass
+    of the given bodies(particles or rigidbodies).
+
+    Example
+    =======
+
+    >>> from sympy import symbols, S
+    >>> from sympy.physics.vector import Point
+    >>> from sympy.physics.mechanics import Particle, ReferenceFrame, RigidBody, outer
+    >>> from sympy.physics.mechanics.functions import center_of_mass
+    >>> a = ReferenceFrame('a')
+    >>> m = symbols('m', real=True)
+    >>> p1 = Particle('p1', Point('p1_pt'), S(1))
+    >>> p2 = Particle('p2', Point('p2_pt'), S(2))
+    >>> p3 = Particle('p3', Point('p3_pt'), S(3))
+    >>> p4 = Particle('p4', Point('p4_pt'), m)
+    >>> b_f = ReferenceFrame('b_f')
+    >>> b_cm = Point('b_cm')
+    >>> mb = symbols('mb')
+    >>> b = RigidBody('b', b_cm, b_f, mb, (outer(b_f.x, b_f.x), b_cm))
+    >>> p2.point.set_pos(p1.point, a.x)
+    >>> p3.point.set_pos(p1.point, a.x + a.y)
+    >>> p4.point.set_pos(p1.point, a.y)
+    >>> b.masscenter.set_pos(p1.point, a.y + a.z)
+    >>> point_o=Point('o')
+    >>> point_o.set_pos(p1.point, center_of_mass(p1.point, p1, p2, p3, p4, b))
+    >>> expr = 5/(m + mb + 6)*a.x + (m + mb + 3)/(m + mb + 6)*a.y + mb/(m + mb + 6)*a.z
+    >>> point_o.pos_from(p1.point)
+    5/(m + mb + 6)*a.x + (m + mb + 3)/(m + mb + 6)*a.y + mb/(m + mb + 6)*a.z
+    """
+    if not bodies:
+        raise TypeError("No bodies(instances of Particle or Rigidbody) were passed.")
+
+    total_mass = 0
+    vec = Vector(0)
+    for i in bodies:
+        total_mass += i.mass
+
+        masscenter = getattr(i, 'masscenter', None)
+        if masscenter is None:
+            masscenter = i.point
+        vec += i.mass*masscenter.pos_from(point)
+
+    return vec/total_mass
+
+
+def Lagrangian(frame, *body):
+    """Lagrangian of a multibody system.
+
+    Explanation
+    ===========
+
+    This function returns the Lagrangian of a system of Particle's and/or
+    RigidBody's. The Lagrangian of such a system is equal to the difference
+    between the kinetic energies and potential energies of its constituents. If
+    T and V are the kinetic and potential energies of a system then it's
+    Lagrangian, L, is defined as
+
+    L = T - V
+
+    The Lagrangian is a scalar.
+
+    Parameters
+    ==========
+
+    frame : ReferenceFrame
+        The frame in which the velocity or angular velocity of the body is
+        defined to determine the kinetic energy.
+
+    body1, body2, body3... : Particle and/or RigidBody
+        The body (or bodies) whose Lagrangian is required.
+
+    Examples
+    ========
+
+    >>> from sympy.physics.mechanics import Point, Particle, ReferenceFrame
+    >>> from sympy.physics.mechanics import RigidBody, outer, Lagrangian
+    >>> from sympy import symbols
+    >>> M, m, g, h = symbols('M m g h')
+    >>> N = ReferenceFrame('N')
+    >>> O = Point('O')
+    >>> O.set_vel(N, 0 * N.x)
+    >>> P = O.locatenew('P', 1 * N.x)
+    >>> P.set_vel(N, 10 * N.x)
+    >>> Pa = Particle('Pa', P, 1)
+    >>> Ac = O.locatenew('Ac', 2 * N.y)
+    >>> Ac.set_vel(N, 5 * N.y)
+    >>> a = ReferenceFrame('a')
+    >>> a.set_ang_vel(N, 10 * N.z)
+    >>> I = outer(N.z, N.z)
+    >>> A = RigidBody('A', Ac, a, 20, (I, Ac))
+    >>> Pa.potential_energy = m * g * h
+    >>> A.potential_energy = M * g * h
+    >>> Lagrangian(N, Pa, A)
+    -M*g*h - g*h*m + 350
+
+    """
+
+    if not isinstance(frame, ReferenceFrame):
+        raise TypeError('Please supply a valid ReferenceFrame')
+    for e in body:
+        if not isinstance(e, (RigidBody, Particle)):
+            raise TypeError('*body must have only Particle or RigidBody')
+    return kinetic_energy(frame, *body) - potential_energy(*body)
+
+
+def find_dynamicsymbols(expression, exclude=None, reference_frame=None):
+    """Find all dynamicsymbols in expression.
+
+    Explanation
+    ===========
+
+    If the optional ``exclude`` kwarg is used, only dynamicsymbols
+    not in the iterable ``exclude`` are returned.
+    If we intend to apply this function on a vector, the optional
+    ``reference_frame`` is also used to inform about the corresponding frame
+    with respect to which the dynamic symbols of the given vector is to be
+    determined.
+
+    Parameters
+    ==========
+
+    expression : SymPy expression
+
+    exclude : iterable of dynamicsymbols, optional
+
+    reference_frame : ReferenceFrame, optional
+        The frame with respect to which the dynamic symbols of the
+        given vector is to be determined.
+
+    Examples
+    ========
+
+    >>> from sympy.physics.mechanics import dynamicsymbols, find_dynamicsymbols
+    >>> from sympy.physics.mechanics import ReferenceFrame
+    >>> x, y = dynamicsymbols('x, y')
+    >>> expr = x + x.diff()*y
+    >>> find_dynamicsymbols(expr)
+    {x(t), y(t), Derivative(x(t), t)}
+    >>> find_dynamicsymbols(expr, exclude=[x, y])
+    {Derivative(x(t), t)}
+    >>> a, b, c = dynamicsymbols('a, b, c')
+    >>> A = ReferenceFrame('A')
+    >>> v = a * A.x + b * A.y + c * A.z
+    >>> find_dynamicsymbols(v, reference_frame=A)
+    {a(t), b(t), c(t)}
+
+    """
+    t_set = {dynamicsymbols._t}
+    if exclude:
+        if iterable(exclude):
+            exclude_set = set(exclude)
+        else:
+            raise TypeError("exclude kwarg must be iterable")
+    else:
+        exclude_set = set()
+    if isinstance(expression, Vector):
+        if reference_frame is None:
+            raise ValueError("You must provide reference_frame when passing a "
+                             "vector expression, got %s." % reference_frame)
+        else:
+            expression = expression.to_matrix(reference_frame)
+    return {i for i in expression.atoms(AppliedUndef, Derivative) if
+            i.free_symbols == t_set} - exclude_set
+
+
+def msubs(expr, *sub_dicts, smart=False, **kwargs):
+    """A custom subs for use on expressions derived in physics.mechanics.
+
+    Traverses the expression tree once, performing the subs found in sub_dicts.
+    Terms inside ``Derivative`` expressions are ignored:
+
+    Examples
+    ========
+
+    >>> from sympy.physics.mechanics import dynamicsymbols, msubs
+    >>> x = dynamicsymbols('x')
+    >>> msubs(x.diff() + x, {x: 1})
+    Derivative(x(t), t) + 1
+
+    Note that sub_dicts can be a single dictionary, or several dictionaries:
+
+    >>> x, y, z = dynamicsymbols('x, y, z')
+    >>> sub1 = {x: 1, y: 2}
+    >>> sub2 = {z: 3, x.diff(): 4}
+    >>> msubs(x.diff() + x + y + z, sub1, sub2)
+    10
+
+    If smart=True (default False), also checks for conditions that may result
+    in ``nan``, but if simplified would yield a valid expression. For example:
+
+    >>> from sympy import sin, tan
+    >>> (sin(x)/tan(x)).subs(x, 0)
+    nan
+    >>> msubs(sin(x)/tan(x), {x: 0}, smart=True)
+    1
+
+    It does this by first replacing all ``tan`` with ``sin/cos``. Then each
+    node is traversed. If the node is a fraction, subs is first evaluated on
+    the denominator. If this results in 0, simplification of the entire
+    fraction is attempted. Using this selective simplification, only
+    subexpressions that result in 1/0 are targeted, resulting in faster
+    performance.
+
+    """
+
+    sub_dict = dict_merge(*sub_dicts)
+    if smart:
+        func = _smart_subs
+    elif hasattr(expr, 'msubs'):
+        return expr.msubs(sub_dict)
+    else:
+        func = lambda expr, sub_dict: _crawl(expr, _sub_func, sub_dict)
+    if isinstance(expr, (Matrix, Vector, Dyadic)):
+        return expr.applyfunc(lambda x: func(x, sub_dict))
+    else:
+        return func(expr, sub_dict)
+
+
+def _crawl(expr, func, *args, **kwargs):
+    """Crawl the expression tree, and apply func to every node."""
+    val = func(expr, *args, **kwargs)
+    if val is not None:
+        return val
+    new_args = (_crawl(arg, func, *args, **kwargs) for arg in expr.args)
+    return expr.func(*new_args)
+
+
+def _sub_func(expr, sub_dict):
+    """Perform direct matching substitution, ignoring derivatives."""
+    if expr in sub_dict:
+        return sub_dict[expr]
+    elif not expr.args or expr.is_Derivative:
+        return expr
+
+
+def _tan_repl_func(expr):
+    """Replace tan with sin/cos."""
+    if isinstance(expr, tan):
+        return sin(*expr.args) / cos(*expr.args)
+    elif not expr.args or expr.is_Derivative:
+        return expr
+
+
+def _smart_subs(expr, sub_dict):
+    """Performs subs, checking for conditions that may result in `nan` or
+    `oo`, and attempts to simplify them out.
+
+    The expression tree is traversed twice, and the following steps are
+    performed on each expression node:
+    - First traverse:
+        Replace all `tan` with `sin/cos`.
+    - Second traverse:
+        If node is a fraction, check if the denominator evaluates to 0.
+        If so, attempt to simplify it out. Then if node is in sub_dict,
+        sub in the corresponding value."""
+    expr = _crawl(expr, _tan_repl_func)
+
+    def _recurser(expr, sub_dict):
+        # Decompose the expression into num, den
+        num, den = _fraction_decomp(expr)
+        if den != 1:
+            # If there is a non trivial denominator, we need to handle it
+            denom_subbed = _recurser(den, sub_dict)
+            if denom_subbed.evalf() == 0:
+                # If denom is 0 after this, attempt to simplify the bad expr
+                expr = simplify(expr)
+            else:
+                # Expression won't result in nan, find numerator
+                num_subbed = _recurser(num, sub_dict)
+                return num_subbed / denom_subbed
+        # We have to crawl the tree manually, because `expr` may have been
+        # modified in the simplify step. First, perform subs as normal:
+        val = _sub_func(expr, sub_dict)
+        if val is not None:
+            return val
+        new_args = (_recurser(arg, sub_dict) for arg in expr.args)
+        return expr.func(*new_args)
+    return _recurser(expr, sub_dict)
+
+
+def _fraction_decomp(expr):
+    """Return num, den such that expr = num/den"""
+    if not isinstance(expr, Mul):
+        return expr, 1
+    num = []
+    den = []
+    for a in expr.args:
+        if a.is_Pow and a.args[1] < 0:
+            den.append(1 / a)
+        else:
+            num.append(a)
+    if not den:
+        return expr, 1
+    num = Mul(*num)
+    den = Mul(*den)
+    return num, den
+
+
+def _f_list_parser(fl, ref_frame):
+    """Parses the provided forcelist composed of items
+    of the form (obj, force).
+    Returns a tuple containing:
+        vel_list: The velocity (ang_vel for Frames, vel for Points) in
+                the provided reference frame.
+        f_list: The forces.
+
+    Used internally in the KanesMethod and LagrangesMethod classes.
+    """
+    def flist_iter():
+        for pair in fl:
+            obj, force = pair
+            if isinstance(obj, ReferenceFrame):
+                yield obj.ang_vel_in(ref_frame), force
+            elif isinstance(obj, Point):
+                yield obj.vel(ref_frame), force
+            else:
+                raise TypeError('First entry in each forcelist pair must '
+                                'be a point or frame.')
+
+    if not fl:
+        vel_list, f_list = (), ()
+    else:
+        unzip = lambda l: list(zip(*l)) if l[0] else [(), ()]
+        vel_list, f_list = unzip(list(flist_iter()))
+    return vel_list, f_list

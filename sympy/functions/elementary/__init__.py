@@ -1,6 +1,1 @@
-import complexes
-import exponential
-import hyperbolic
-import integers
-import trigonometric
-import miscellaneous
+# Stub __init__.py for sympy.functions.elementary

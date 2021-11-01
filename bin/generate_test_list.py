@@ -22,20 +22,24 @@ tests = [
     'sympy.simplify.tests',
     'sympy.solvers.tests',
     'sympy.specfun.tests',
-    'sympy.statistics.tests',
     'sympy.test_external',
     'sympy.utilities.tests',
     ]
 
 """
 
+from __future__ import print_function
+
 from glob import glob
+
 
 def get_paths(level=15):
     """
     Generates a set of paths for testfiles searching.
 
-    Example:
+    Examples
+    ========
+
     >>> get_paths(2)
     ['sympy/test_*.py', 'sympy/*/test_*.py', 'sympy/*/*/test_*.py']
     >>> get_paths(6)
@@ -46,17 +50,22 @@ def get_paths(level=15):
     """
     wildcards = ["/"]
     for i in range(level):
-        wildcards.append(wildcards[-1]+"*/")
-    p = ["sympy"+x+"test_*.py" for x in wildcards]
+        wildcards.append(wildcards[-1] + "*/")
+    p = ["sympy" + x + "test_*.py" for x in wildcards]
     return p
 
-g = []
-for x in get_paths():
-    g.extend(glob(x))
-g = [".".join(x.split("/")[:-1]) for x in g]
-g = list(set(g))
-g.sort()
-print "tests = ["
-for x in g:
-    print "    '%s'," % x
-print "    ]"
+def generate_test_list():
+    g = []
+    for x in get_paths():
+        g.extend(glob(x))
+    g = [".".join(x.split("/")[:-1]) for x in g]
+    g = list(set(g))
+    g.sort()
+    return g
+
+if __name__ == '__main__':
+    g = generate_test_list()
+    print("tests = [")
+    for x in g:
+        print("    '%s'," % x)
+    print("]")

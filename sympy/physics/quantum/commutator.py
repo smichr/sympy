@@ -1,6 +1,10 @@
 """The commutator: [A,B] = A*B - B*A."""
 
-from sympy import S, Expr, Mul, Add
+from sympy.core.add import Add
+from sympy.core.expr import Expr
+from sympy.core.mul import Mul
+from sympy.core.power import Pow
+from sympy.core.singleton import S
 from sympy.printing.pretty.stringpict import prettyForm
 
 from sympy.physics.quantum.dagger import Dagger
@@ -16,15 +20,17 @@ __all__ = [
 #-----------------------------------------------------------------------------
 
 
-
 class Commutator(Expr):
     """The standard commutator, in an unevaluated state.
+
+    Explanation
+    ===========
 
     Evaluating a commutator is defined [1]_ as: ``[A, B] = A*B - B*A``. This
     class returns the commutator in an unevaluated form. To evaluate the
     commutator, use the ``.doit()`` method.
 
-    Cannonical ordering of a commutator is ``[A, B]`` for ``A < B``. The
+    Canonical ordering of a commutator is ``[A, B]`` for ``A < B``. The
     arguments of the commutator are put into canonical order using ``__cmp__``.
     If ``B < A``, then ``[B, A]`` is returned as ``-[A, B]``.
 
@@ -84,7 +90,7 @@ class Commutator(Expr):
     References
     ==========
 
-    .. [1] http://en.wikipedia.org/wiki/Commutator
+    .. [1] https://en.wikipedia.org/wiki/Commutator
     """
     is_commutative = False
 
@@ -97,13 +103,14 @@ class Commutator(Expr):
 
     @classmethod
     def eval(cls, a, b):
-        if not (a and b): return S.Zero
-        if a == b: return S.Zero
+        if not (a and b):
+            return S.Zero
+        if a == b:
+            return S.Zero
         if a.is_commutative or b.is_commutative:
             return S.Zero
 
         # [xA,yB]  ->  xy*[A,B]
-        # from sympy.physics.qmul import QMul
         ca, nca = a.args_cnc()
         cb, ncb = b.args_cnc()
         c_part = ca + cb
@@ -111,54 +118,85 @@ class Commutator(Expr):
             return Mul(Mul(*c_part), cls(Mul._from_args(nca), Mul._from_args(ncb)))
 
         # Canonical ordering of arguments
-        # The Commutator [A,B] is on canonical form if A < B.
+        # The Commutator [A, B] is in canonical form if A < B.
         if a.compare(b) == 1:
-            return S.NegativeOne*cls(b,a)
+            return S.NegativeOne*cls(b, a)
+
+    def _expand_pow(self, A, B, sign):
+        exp = A.exp
+        if not exp.is_integer or not exp.is_constant() or abs(exp) <= 1:
+            # nothing to do
+            return self
+        base = A.base
+        if exp.is_negative:
+            base = A.base**-1
+            exp = -exp
+        comm = Commutator(base, B).expand(commutator=True)
+
+        result = base**(exp - 1) * comm
+        for i in range(1, exp):
+            result += base**(exp - 1 - i) * comm * base**i
+        return sign*result.expand()
 
     def _eval_expand_commutator(self, **hints):
-        A = self.args[0].expand(**hints)
-        B = self.args[1].expand(**hints)
-
-        result = None
+        A = self.args[0]
+        B = self.args[1]
 
         if isinstance(A, Add):
-            # [A+B,C]  ->  [A,C] + [B,C]
-            result = Add(
-                *[Commutator(term,B).expand(**hints)\
-                  for term in A.args]
-            )
+            # [A + B, C]  ->  [A, C] + [B, C]
+            sargs = []
+            for term in A.args:
+                comm = Commutator(term, B)
+                if isinstance(comm, Commutator):
+                    comm = comm._eval_expand_commutator()
+                sargs.append(comm)
+            return Add(*sargs)
         elif isinstance(B, Add):
-            # [A,B+C]  ->  [A,B] + [A,C]
-            result = Add(
-                *[Commutator(A,term).expand(**hints)\
-                  for term in B.args]
-            )
+            # [A, B + C]  ->  [A, B] + [A, C]
+            sargs = []
+            for term in B.args:
+                comm = Commutator(A, term)
+                if isinstance(comm, Commutator):
+                    comm = comm._eval_expand_commutator()
+                sargs.append(comm)
+            return Add(*sargs)
         elif isinstance(A, Mul):
-            # [A*B,C] -> A*[B,C] + [A,C]*B
+            # [A*B, C] -> A*[B, C] + [A, C]*B
             a = A.args[0]
             b = Mul(*A.args[1:])
             c = B
-            comm1 = Commutator(b,c).expand(**hints)
-            comm2 = Commutator(a,c).expand(**hints)
+            comm1 = Commutator(b, c)
+            comm2 = Commutator(a, c)
+            if isinstance(comm1, Commutator):
+                comm1 = comm1._eval_expand_commutator()
+            if isinstance(comm2, Commutator):
+                comm2 = comm2._eval_expand_commutator()
             first = Mul(a, comm1)
             second = Mul(comm2, b)
-            result = Add(first, second)
+            return Add(first, second)
         elif isinstance(B, Mul):
-            # [A,B*C] -> [A,B]*C + B*[A,C]
+            # [A, B*C] -> [A, B]*C + B*[A, C]
             a = A
             b = B.args[0]
             c = Mul(*B.args[1:])
-            comm1 = Commutator(a,b).expand(**hints)
-            comm2 = Commutator(a,c).expand(**hints)
+            comm1 = Commutator(a, b)
+            comm2 = Commutator(a, c)
+            if isinstance(comm1, Commutator):
+                comm1 = comm1._eval_expand_commutator()
+            if isinstance(comm2, Commutator):
+                comm2 = comm2._eval_expand_commutator()
             first = Mul(comm1, c)
             second = Mul(b, comm2)
-            result = Add(first, second)
+            return Add(first, second)
+        elif isinstance(A, Pow):
+            # [A**n, C] -> A**(n - 1)*[A, C] + A**(n - 2)*[A, C]*A + ... + [A, C]*A**(n-1)
+            return self._expand_pow(A, B, 1)
+        elif isinstance(B, Pow):
+            # [A, C**n] -> C**(n - 1)*[C, A] + C**(n - 2)*[C, A]*C + ... + [C, A]*C**(n-1)
+            return self._expand_pow(B, A, -1)
 
-        if result is None:
-            # No changes, so return self
-            return self
-        else:
-            return result
+        # No changes, so return self
+        return self
 
     def doit(self, **hints):
         """ Evaluate commutator """
@@ -176,21 +214,23 @@ class Commutator(Expr):
                 return comm.doit(**hints)
         return (A*B - B*A).doit(**hints)
 
-    def _eval_dagger(self):
+    def _eval_adjoint(self):
         return Commutator(Dagger(self.args[1]), Dagger(self.args[0]))
 
     def _sympyrepr(self, printer, *args):
         return "%s(%s,%s)" % (
-            self.__class__.__name__, printer._print(self.args[0]), printer._print(self.args[1])
+            self.__class__.__name__, printer._print(
+                self.args[0]), printer._print(self.args[1])
         )
 
     def _sympystr(self, printer, *args):
-        return "[%s,%s]" % (self.args[0], self.args[1])
+        return "[%s,%s]" % (
+            printer._print(self.args[0]), printer._print(self.args[1]))
 
     def _pretty(self, printer, *args):
         pform = printer._print(self.args[0], *args)
-        pform = prettyForm(*pform.right((prettyForm(u','))))
-        pform = prettyForm(*pform.right((printer._print(self.args[1], *args))))
+        pform = prettyForm(*pform.right(prettyForm(',')))
+        pform = prettyForm(*pform.right(printer._print(self.args[1], *args)))
         pform = prettyForm(*pform.parens(left='[', right=']'))
         return pform
 

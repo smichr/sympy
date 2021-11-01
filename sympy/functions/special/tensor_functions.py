@@ -1,16 +1,22 @@
-from sympy.core.function import Function, C
 from sympy.core import S, Integer
+from sympy.core.function import Function
+from sympy.core.logic import fuzzy_not
 from sympy.core.mul import prod
+from sympy.core.relational import Ne
+from sympy.core.sorting import default_sort_key
+from sympy.external.gmpy import SYMPY_INTS
+from sympy.utilities.iterables import has_dups
 
 ###############################################################################
 ###################### Kronecker Delta, Levi-Civita etc. ######################
 ###############################################################################
 
+
 def Eijk(*args, **kwargs):
     """
     Represent the Levi-Civita symbol.
 
-    This is just compatibility wrapper to LeviCivita().
+    This is a compatibility wrapper to ``LeviCivita()``.
 
     See Also
     ========
@@ -20,17 +26,23 @@ def Eijk(*args, **kwargs):
     """
     return LeviCivita(*args, **kwargs)
 
+
 def eval_levicivita(*args):
     """Evaluate Levi-Civita symbol."""
-    from sympy import factorial
+    from sympy.functions.combinatorial.factorials import factorial
     n = len(args)
     return prod(
-        prod(args[j] - args[i] for j in xrange(i + 1, n))
-        / factorial(i) for i in xrange(n))
+        prod(args[j] - args[i] for j in range(i + 1, n))
+        / factorial(i) for i in range(n))
     # converting factorial(i) to int is slightly faster
 
+
 class LeviCivita(Function):
-    """Represent the Levi-Civita symbol.
+    """
+    Represent the Levi-Civita symbol.
+
+    Explanation
+    ===========
 
     For even permutations of indices it returns 1, for odd permutations -1, and
     for everything else (a repeated index) it returns 0.
@@ -59,42 +71,42 @@ class LeviCivita(Function):
     Eijk
 
     """
+
+    is_integer = True
+
     @classmethod
     def eval(cls, *args):
-        if all(isinstance(a, (int, Integer)) for a in args):
+        if all(isinstance(a, (SYMPY_INTS, Integer)) for a in args):
             return eval_levicivita(*args)
-        if len(set(args)) < len(args):
+        if has_dups(args):
             return S.Zero
 
     def doit(self):
         return eval_levicivita(*self.args)
 
+
 class KroneckerDelta(Function):
-    """The discrete, or Kronecker, delta function.
+    """
+    The discrete, or Kronecker, delta function.
 
-    A function that takes in two integers i and j. It returns 0 if i and j are
-    not equal or it returns 1 if i and j are equal.
+    Explanation
+    ===========
 
-    Parameters
-    ==========
-
-    i : Number, Symbol
-        The first index of the delta function.
-    j : Number, Symbol
-        The second index of the delta function.
+    A function that takes in two integers $i$ and $j$. It returns $0$ if $i$
+    and $j$ are not equal, or it returns $1$ if $i$ and $j$ are equal.
 
     Examples
     ========
 
-    A simple example with integer indices::
+    An example with integer indices:
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
+        >>> from sympy import KroneckerDelta
         >>> KroneckerDelta(1, 2)
         0
         >>> KroneckerDelta(3, 3)
         1
 
-    Symbolic indices::
+    Symbolic indices:
 
         >>> from sympy.abc import i, j, k
         >>> KroneckerDelta(i, j)
@@ -106,30 +118,38 @@ class KroneckerDelta(Function):
         >>> KroneckerDelta(i, i + 1 + k)
         KroneckerDelta(i, i + k + 1)
 
+    Parameters
+    ==========
+
+    i : Number, Symbol
+        The first index of the delta function.
+    j : Number, Symbol
+        The second index of the delta function.
+
     See Also
     ========
 
     eval
-    sympy.functions.special.delta_functions.DiracDelta
+    DiracDelta
 
     References
     ==========
 
-    http://en.wikipedia.org/wiki/Kronecker_delta
+    .. [1] https://en.wikipedia.org/wiki/Kronecker_delta
+
     """
 
-    nargs = 2
-    is_commutative=True
+    is_integer = True
 
     @classmethod
-    def eval(cls, i, j):
+    def eval(cls, i, j, delta_range=None):
         """
         Evaluates the discrete delta function.
 
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
+        >>> from sympy import KroneckerDelta
         >>> from sympy.abc import i, j, k
 
         >>> KroneckerDelta(i, j)
@@ -144,35 +164,59 @@ class KroneckerDelta(Function):
         # indirect doctest
 
         """
-        if (i > j) is True:
-            return cls(j, i)
 
-        diff = C.Abs(i - j)
-        if diff == 0:
+        if delta_range is not None:
+            dinf, dsup = delta_range
+            if (dinf - i > 0) == True:
+                return S.Zero
+            if (dinf - j > 0) == True:
+                return S.Zero
+            if (dsup - i < 0) == True:
+                return S.Zero
+            if (dsup - j < 0) == True:
+                return S.Zero
+
+        diff = i - j
+        if diff.is_zero:
             return S.One
-        elif diff.is_number:
+        elif fuzzy_not(diff.is_zero):
             return S.Zero
-        elif i != 0 and diff.is_nonzero:
-            return KroneckerDelta(0, diff.args[0])
 
         if i.assumptions0.get("below_fermi") and \
-           j.assumptions0.get("above_fermi"):
+                j.assumptions0.get("above_fermi"):
             return S.Zero
         if j.assumptions0.get("below_fermi") and \
-           i.assumptions0.get("above_fermi"):
+                i.assumptions0.get("above_fermi"):
             return S.Zero
+        # to make KroneckerDelta canonical
+        # following lines will check if inputs are in order
+        # if not, will return KroneckerDelta with correct order
+        if i != min(i, j, key=default_sort_key):
+            if delta_range:
+                return cls(j, i, delta_range)
+            else:
+                return cls(j, i)
 
+    @property
+    def delta_range(self):
+        if len(self.args) > 2:
+            return self.args[2]
+
+    def _eval_power(self, expt):
+        if expt.is_positive:
+            return self
+        if expt.is_negative and not -expt is S.One:
+            return 1/self
 
     @property
     def is_above_fermi(self):
         """
-        True if Delta can be non-zero above fermi
+        True if Delta can be non-zero above fermi.
 
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
-        >>> from sympy import Symbol
+        >>> from sympy import KroneckerDelta, Symbol
         >>> a = Symbol('a', above_fermi=True)
         >>> i = Symbol('i', below_fermi=True)
         >>> p = Symbol('p')
@@ -189,7 +233,6 @@ class KroneckerDelta(Function):
 
         is_below_fermi, is_only_below_fermi, is_only_above_fermi
 
-
         """
         if self.args[0].assumptions0.get("below_fermi"):
             return False
@@ -200,13 +243,12 @@ class KroneckerDelta(Function):
     @property
     def is_below_fermi(self):
         """
-        True if Delta can be non-zero below fermi
+        True if Delta can be non-zero below fermi.
 
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
-        >>> from sympy import Symbol
+        >>> from sympy import KroneckerDelta, Symbol
         >>> a = Symbol('a', above_fermi=True)
         >>> i = Symbol('i', below_fermi=True)
         >>> p = Symbol('p')
@@ -233,13 +275,12 @@ class KroneckerDelta(Function):
     @property
     def is_only_above_fermi(self):
         """
-        True if Delta is restricted to above fermi
+        True if Delta is restricted to above fermi.
 
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
-        >>> from sympy import Symbol
+        >>> from sympy import KroneckerDelta, Symbol
         >>> a = Symbol('a', above_fermi=True)
         >>> i = Symbol('i', below_fermi=True)
         >>> p = Symbol('p')
@@ -256,7 +297,6 @@ class KroneckerDelta(Function):
 
         is_above_fermi, is_below_fermi, is_only_below_fermi
 
-
         """
         return ( self.args[0].assumptions0.get("above_fermi")
                 or
@@ -266,13 +306,12 @@ class KroneckerDelta(Function):
     @property
     def is_only_below_fermi(self):
         """
-        True if Delta is restricted to below fermi
+        True if Delta is restricted to below fermi.
 
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
-        >>> from sympy import Symbol
+        >>> from sympy import KroneckerDelta, Symbol
         >>> a = Symbol('a', above_fermi=True)
         >>> i = Symbol('i', below_fermi=True)
         >>> p = Symbol('p')
@@ -289,7 +328,6 @@ class KroneckerDelta(Function):
 
         is_above_fermi, is_below_fermi, is_only_above_fermi
 
-
         """
         return ( self.args[0].assumptions0.get("below_fermi")
                 or
@@ -304,8 +342,7 @@ class KroneckerDelta(Function):
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
-        >>> from sympy import Symbol
+        >>> from sympy import KroneckerDelta, Symbol
         >>> a = Symbol('a', above_fermi=True)
         >>> i = Symbol('i', below_fermi=True)
         >>> p = Symbol('p')
@@ -328,21 +365,22 @@ class KroneckerDelta(Function):
         # if both indices are general we are True, else false
         return self.is_below_fermi and self.is_above_fermi
 
-
     @property
     def preferred_index(self):
         """
         Returns the index which is preferred to keep in the final expression.
 
+        Explanation
+        ===========
+
         The preferred index is the index with more information regarding fermi
-        level.  If indices contain same information, 'a' is preferred before
+        level. If indices contain the same information, 'a' is preferred before
         'b'.
 
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
-        >>> from sympy import Symbol
+        >>> from sympy import KroneckerDelta, Symbol
         >>> a = Symbol('a', above_fermi=True)
         >>> i = Symbol('i', below_fermi=True)
         >>> j = Symbol('j', below_fermi=True)
@@ -371,15 +409,17 @@ class KroneckerDelta(Function):
         Returns the index which is preferred to substitute in the final
         expression.
 
+        Explanation
+        ===========
+
         The index to substitute is the index with less information regarding
-        fermi level.  If indices contain same information, 'a' is preferred
+        fermi level. If indices contain the same information, 'a' is preferred
         before 'b'.
 
         Examples
         ========
 
-        >>> from sympy.functions.special.tensor_functions import KroneckerDelta
-        >>> from sympy import Symbol
+        >>> from sympy import KroneckerDelta, Symbol
         >>> a = Symbol('a', above_fermi=True)
         >>> i = Symbol('i', below_fermi=True)
         >>> j = Symbol('j', below_fermi=True)
@@ -407,7 +447,8 @@ class KroneckerDelta(Function):
         Returns the index which is preferred to keep in the final expression.
 
         The preferred index is the index with more information regarding fermi
-        level.  If indices contain same information, index 0 is returned.
+        level. If indices contain the same information, index 0 is returned.
+
         """
         if not self.is_above_fermi:
             if self.args[0].assumptions0.get("below_fermi"):
@@ -422,17 +463,11 @@ class KroneckerDelta(Function):
         else:
             return 0
 
-    def _dagger_(self):
-        return self
+    @property
+    def indices(self):
+        return self.args[0:2]
 
-    def _eval_dagger(self):
-        return self
-
-    def _sympyrepr(self, printer, *args):
-        return "%s(%s, %s)"% (self.__class__.__name__, self.args[0], \
-        self.args[1])
-
-    def _latex(self, printer, *args):
-        i = printer._print(self.args[0], *args)
-        j = printer._print(self.args[1], *args)
-        return '\\delta_{%s %s}' % (i, j)
+    def _eval_rewrite_as_Piecewise(self, *args, **kwargs):
+        from sympy.functions.elementary.piecewise import Piecewise
+        i, j = args
+        return Piecewise((0, Ne(i, j)), (1, True))

@@ -4,20 +4,22 @@ Further improvements: eliminate calls to pl_true, implement branching rules,
 efficient unit propagation.
 
 References:
-  - http://en.wikipedia.org/wiki/DPLL_algorithm
-  - http://bioinformatics.louisville.edu/ouyang/MingOuyangThesis.pdf
+  - https://en.wikipedia.org/wiki/DPLL_algorithm
+  - https://www.researchgate.net/publication/242384772_Implementations_of_the_DPLL_Algorithm
 """
-from sympy.core import Symbol
-from sympy import Predicate
+
+from sympy.core.sorting import default_sort_key
 from sympy.logic.boolalg import Or, Not, conjuncts, disjuncts, to_cnf, \
-    to_int_repr
+    to_int_repr, _find_predicates
+from sympy.assumptions.cnf import CNF
 from sympy.logic.inference import pl_true, literal_symbol
+
 
 def dpll_satisfiable(expr):
     """
     Check satisfiability of a propositional sentence.
     It returns a model rather than True when it succeeds
-    >>> from sympy import symbols
+
     >>> from sympy.abc import A, B
     >>> from sympy.logic.algorithms.dpll import dpll_satisfiable
     >>> dpll_satisfiable(A & ~B)
@@ -26,17 +28,23 @@ def dpll_satisfiable(expr):
     False
 
     """
-    symbols = list(expr.atoms(Symbol, Predicate))
+    if not isinstance(expr, CNF):
+        clauses = conjuncts(to_cnf(expr))
+    else:
+        clauses = expr.clauses
+    if False in clauses:
+        return False
+    symbols = sorted(_find_predicates(expr), key=default_sort_key)
     symbols_int_repr = set(range(1, len(symbols) + 1))
-    clauses = conjuncts(to_cnf(expr))
     clauses_int_repr = to_int_repr(clauses, symbols)
     result = dpll_int_repr(clauses_int_repr, symbols_int_repr, {})
     if not result:
         return result
     output = {}
     for key in result:
-        output.update({symbols[key-1]: result[key]})
+        output.update({symbols[key - 1]: result[key]})
     return output
+
 
 def dpll(clauses, symbols, model):
     """
@@ -54,27 +62,30 @@ def dpll(clauses, symbols, model):
     while P:
         model.update({P: value})
         symbols.remove(P)
-        if not value: P = ~P
+        if not value:
+            P = ~P
         clauses = unit_propagate(clauses, P)
         P, value = find_unit_clause(clauses, model)
     P, value = find_pure_symbol(symbols, clauses)
     while P:
         model.update({P: value})
         symbols.remove(P)
-        if not value: P = ~P
+        if not value:
+            P = ~P
         clauses = unit_propagate(clauses, P)
         P, value = find_pure_symbol(symbols, clauses)
     # end DP kernel
     unknown_clauses = []
     for c in clauses:
-        val =  pl_true(c, model)
-        if val == False:
+        val = pl_true(c, model)
+        if val is False:
             return False
-        if val != True:
+        if val is not True:
             unknown_clauses.append(c)
     if not unknown_clauses:
         return model
-    if not clauses: return model
+    if not clauses:
+        return model
     P = symbols.pop()
     model_copy = model.copy()
     model.update({P: True})
@@ -83,13 +94,14 @@ def dpll(clauses, symbols, model):
     return (dpll(unit_propagate(unknown_clauses, P), symbols, model) or
             dpll(unit_propagate(unknown_clauses, Not(P)), symbols_copy, model_copy))
 
+
 def dpll_int_repr(clauses, symbols, model):
     """
     Compute satisfiability in a partial model.
     Arguments are expected to be in integer representation
 
     >>> from sympy.logic.algorithms.dpll import dpll_int_repr
-    >>> dpll_int_repr([set([1]), set([2]), set([3])], set([1, 2]), {3: False})
+    >>> dpll_int_repr([{1}, {2}, {3}], {1, 2}, {3: False})
     False
 
     """
@@ -113,7 +125,7 @@ def dpll_int_repr(clauses, symbols, model):
     # end DP kernel
     unknown_clauses = []
     for c in clauses:
-        val =  pl_true_int_repr(c, model)
+        val = pl_true_int_repr(c, model)
         if val is False:
             return False
         if val is not True:
@@ -130,6 +142,7 @@ def dpll_int_repr(clauses, symbols, model):
 
 ### helper methods for DPLL
 
+
 def pl_true_int_repr(clause, model={}):
     """
     Lightweight version of pl_true.
@@ -137,8 +150,8 @@ def pl_true_int_repr(clause, model={}):
     inside dpll_int_repr, it is not meant to be used directly.
 
     >>> from sympy.logic.algorithms.dpll import pl_true_int_repr
-    >>> pl_true_int_repr(set([1, 2]), {1: False})
-    >>> pl_true_int_repr(set([1, 2]), {1: False, 2: False})
+    >>> pl_true_int_repr({1, 2}, {1: False})
+    >>> pl_true_int_repr({1, 2}, {1: False, 2: False})
     False
 
     """
@@ -156,6 +169,7 @@ def pl_true_int_repr(clause, model={}):
             result = None
     return result
 
+
 def unit_propagate(clauses, symbol):
     """
     Returns an equivalent set of clauses
@@ -167,7 +181,6 @@ def unit_propagate(clauses, symbol):
 
     Arguments are expected to be in CNF.
 
-    >>> from sympy import symbols
     >>> from sympy.abc import A, B, D
     >>> from sympy.logic.algorithms.dpll import unit_propagate
     >>> unit_propagate([A | B, D | ~B, B], B)
@@ -189,17 +202,18 @@ def unit_propagate(clauses, symbol):
             output.append(c)
     return output
 
+
 def unit_propagate_int_repr(clauses, s):
     """
     Same as unit_propagate, but arguments are expected to be in integer
     representation
 
     >>> from sympy.logic.algorithms.dpll import unit_propagate_int_repr
-    >>> unit_propagate_int_repr([set([1, 2]), set([3, -2]), set([2])], 2)
-    [set([3])]
+    >>> unit_propagate_int_repr([{1, 2}, {3, -2}, {2}], 2)
+    [{3}]
 
     """
-    negated = set([-s])
+    negated = {-s}
     return [clause - negated for clause in clauses if s not in clause]
 
 
@@ -208,7 +222,6 @@ def find_pure_symbol(symbols, unknown_clauses):
     Find a symbol and its value if it appears only as a positive literal
     (or only as a negative) in clauses.
 
-    >>> from sympy import symbols
     >>> from sympy.abc import A, B, D
     >>> from sympy.logic.algorithms.dpll import find_pure_symbol
     >>> find_pure_symbol([A, B, D], [A|~B,~B|~D,D|A])
@@ -218,10 +231,14 @@ def find_pure_symbol(symbols, unknown_clauses):
     for sym in symbols:
         found_pos, found_neg = False, False
         for c in unknown_clauses:
-            if not found_pos and sym in disjuncts(c): found_pos = True
-            if not found_neg and Not(sym) in disjuncts(c): found_neg = True
-        if found_pos != found_neg: return sym, found_pos
+            if not found_pos and sym in disjuncts(c):
+                found_pos = True
+            if not found_neg and Not(sym) in disjuncts(c):
+                found_neg = True
+        if found_pos != found_neg:
+            return sym, found_pos
     return None, None
+
 
 def find_pure_symbol_int_repr(symbols, unknown_clauses):
     """
@@ -229,11 +246,12 @@ def find_pure_symbol_int_repr(symbols, unknown_clauses):
     to be in integer representation
 
     >>> from sympy.logic.algorithms.dpll import find_pure_symbol_int_repr
-    >>> find_pure_symbol_int_repr(set([1,2,3]), [set([1, -2]), set([-2, -3]), set([3, 1])])
+    >>> find_pure_symbol_int_repr({1,2,3},
+    ...     [{1, -2}, {-2, -3}, {3, 1}])
     (1, True)
 
     """
-    all_symbols = reduce(set.union, unknown_clauses, set())
+    all_symbols = set().union(*unknown_clauses)
     found_pos = all_symbols.intersection(symbols)
     found_neg = all_symbols.intersection([-s for s in symbols])
     for p in found_pos:
@@ -244,11 +262,11 @@ def find_pure_symbol_int_repr(symbols, unknown_clauses):
             return -p, False
     return None, None
 
+
 def find_unit_clause(clauses, model):
     """
     A unit clause has only 1 variable that is not bound in the model.
 
-    >>> from sympy import symbols
     >>> from sympy.abc import A, B, D
     >>> from sympy.logic.algorithms.dpll import find_unit_clause
     >>> find_unit_clause([A | B | D, B | ~D, A | ~B], {A:True})
@@ -261,10 +279,11 @@ def find_unit_clause(clauses, model):
             sym = literal_symbol(literal)
             if sym not in model:
                 num_not_in_model += 1
-                P, value = sym, not (literal.func is Not)
+                P, value = sym, not isinstance(literal, Not)
         if num_not_in_model == 1:
             return P, value
     return None, None
+
 
 def find_unit_clause_int_repr(clauses, model):
     """
@@ -272,11 +291,12 @@ def find_unit_clause_int_repr(clauses, model):
     integer representation.
 
     >>> from sympy.logic.algorithms.dpll import find_unit_clause_int_repr
-    >>> find_unit_clause_int_repr([set([1, 2, 3]), set([2, -3]), set([1, -2])], {1: True})
+    >>> find_unit_clause_int_repr([{1, 2, 3},
+    ...     {2, -3}, {1, -2}], {1: True})
     (2, False)
 
     """
-    bound = set(model) | set(-sym for sym in model)
+    bound = set(model) | {-sym for sym in model}
     for clause in clauses:
         unbound = clause - bound
         if len(unbound) == 1:

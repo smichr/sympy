@@ -1,41 +1,57 @@
 """This module implements tools for integrating rational functions. """
 
-from sympy import S, Symbol, symbols, I, log, atan, \
-    roots, collect, solve, RootSum, Lambda, cancel, Dummy
+from sympy.core.function import Lambda
+from sympy.core.numbers import I
+from sympy.core.singleton import S
+from sympy.core.symbol import (Dummy, Symbol, symbols)
+from sympy.functions.elementary.exponential import log
+from sympy.functions.elementary.trigonometric import atan
+from sympy.polys.polyroots import roots
+from sympy.polys.polytools import cancel
+from sympy.polys.rootoftools import RootSum
 
-from sympy.polys import Poly, subresultants, resultant, ZZ
+from sympy.polys import Poly, resultant, ZZ
 
 def ratint(f, x, **flags):
-    """Performs indefinite integration of rational functions.
-
-       Given a field :math:`K` and a rational function :math:`f = p/q`,
-       where :math:`p` and :math:`q` are polynomials in :math:`K[x]`,
-       returns a function :math:`g` such that :math:`f = g'`.
-
-       >>> from sympy.integrals.rationaltools import ratint
-       >>> from sympy.abc import x
-
-       >>> ratint(36/(x**5 - 2*x**4 - 2*x**3 + 4*x**2 + x - 2), x)
-       (12*x + 6)/(x**2 - 1) + 4*log(x - 2) - 4*log(x + 1)
-
-       References
-       ==========
-
-       .. [Bro05] M. Bronstein, Symbolic Integration I: Transcendental
-          Functions, Second Edition, Springer-Verlag, 2005, pp. 35-70
-
-       See Also
-       ========
-
-       sympy.integrals.integrals.Integral.doit
-       ratint_logpart, ratint_ratpart
     """
-    if type(f) is not tuple:
-        p, q = f.as_numer_denom()
-    else:
-        p, q = f
+    Performs indefinite integration of rational functions.
 
-    p, q = Poly(p, x, composite=False), Poly(q, x, composite=False)
+    Explanation
+    ===========
+
+    Given a field :math:`K` and a rational function :math:`f = p/q`,
+    where :math:`p` and :math:`q` are polynomials in :math:`K[x]`,
+    returns a function :math:`g` such that :math:`f = g'`.
+
+    Examples
+    ========
+
+    >>> from sympy.integrals.rationaltools import ratint
+    >>> from sympy.abc import x
+
+    >>> ratint(36/(x**5 - 2*x**4 - 2*x**3 + 4*x**2 + x - 2), x)
+    (12*x + 6)/(x**2 - 1) + 4*log(x - 2) - 4*log(x + 1)
+
+    References
+    ==========
+
+    .. [1] M. Bronstein, Symbolic Integration I: Transcendental
+       Functions, Second Edition, Springer-Verlag, 2005, pp. 35-70
+
+    See Also
+    ========
+
+    sympy.integrals.integrals.Integral.doit
+    sympy.integrals.rationaltools.ratint_logpart
+    sympy.integrals.rationaltools.ratint_ratpart
+
+    """
+    if isinstance(f, tuple):
+        p, q = f
+    else:
+        p, q = f.as_numer_denom()
+
+    p, q = Poly(p, x, composite=False, field=True), Poly(q, x, composite=False, field=True)
 
     coeff, p, q = p.cancel(q)
     poly, p = p.div(q)
@@ -69,42 +85,48 @@ def ratint(f, x, **flags):
         real = flags.get('real')
 
         if real is None:
-            if type(f) is not tuple:
-                atoms = f.atoms()
-            else:
+            if isinstance(f, tuple):
                 p, q = f
+                atoms = p.atoms() | q.atoms()
+            else:
+                atoms = f.atoms()
 
-                atoms = p.atoms() \
-                      | q.atoms()
-
-            for elt in atoms - set([x]):
-                if not elt.is_real:
+            for elt in atoms - {x}:
+                if not elt.is_extended_real:
                     real = False
                     break
             else:
                 real = True
 
-        eps = S(0)
+        eps = S.Zero
 
         if not real:
             for h, q in L:
-                eps += RootSum(q, Lambda(t, t*log(h.as_expr())), quadratic=True)
+                _, h = h.primitive()
+                eps += RootSum(
+                    q, Lambda(t, t*log(h.as_expr())), quadratic=True)
         else:
             for h, q in L:
+                _, h = h.primitive()
                 R = log_to_real(h, q, x, t)
 
                 if R is not None:
                     eps += R
                 else:
-                    eps += RootSum(q, Lambda(t, t*log(h.as_expr())), quadratic=True)
+                    eps += RootSum(
+                        q, Lambda(t, t*log(h.as_expr())), quadratic=True)
 
         result += eps
 
     return coeff*result
 
+
 def ratint_ratpart(f, g, x):
     """
     Horowitz-Ostrogradsky algorithm.
+
+    Explanation
+    ===========
 
     Given a field K and polynomials f and g in K[x], such that f and g
     are coprime and deg(f) < deg(g), returns fractions A and B in K(x),
@@ -131,6 +153,8 @@ def ratint_ratpart(f, g, x):
 
     ratint, ratint_logpart
     """
+    from sympy.solvers.solvers import solve
+
     f = Poly(f, x)
     g = Poly(g, x)
 
@@ -139,8 +163,8 @@ def ratint_ratpart(f, g, x):
     n = u.degree()
     m = v.degree()
 
-    A_coeffs = [ Dummy('a' + str(n-i)) for i in xrange(0, n) ]
-    B_coeffs = [ Dummy('b' + str(m-i)) for i in xrange(0, m) ]
+    A_coeffs = [ Dummy('a' + str(n - i)) for i in range(0, n) ]
+    B_coeffs = [ Dummy('b' + str(m - i)) for i in range(0, m) ]
 
     C_coeffs = A_coeffs + B_coeffs
 
@@ -159,14 +183,19 @@ def ratint_ratpart(f, g, x):
 
     return rat_part, log_part
 
+
 def ratint_logpart(f, g, x, t=None):
-    """
+    r"""
     Lazard-Rioboo-Trager algorithm.
+
+    Explanation
+    ===========
 
     Given a field K and polynomials f and g in K[x], such that f and g
     are coprime, deg(f) < deg(g) and g is square-free, returns a list
     of tuples (s_i, q_i) of polynomials, for i = 1..n, such that s_i
-    in K[t, x] and q_i in K[t], and:
+    in K[t, x] and q_i in K[t], and::
+
                            ___    ___
                  d  f   d  \  `   \  `
                  -- - = --  )      )   a log(s_i(a, x))
@@ -176,17 +205,17 @@ def ratint_logpart(f, g, x, t=None):
     Examples
     ========
 
-        >>> from sympy.integrals.rationaltools import ratint_logpart
-        >>> from sympy.abc import x
-        >>> from sympy import Poly
-        >>> ratint_logpart(Poly(1, x, domain='ZZ'),
-        ... Poly(x**2 + x + 1, x, domain='ZZ'), x)
-        [(Poly(x + 3*_t/2 + 1/2, x, domain='QQ[_t]'),
-        ...Poly(3*_t**2 + 1, _t, domain='ZZ'))]
-        >>> ratint_logpart(Poly(12, x, domain='ZZ'),
-        ... Poly(x**2 - x - 2, x, domain='ZZ'), x)
-        [(Poly(x - 3*_t/8 - 1/2, x, domain='QQ[_t]'),
-        ...Poly(-_t**2 + 16, _t, domain='ZZ'))]
+    >>> from sympy.integrals.rationaltools import ratint_logpart
+    >>> from sympy.abc import x
+    >>> from sympy import Poly
+    >>> ratint_logpart(Poly(1, x, domain='ZZ'),
+    ... Poly(x**2 + x + 1, x, domain='ZZ'), x)
+    [(Poly(x + 3*_t/2 + 1/2, x, domain='QQ[_t]'),
+    ...Poly(3*_t**2 + 1, _t, domain='ZZ'))]
+    >>> ratint_logpart(Poly(12, x, domain='ZZ'),
+    ... Poly(x**2 - x - 2, x, domain='ZZ'), x)
+    [(Poly(x - 3*_t/8 - 1/2, x, domain='QQ[_t]'),
+    ...Poly(-_t**2 + 16, _t, domain='ZZ'))]
 
     See Also
     ========
@@ -198,9 +227,10 @@ def ratint_logpart(f, g, x, t=None):
     t = t or Dummy('t')
     a, b = g, f - g.diff()*Poly(t, x)
 
-    R = subresultants(a, b)
+    res, R = resultant(a, b, includePRS=True)
+    res = Poly(res, t, composite=False)
 
-    res = Poly(resultant(a, b), t, composite=False)
+    assert res, "BUG: resultant(%s, %s) cannot be zero" % (a, b)
 
     R_map, H = {}, []
 
@@ -208,9 +238,10 @@ def ratint_logpart(f, g, x, t=None):
         R_map[r.degree()] = r
 
     def _include_sign(c, sqf):
-        if c < 0:
+        if c.is_extended_real and (c < 0) == True:
             h, k = sqf[0]
-            sqf[0] = h*c, k
+            c_poly = c.as_poly(h.gens)
+            sqf[0] = h*c_poly, k
 
     C, res_sqf = res.sqf_list()
     _include_sign(C, res_sqf)
@@ -230,21 +261,26 @@ def ratint_logpart(f, g, x, t=None):
             for a, j in h_lc_sqf:
                 h = h.quo(Poly(a.gcd(q)**j, x))
 
-            inv, coeffs = h_lc.invert(q), [S(1)]
+            inv, coeffs = h_lc.invert(q), [S.One]
 
             for coeff in h.coeffs()[1:]:
+                coeff = coeff.as_poly(inv.gens)
                 T = (inv*coeff).rem(q)
                 coeffs.append(T.as_expr())
 
-            h = Poly(dict(zip(h.monoms(), coeffs)), x)
+            h = Poly(dict(list(zip(h.monoms(), coeffs))), x)
 
             H.append((h, q))
 
     return H
 
+
 def log_to_atan(f, g):
     """
     Convert complex logarithms to real arctangents.
+
+    Explanation
+    ===========
 
     Given a real field K and polynomials f and g in K[x], with g != 0,
     returns a sum h of arctangents of polynomials in K[x], such that:
@@ -282,14 +318,18 @@ def log_to_atan(f, g):
         return 2*atan(p.as_expr())
     else:
         s, t, h = g.gcdex(-f)
-        u = (f*s+g*t).quo(h)
+        u = (f*s + g*t).quo(h)
         A = 2*atan(u.as_expr())
 
         return A + log_to_atan(s, t)
 
+
 def log_to_real(h, q, x, t):
-    """
+    r"""
     Convert complex logarithms to real functions.
+
+    Explanation
+    ===========
 
     Given real field K and polynomials h in K[t,x] and q in K[t],
     returns real function f such that:
@@ -304,7 +344,7 @@ def log_to_real(h, q, x, t):
 
         >>> from sympy.integrals.rationaltools import log_to_real
         >>> from sympy.abc import x, y
-        >>> from sympy import Poly, sqrt, S
+        >>> from sympy import Poly, S
         >>> log_to_real(Poly(x + 3*y/2 + S(1)/2, x, domain='QQ[y]'),
         ... Poly(3*y**2 + 1, y, domain='ZZ'), x, y)
         2*sqrt(3)*atan(2*sqrt(3)*x/3 + sqrt(3)/3)/3
@@ -317,16 +357,17 @@ def log_to_real(h, q, x, t):
 
     log_to_atan
     """
+    from sympy.simplify.radsimp import collect
     u, v = symbols('u,v', cls=Dummy)
 
-    H = h.as_expr().subs({t:u+I*v}).expand()
-    Q = q.as_expr().subs({t:u+I*v}).expand()
+    H = h.as_expr().subs({t: u + I*v}).expand()
+    Q = q.as_expr().subs({t: u + I*v}).expand()
 
     H_map = collect(H, I, evaluate=False)
     Q_map = collect(Q, I, evaluate=False)
 
-    a, b = H_map.get(S(1), S(0)), H_map.get(I, S(0))
-    c, d = Q_map.get(S(1), S(0)), Q_map.get(I, S(0))
+    a, b = H_map.get(S.One, S.Zero), H_map.get(I, S.Zero)
+    c, d = Q_map.get(S.One, S.Zero), Q_map.get(I, S.Zero)
 
     R = Poly(resultant(c, d, v), u)
 
@@ -335,26 +376,32 @@ def log_to_real(h, q, x, t):
     if len(R_u) != R.count_roots():
         return None
 
-    result = S(0)
+    result = S.Zero
 
-    for r_u in R_u.iterkeys():
-        C = Poly(c.subs({u:r_u}), v)
+    for r_u in R_u.keys():
+        C = Poly(c.subs({u: r_u}), v)
         R_v = roots(C, filter='R')
 
         if len(R_v) != C.count_roots():
             return None
 
+        R_v_paired = [] # take one from each pair of conjugate roots
         for r_v in R_v:
-            if not r_v.is_positive:
-                continue
+            if r_v not in R_v_paired and -r_v not in R_v_paired:
+                if r_v.is_negative or r_v.could_extract_minus_sign():
+                    R_v_paired.append(-r_v)
+                elif not r_v.is_zero:
+                    R_v_paired.append(r_v)
 
-            D = d.subs({u:r_u, v:r_v})
+        for r_v in R_v_paired:
+
+            D = d.subs({u: r_u, v: r_v})
 
             if D.evalf(chop=True) != 0:
                 continue
 
-            A = Poly(a.subs({u:r_u, v:r_v}), x)
-            B = Poly(b.subs({u:r_u, v:r_v}), x)
+            A = Poly(a.subs({u: r_u, v: r_v}), x)
+            B = Poly(b.subs({u: r_u, v: r_v}), x)
 
             AB = (A**2 + B**2).as_expr()
 
@@ -365,7 +412,7 @@ def log_to_real(h, q, x, t):
     if len(R_q) != q.count_roots():
         return None
 
-    for r in R_q.iterkeys():
+    for r in R_q.keys():
         result += r*log(h.as_expr().subs(t, r))
 
     return result

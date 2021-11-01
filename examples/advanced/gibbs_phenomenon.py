@@ -10,15 +10,14 @@ first maximum.
 2) evaluating the integral for si(pi).
 
 See:
- * http://en.wikipedia.org/wiki/Gibbs_phenomena
+ * https://en.wikipedia.org/wiki/Gibbs_phenomena
 """
 
 from sympy import var, sqrt, integrate, conjugate, seterr, Abs, pprint, I, pi,\
-        sin, cos, sign, Plot, lambdify, Integral, S
-
-#seterr(True)
+    sin, cos, sign, lambdify, Integral, S
 
 x = var("x", real=True)
+
 
 def l2_norm(f, lim):
     """
@@ -27,7 +26,8 @@ def l2_norm(f, lim):
     x ...... the independent variable in f over which to integrate
     a, b ... the limits of the interval
 
-    Example:
+    Examples
+    ========
 
     >>> from sympy import Symbol
     >>> from gibbs_phenomenon import l2_norm
@@ -40,11 +40,13 @@ def l2_norm(f, lim):
     """
     return sqrt(integrate(Abs(f)**2, lim))
 
+
 def l2_inner_product(a, b, lim):
     """
     Calculates the L2 inner product (a, b) over the domain lim.
     """
     return integrate(conjugate(a)*b, lim)
+
 
 def l2_projection(f, basis, lim):
     """
@@ -52,14 +54,16 @@ def l2_projection(f, basis, lim):
     """
     r = 0
     for b in basis:
-        r +=  l2_inner_product(f, b, lim) * b
+        r += l2_inner_product(f, b, lim) * b
     return r
+
 
 def l2_gram_schmidt(list, lim):
     """
     Orthonormalizes the "list" of functions using the Gram-Schmidt process.
 
-    Example:
+    Examples
+    ========
 
     >>> from sympy import Symbol
     >>> from gibbs_phenomenon import l2_gram_schmidt
@@ -81,8 +85,10 @@ def l2_gram_schmidt(list, lim):
         r.append(v/v_norm)
     return r
 
+
 def integ(f):
     return integrate(f, (x, -pi, 0)) + integrate(-f, (x, 0, pi))
+
 
 def series(L):
     """
@@ -93,54 +99,54 @@ def series(L):
         r += integ(b)*b
     return r
 
+
 def msolve(f, x):
     """
     Finds the first root of f(x) to the left of 0.
 
-    The x0 and dx below are taylored to get the correct result for our
+    The x0 and dx below are tailored to get the correct result for our
     particular function --- the general solver often overshoots the first
     solution.
     """
     f = lambdify(x, f)
     x0 = -0.001
     dx = 0.001
-    while f(x0-dx) * f(x0) > 0:
-        x0 = x0-dx
-    x_max = x0-dx
+    while f(x0 - dx) * f(x0) > 0:
+        x0 = x0 - dx
+    x_max = x0 - dx
     x_min = x0
     assert f(x_max) > 0
     assert f(x_min) < 0
     for n in range(100):
-        x0 = (x_max+x_min)/2
+        x0 = (x_max + x_min)/2
         if f(x0) > 0:
             x_max = x0
         else:
             x_min = x0
     return x0
 
+
 def main():
-    #L = l2_gram_schmidt([1, cos(x), sin(x), cos(2*x), sin(2*x)], (x, -pi, pi))
-    #L = l2_gram_schmidt([1, cos(x), sin(x)], (x, -pi, pi))
-    # the code below is equivalen to l2_gram_schmidt(), but faster:
-    L = [1/sqrt(2)]
+    L = [1]
     for i in range(1, 100):
         L.append(cos(i*x))
         L.append(sin(i*x))
+    # next 2 lines equivalent to L = l2_gram_schmidt(L, (x, -pi, pi)), but faster:
+    L[0] /= sqrt(2)
     L = [f/sqrt(pi) for f in L]
 
     f = series(L)
-    print "Fourier series of the step function"
+    print("Fourier series of the step function")
     pprint(f)
-    #Plot(f.diff(x), [x, -5, 5, 3000])
     x0 = msolve(f.diff(x), x)
 
-    print "x-value of the maximum:", x0
+    print("x-value of the maximum:", x0)
     max = f.subs(x, x0).evalf()
-    print "y-value of the maximum:", max
+    print("y-value of the maximum:", max)
     g = max*pi/2
-    print "Wilbraham-Gibbs constant        :", g.evalf()
-    print "Wilbraham-Gibbs constant (exact):", \
-        Integral(sin(x)/x, (x, 0, pi)).evalf()
+    print("Wilbraham-Gibbs constant        :", g.evalf())
+    print("Wilbraham-Gibbs constant (exact):", \
+        Integral(sin(x)/x, (x, 0, pi)).evalf())
 
 if __name__ == "__main__":
     main()

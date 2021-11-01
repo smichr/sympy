@@ -1,19 +1,34 @@
 """This module contains some general purpose utilities that are used across
 SymPy.
 """
-from iterables import (flatten, group, take, subsets,
+from .iterables import (flatten, group, take, subsets,
     variations, numbered_symbols, cartes, capture, dict_merge,
-    postorder_traversal, preorder_traversal, interactive_traversal,
-    prefixes, postfixes, sift, topological_sort, unflatten)
+    prefixes, postfixes, sift, topological_sort, unflatten,
+    has_dups, has_variety, reshape, rotations)
 
-from lambdify import lambdify
-from source import source
+from .misc import filldedent
 
-from decorator import threaded, xthreaded
+from .lambdify import lambdify
 
-from runtests import test, doctest
+from .source import source
 
-from cythonutils import cythonized
-from timeutils import timed
+from .decorator import threaded, xthreaded, public, memoize_property
 
-from misc import default_sort_key
+from .timeutils import timed
+
+__all__ = [
+    'flatten', 'group', 'take', 'subsets', 'variations', 'numbered_symbols',
+    'cartes', 'capture', 'dict_merge', 'prefixes', 'postfixes', 'sift',
+    'topological_sort', 'unflatten', 'has_dups', 'has_variety', 'reshape',
+    'rotations',
+
+    'filldedent',
+
+    'lambdify',
+
+    'source',
+
+    'threaded', 'xthreaded', 'public', 'memoize_property',
+
+    'timed',
+]

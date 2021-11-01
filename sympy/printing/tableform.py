@@ -1,16 +1,21 @@
 from sympy.core.containers import Tuple
+from sympy.core.singleton import S
+from sympy.core.symbol import Symbol
+from sympy.core.sympify import SympifyError
 
 from types import FunctionType
 
-class TableForm(object):
-    """
+
+class TableForm:
+    r"""
     Create a nice table representation of data.
 
-    Example::
+    Examples
+    ========
 
     >>> from sympy import TableForm
     >>> t = TableForm([[5, 7], [4, 2], [10, 3]])
-    >>> print t
+    >>> print(t)
     5  7
     4  2
     10 3
@@ -18,11 +23,11 @@ class TableForm(object):
     You can use the SymPy's printing system to produce tables in any
     format (ascii, latex, html, ...).
 
-    >>> print t.as_latex()
-    \\begin{tabular}{l l}
-    $5$ & $7$ \\\\
-    $4$ & $2$ \\\\
-    $10$ & $3$ \\\\
+    >>> print(t.as_latex())
+    \begin{tabular}{l l}
+    $5$ & $7$ \\
+    $4$ & $2$ \\
+    $10$ & $3$ \\
     \end{tabular}
 
     """
@@ -47,7 +52,7 @@ class TableForm(object):
                                 - "automatic" ... labels are 1, 2, 3, ...
 
                             Can be a list of labels for rows and columns:
-                            The lables for each dimension can be given
+                            The labels for each dimension can be given
                             as None, "automatic", or [l1, l2, ...] e.g.
                             ["automatic", None] will number the rows
 
@@ -92,7 +97,7 @@ class TableForm(object):
         Examples
         ========
 
-        >>> from sympy import TableForm, Matrix
+        >>> from sympy import TableForm, Symbol
         >>> TableForm([[5, 7], [4, 2], [10, 3]])
         5  7
         4  2
@@ -103,20 +108,18 @@ class TableForm(object):
         1 | .
         2 | . .
         3 | . . .
-        >>> TableForm([['.'*(j if not i%2 else 1) for i in range(3)]
+        >>> TableForm([[Symbol('.'*(j if not i%2 else 1)) for i in range(3)]
         ...            for j in range(4)], alignments='rcl')
             .
           . . .
          .. . ..
         ... . ...
         """
-        from sympy import Symbol, S, Matrix
-        from sympy.core.sympify import SympifyError
+        from sympy.matrices.dense import Matrix
 
         # We only support 2D data. Check the consistency:
         if isinstance(data, Matrix):
             data = data.tolist()
-        _w = len(data[0])
         _h = len(data)
 
         # fill out any short lines
@@ -156,6 +159,7 @@ class TableForm(object):
 
         allow = ('l', 'r', 'c')
         alignments = kwarg.get("alignments", "l")
+
         def _std_align(a):
             a = a.strip().lower()
             if len(a) > 1:
@@ -180,8 +184,8 @@ class TableForm(object):
             _head_align = 'r'
         if len(_alignments) != _w:
             raise ValueError(
-            'wrong number of alignments: expected %s but got %s' %
-            (_w, len(_alignments)))
+                'wrong number of alignments: expected %s but got %s' %
+                (_w, len(_alignments)))
 
         _column_formats = kwarg.get("formats", [None]*_w)
 
@@ -197,11 +201,11 @@ class TableForm(object):
         self._wipe_zeros = _wipe_zeros
 
     def __repr__(self):
-        from str import sstr
+        from .str import sstr
         return sstr(self, order=None)
 
     def __str__(self):
-        from str import sstr
+        from .str import sstr
         return sstr(self, order=None)
 
     def as_matrix(self):
@@ -209,6 +213,7 @@ class TableForm(object):
 
         Examples
         ========
+
         >>> from sympy import TableForm
         >>> t = TableForm([[5, 7], [4, 2], [10, 3]], headings='automatic')
         >>> t
@@ -218,11 +223,12 @@ class TableForm(object):
         2 | 4  2
         3 | 10 3
         >>> t.as_matrix()
-        [ 5, 7]
-        [ 4, 2]
-        [10, 3]
+        Matrix([
+        [ 5, 7],
+        [ 4, 2],
+        [10, 3]])
         """
-        from sympy import Matrix
+        from sympy.matrices.dense import Matrix
         return Matrix(self._lines)
 
     def as_str(self):
@@ -230,14 +236,15 @@ class TableForm(object):
         return str(self)
 
     def as_latex(self):
-        from latex import latex
+        from .latex import latex
         return latex(self)
 
     def _sympystr(self, p):
         """
         Returns the string representation of 'self'.
 
-        Example:
+        Examples
+        ========
 
         >>> from sympy import TableForm
         >>> t = TableForm([[5, 7], [4, 2], [10, 3]])
@@ -276,15 +283,16 @@ class TableForm(object):
             self._headings[1] = new_line
 
         format_str = []
+
         def _align(align, w):
             return '%%%s%ss' % (
-                    ("-" if align == "l" else ""),
-                    str(w))
+                ("-" if align == "l" else ""),
+                str(w))
         format_str = [_align(align, w) for align, w in
                       zip(self._alignments, column_widths)]
         if self._headings[0]:
             format_str.insert(0, _align(self._head_align, _head_width))
-            format_str.insert(1,'|')
+            format_str.insert(1, '|')
         format_str = ' '.join(format_str) + '\n'
 
         s = []
@@ -297,14 +305,14 @@ class TableForm(object):
             s.append("-" * (len(first_line) - 1) + "\n")
         for i, line in enumerate(lines):
             d = [l if self._alignments[j] != 'c' else
-                 l.center(column_widths[j]) for j,l in enumerate(line)]
+                 l.center(column_widths[j]) for j, l in enumerate(line)]
             if self._headings[0]:
                 l = self._headings[0][i]
                 l = (l if self._head_align != 'c' else
                      l.center(_head_width))
                 d = [l] + d
             s.append(format_str % tuple(d))
-        return ''.join(s)[:-1] # don't include trailing newline
+        return ''.join(s)[:-1]  # don't include trailing newline
 
     def _latex(self, printer):
         """
@@ -315,9 +323,7 @@ class TableForm(object):
             new_line = []
             for i in range(self._w):
                 # Format the item somehow if needed:
-                s = str(self._headings[1][i])
-                w = len(s)
-                new_line.append(s)
+                new_line.append(str(self._headings[1][i]))
             self._headings[1] = new_line
 
         alignments = []

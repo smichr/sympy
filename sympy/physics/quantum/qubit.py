@@ -6,13 +6,20 @@ Todo:
 * Update tests.
 """
 
+
 import math
 
-from sympy import Integer, log, Mul, Add, Pow, conjugate
+from sympy.core.add import Add
+from sympy.core.mul import Mul
+from sympy.core.numbers import Integer
+from sympy.core.power import Pow
+from sympy.core.singleton import S
+from sympy.functions.elementary.complexes import conjugate
+from sympy.functions.elementary.exponential import log
 from sympy.core.basic import sympify
-from sympy.matrices.matrices import Matrix, zeros
+from sympy.external.gmpy import SYMPY_INTS
+from sympy.matrices import Matrix, zeros
 from sympy.printing.pretty.stringpict import prettyForm
-
 
 from sympy.physics.quantum.hilbert import ComplexSpace
 from sympy.physics.quantum.state import Ket, Bra, State
@@ -22,7 +29,7 @@ from sympy.physics.quantum.represent import represent
 from sympy.physics.quantum.matrixutils import (
     numpy_ndarray, scipy_sparse_matrix
 )
-from sympy.mpmath.libmp.libintmath import bitcount
+from mpmath.libmp.libintmath import bitcount
 
 __all__ = [
     'Qubit',
@@ -31,6 +38,7 @@ __all__ = [
     'IntQubitBra',
     'qubit_to_matrix',
     'matrix_to_qubit',
+    'matrix_to_density',
     'measure_all',
     'measure_partial',
     'measure_partial_oneshot',
@@ -40,6 +48,7 @@ __all__ = [
 #-----------------------------------------------------------------------------
 # Qubit Classes
 #-----------------------------------------------------------------------------
+
 
 class QubitState(State):
     """Base class for Qubit and QubitBra."""
@@ -56,15 +65,16 @@ class QubitState(State):
             return args[0].qubit_values
 
         # Turn strings into tuple of strings
-        if len(args) == 1 and isinstance(args[0], basestring):
+        if len(args) == 1 and isinstance(args[0], str):
             args = tuple(args[0])
 
         args = sympify(args)
 
         # Validate input (must have 0 or 1 input)
         for element in args:
-            if not (element == 1 or element == 0):
-                raise ValueError("Qubit values must be 0 or 1, got: %r" % element)
+            if element not in (S.Zero, S.One):
+                raise ValueError(
+                    "Qubit values must be 0 or 1, got: %r" % element)
         return args
 
     @classmethod
@@ -97,7 +107,7 @@ class QubitState(State):
         return self.dimension
 
     def __getitem__(self, bit):
-        return self.qubit_values[int(self.dimension-bit-1)]
+        return self.qubit_values[int(self.dimension - bit - 1)]
 
     #-------------------------------------------------------------------------
     # Utility methods
@@ -107,7 +117,7 @@ class QubitState(State):
         """Flip the bit(s) given."""
         newargs = list(self.qubit_values)
         for i in bits:
-            bit = int(self.dimension-i-1)
+            bit = int(self.dimension - i - 1)
             if newargs[bit] == 1:
                 newargs[bit] = 0
             else:
@@ -170,7 +180,6 @@ class Qubit(QubitState, Ket):
         1
     """
 
-
     @classmethod
     def dual_class(self):
         return QubitBra
@@ -187,7 +196,7 @@ class Qubit(QubitState, Ket):
     def _represent_ZGate(self, basis, **options):
         """Represent this qubits in the computational basis (ZGate).
         """
-        format = options.get('format', 'sympy')
+        _format = options.get('format', 'sympy')
         n = 1
         definite_state = 0
         for it in reversed(self.qubit_values):
@@ -195,14 +204,60 @@ class Qubit(QubitState, Ket):
             n = n*2
         result = [0]*(2**self.dimension)
         result[int(definite_state)] = 1
-        if format == 'sympy':
+        if _format == 'sympy':
             return Matrix(result)
-        elif format == 'numpy':
+        elif _format == 'numpy':
             import numpy as np
             return np.matrix(result, dtype='complex').transpose()
-        elif format == 'scipy.sparse':
+        elif _format == 'scipy.sparse':
             from scipy import sparse
             return sparse.csr_matrix(result, dtype='complex').transpose()
+
+    def _eval_trace(self, bra, **kwargs):
+        indices = kwargs.get('indices', [])
+
+        #sort index list to begin trace from most-significant
+        #qubit
+        sorted_idx = list(indices)
+        if len(sorted_idx) == 0:
+            sorted_idx = list(range(0, self.nqubits))
+        sorted_idx.sort()
+
+        #trace out for each of index
+        new_mat = self*bra
+        for i in range(len(sorted_idx) - 1, -1, -1):
+            # start from tracing out from leftmost qubit
+            new_mat = self._reduced_density(new_mat, int(sorted_idx[i]))
+
+        if (len(sorted_idx) == self.nqubits):
+            #in case full trace was requested
+            return new_mat[0]
+        else:
+            return matrix_to_density(new_mat)
+
+    def _reduced_density(self, matrix, qubit, **options):
+        """Compute the reduced density matrix by tracing out one qubit.
+           The qubit argument should be of type Python int, since it is used
+           in bit operations
+        """
+        def find_index_that_is_projected(j, k, qubit):
+            bit_mask = 2**qubit - 1
+            return ((j >> qubit) << (1 + qubit)) + (j & bit_mask) + (k << qubit)
+
+        old_matrix = represent(matrix, **options)
+        old_size = old_matrix.cols
+        #we expect the old_size to be even
+        new_size = old_size//2
+        new_matrix = Matrix().zeros(new_size)
+
+        for i in range(new_size):
+            for j in range(new_size):
+                for k in range(2):
+                    col = find_index_that_is_projected(j, k, qubit)
+                    row = find_index_that_is_projected(i, k, qubit)
+                    new_matrix[i, j] += old_matrix[row, col]
+
+        return new_matrix
 
 
 class QubitBra(QubitState, Bra):
@@ -232,27 +287,43 @@ class IntQubitState(QubitState):
     """A base class for qubits that work with binary representations."""
 
     @classmethod
-    def _eval_args(cls, args):
+    def _eval_args(cls, args, nqubits=None):
         # The case of a QubitState instance
         if len(args) == 1 and isinstance(args[0], QubitState):
             return QubitState._eval_args(args)
+        # otherwise, args should be integer
+        elif not all(isinstance(a, (int, Integer)) for a in args):
+            raise ValueError('values must be integers, got (%s)' % (tuple(type(a) for a in args),))
+        # use nqubits if specified
+        if nqubits is not None:
+            if not isinstance(nqubits, (int, Integer)):
+                raise ValueError('nqubits must be an integer, got (%s)' % type(nqubits))
+            if len(args) != 1:
+                raise ValueError(
+                    'too many positional arguments (%s). should be (number, nqubits=n)' % (args,))
+            return cls._eval_args_with_nqubits(args[0], nqubits)
         # For a single argument, we construct the binary representation of
         # that integer with the minimal number of bits.
         if len(args) == 1 and args[0] > 1:
             #rvalues is the minimum number of bits needed to express the number
-            rvalues = reversed(xrange(bitcount(abs(args[0]))))
-            qubit_values = [(args[0]>>i)&1 for i in rvalues]
+            rvalues = reversed(range(bitcount(abs(args[0]))))
+            qubit_values = [(args[0] >> i) & 1 for i in rvalues]
             return QubitState._eval_args(qubit_values)
         # For two numbers, the second number is the number of bits
         # on which it is expressed, so IntQubit(0,5) == |00000>.
         elif len(args) == 2 and args[1] > 1:
-            need = bitcount(abs(args[0]))
-            if args[1] < need:
-                raise ValueError('cannot represent %s with %s bits' % (args[0], args[1]))
-            qubit_values = [(args[0]>>i)&1 for i in reversed(range(args[1]))]
-            return QubitState._eval_args(qubit_values)
+            return cls._eval_args_with_nqubits(args[0], args[1])
         else:
             return QubitState._eval_args(args)
+
+    @classmethod
+    def _eval_args_with_nqubits(cls, number, nqubits):
+        need = bitcount(abs(number))
+        if nqubits < need:
+            raise ValueError(
+                'cannot represent %s with %s bits' % (number, nqubits))
+        qubit_values = [(number >> i) & 1 for i in reversed(range(nqubits))]
+        return QubitState._eval_args(qubit_values)
 
     def as_int(self):
         """Return the numerical value of the qubit."""
@@ -260,7 +331,7 @@ class IntQubitState(QubitState):
         n = 1
         for i in reversed(self.qubit_values):
             number += n*i
-            n = n<<1
+            n = n << 1
         return number
 
     def _print_label(self, printer, *args):
@@ -290,9 +361,17 @@ class IntQubit(IntQubitState, Qubit):
     values : int, tuple
         If a single argument, the integer we want to represent in the qubit
         values. This integer will be represented using the fewest possible
-        number of qubits. If a pair of integers, the first integer gives the
-        integer to represent in binary form and the second integer gives
-        the number of qubits to use.
+        number of qubits.
+        If a pair of integers and the second value is more than one, the first
+        integer gives the integer to represent in binary form and the second
+        integer gives the number of qubits to use.
+        List of zeros and ones is also accepted to generate qubit by bit pattern.
+
+    nqubits : int
+        The integer that represents the number of qubits.
+        This number should be passed with keyword ``nqubits=N``.
+        You can use this in order to avoid ambiguity of Qubit-style tuple of bits.
+        Please see the example below for more details.
 
     Examples
     ========
@@ -321,11 +400,28 @@ class IntQubit(IntQubitState, Qubit):
 
         >>> Qubit(q)
         |101>
+
+    Please note that ``IntQubit`` also accepts a ``Qubit``-style list of bits.
+    So, the code below yields qubits 3, not a single bit ``1``.
+
+        >>> IntQubit(1, 1)
+        |3>
+
+    To avoid ambiguity, use ``nqubits`` parameter.
+    Use of this keyword is recommended especially when you provide the values by variables.
+
+        >>> IntQubit(1, nqubits=1)
+        |1>
+        >>> a = 1
+        >>> IntQubit(a, nqubits=1)
+        |1>
     """
     @classmethod
     def dual_class(self):
         return IntQubitBra
 
+    def _eval_innerproduct_IntQubitBra(self, bra, **hints):
+        return Qubit._eval_innerproduct_QubitBra(self, bra)
 
 class IntQubitBra(IntQubitState, QubitBra):
     """A qubit bra that store integers as binary numbers in qubit values."""
@@ -347,15 +443,14 @@ def matrix_to_qubit(matrix):
     ----------
     matrix : Matrix, numpy.matrix, scipy.sparse
         The matrix to build the Qubit representation of. This works with
-        sympy matrices, numpy matrices and scipy.sparse sparse matrices.
+        SymPy matrices, numpy matrices and scipy.sparse sparse matrices.
 
     Examples
-    --------
+    ========
 
     Represent a state and then go back to its qubit form:
 
         >>> from sympy.physics.quantum.qubit import matrix_to_qubit, Qubit
-        >>> from sympy.physics.quantum.gate import Z
         >>> from sympy.physics.quantum.represent import represent
         >>> q = Qubit('01')
         >>> matrix_to_qubit(represent(q))
@@ -392,27 +487,43 @@ def matrix_to_qubit(matrix):
     result = 0
     for i in range(mlistlen):
         if ket:
-            element = matrix[i,0]
+            element = matrix[i, 0]
         else:
-            element = matrix[0,i]
-        if format == 'numpy' or format == 'scipy.sparse':
+            element = matrix[0, i]
+        if format in ('numpy', 'scipy.sparse'):
             element = complex(element)
         if element != 0.0:
             # Form Qubit array; 0 in bit-locations where i is 0, 1 in
             # bit-locations where i is 1
-            qubit_array = [int(i & (1<<x) != 0) for x in range(nqubits)]
+            qubit_array = [int(i & (1 << x) != 0) for x in range(nqubits)]
             qubit_array.reverse()
             result = result + element*cls(*qubit_array)
 
-    # If sympy simplified by pulling out a constant coefficient, undo that.
-    if isinstance(result, (Mul,Add,Pow)):
+    # If SymPy simplified by pulling out a constant coefficient, undo that.
+    if isinstance(result, (Mul, Add, Pow)):
         result = result.expand()
 
     return result
 
 
+def matrix_to_density(mat):
+    """
+    Works by finding the eigenvectors and eigenvalues of the matrix.
+    We know we can decompose rho by doing:
+    sum(EigenVal*|Eigenvect><Eigenvect|)
+    """
+    from sympy.physics.quantum.density import Density
+    eigen = mat.eigenvects()
+    args = [[matrix_to_qubit(Matrix(
+        [vector, ])), x[0]] for x in eigen for vector in x[2] if x[0] != 0]
+    if (len(args) == 0):
+        return S.Zero
+    else:
+        return Density(*args)
+
+
 def qubit_to_matrix(qubit, format='sympy'):
-    """Coverts an Add/Mul of Qubit objects into it's matrix representation
+    """Converts an Add/Mul of Qubit objects into it's matrix representation
 
     This function is the inverse of ``matrix_to_qubit`` and is a shorthand
     for ``represent(qubit)``.
@@ -449,7 +560,7 @@ def measure_all(qubit, format='sympy', normalize=True):
     ========
 
         >>> from sympy.physics.quantum.qubit import Qubit, measure_all
-        >>> from sympy.physics.quantum.gate import H, X, Y, Z
+        >>> from sympy.physics.quantum.gate import H
         >>> from sympy.physics.quantum.qapply import qapply
 
         >>> c = H(0)*H(1)*Qubit('00')
@@ -467,22 +578,22 @@ def measure_all(qubit, format='sympy', normalize=True):
         if normalize:
             m = m.normalized()
 
-        size = max(m.shape) # Max of shape to account for bra or ket
+        size = max(m.shape)  # Max of shape to account for bra or ket
         nqubits = int(math.log(size)/math.log(2))
         for i in range(size):
             if m[i] != 0.0:
                 results.append(
-                    (Qubit(IntQubit(i, nqubits)), m[i]*conjugate(m[i]))
+                    (Qubit(IntQubit(i, nqubits=nqubits)), m[i]*conjugate(m[i]))
                 )
         return results
     else:
         raise NotImplementedError(
-            "This function can't handle non-sympy matrix formats yet"
+            "This function cannot handle non-SymPy matrix formats yet"
         )
 
 
 def measure_partial(qubit, bits, format='sympy', normalize=True):
-    """Perform a partial ensemble measure on the specifed qubits.
+    """Perform a partial ensemble measure on the specified qubits.
 
     Parameters
     ==========
@@ -507,7 +618,7 @@ def measure_partial(qubit, bits, format='sympy', normalize=True):
     ========
 
         >>> from sympy.physics.quantum.qubit import Qubit, measure_partial
-        >>> from sympy.physics.quantum.gate import H, X, Y, Z
+        >>> from sympy.physics.quantum.gate import H
         >>> from sympy.physics.quantum.qapply import qapply
 
         >>> c = H(0)*H(1)*Qubit('00')
@@ -519,7 +630,7 @@ def measure_partial(qubit, bits, format='sympy', normalize=True):
     """
     m = qubit_to_matrix(qubit, format)
 
-    if isinstance(bits, (int, Integer)):
+    if isinstance(bits, (SYMPY_INTS, Integer)):
         bits = (int(bits),)
 
     if format == 'sympy':
@@ -552,7 +663,7 @@ def measure_partial(qubit, bits, format='sympy', normalize=True):
         return output
     else:
         raise NotImplementedError(
-            "This function can't handle non-sympy matrix formats yet"
+            "This function cannot handle non-SymPy matrix formats yet"
         )
 
 
@@ -600,7 +711,7 @@ def measure_partial_oneshot(qubit, bits, format='sympy'):
                 return matrix_to_qubit(outcome.normalized())
     else:
         raise NotImplementedError(
-            "This function can't handle non-sympy matrix formats yet"
+            "This function cannot handle non-SymPy matrix formats yet"
         )
 
 
@@ -624,8 +735,8 @@ def _get_possible_outcomes(m, bits):
 
     # This is filled with loads of dirty binary tricks...You have been warned
 
-    size = max(m.shape) # Max of shape to account for bra or ket
-    nqubits = int(math.log(size,2)+.1) # Number of qubits possible
+    size = max(m.shape)  # Max of shape to account for bra or ket
+    nqubits = int(math.log(size, 2) + .1)  # Number of qubits possible
 
     # Make the output states and put in output_matrices, nothing in them now.
     # Each state will represent a possible outcome of the measurement
@@ -633,7 +744,7 @@ def _get_possible_outcomes(m, bits):
     # bits return 0. and output_matrices[1] is the matrix for only the 0th
     # bit being true
     output_matrices = []
-    for i in range(1<<len(bits)):
+    for i in range(1 << len(bits)):
         output_matrices.append(zeros(2**nqubits, 1))
 
     # Bitmasks will help sort how to determine possible outcomes.
@@ -641,15 +752,15 @@ def _get_possible_outcomes(m, bits):
     # it will determine which state that index belongs to
     bit_masks = []
     for bit in bits:
-        bit_masks.append(1<<bit)
+        bit_masks.append(1 << bit)
 
     # Make possible outcome states
     for i in range(2**nqubits):
-        trueness = 0 # This tells us to which output_matrix this value belongs
+        trueness = 0  # This tells us to which output_matrix this value belongs
         # Find trueness
         for j in range(len(bit_masks)):
-            if i&bit_masks[j]:
-                trueness += j+1
+            if i & bit_masks[j]:
+                trueness += j + 1
         # Put the value in the correct output matrix
         output_matrices[trueness][i] = m[i]
     return output_matrices
@@ -692,8 +803,8 @@ def measure_all_oneshot(qubit, format='sympy'):
             if total > random_number:
                 break
             result += 1
-        return Qubit(IntQubit(result, int(math.log(max(m.shape),2)+.1)))
+        return Qubit(IntQubit(result, int(math.log(max(m.shape), 2) + .1)))
     else:
         raise NotImplementedError(
-            "This function can't handle non-sympy matrix formats yet"
+            "This function cannot handle non-SymPy matrix formats yet"
         )

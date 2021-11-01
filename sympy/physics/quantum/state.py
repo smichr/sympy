@@ -1,9 +1,15 @@
 """Dirac notation for states."""
 
-
-from sympy import (cacheit, conjugate, Expr, Function, integrate, oo, sqrt,
-                   Tuple)
-from sympy.printing.pretty.stringpict import prettyForm
+from sympy.core.cache import cacheit
+from sympy.core.containers import Tuple
+from sympy.core.expr import Expr
+from sympy.core.function import Function
+from sympy.core.numbers import oo
+from sympy.core.singleton import S
+from sympy.functions.elementary.complexes import conjugate
+from sympy.functions.elementary.miscellaneous import sqrt
+from sympy.integrals.integrals import integrate
+from sympy.printing.pretty.stringpict import stringPict
 from sympy.physics.quantum.qexpr import QExpr, dispatch_method
 
 __all__ = [
@@ -16,6 +22,9 @@ __all__ = [
     'TimeDepState',
     'TimeDepBra',
     'TimeDepKet',
+    'OrthogonalKet',
+    'OrthogonalBra',
+    'OrthogonalState',
     'Wavefunction'
 ]
 
@@ -24,32 +33,38 @@ __all__ = [
 # States, bras and kets.
 #-----------------------------------------------------------------------------
 
-# LIGHT VERTICAL BAR
-_straight_bracket = u"\u2758"
+# ASCII brackets
+_lbracket = "<"
+_rbracket = ">"
+_straight_bracket = "|"
 
-# MATHEMATICAL LEFT ANGLE BRACKET
-_lbracket = u"\u27E8"
-_rbracket = u"\u27E9"
+
+# Unicode brackets
+# MATHEMATICAL ANGLE BRACKETS
+_lbracket_ucode = "\N{MATHEMATICAL LEFT ANGLE BRACKET}"
+_rbracket_ucode = "\N{MATHEMATICAL RIGHT ANGLE BRACKET}"
+# LIGHT VERTICAL BAR
+_straight_bracket_ucode = "\N{LIGHT VERTICAL BAR}"
 
 # Other options for unicode printing of <, > and | for Dirac notation.
 
-# VERTICAL LINE
-# _straight_bracket = u"\u007C"
-
 # LEFT-POINTING ANGLE BRACKET
-# _lbracket = u"\u2329"
-# _rbracket = u"\u232A"
+# _lbracket = "\u2329"
+# _rbracket = "\u232A"
 
 # LEFT ANGLE BRACKET
-# _lbracket = u"\u3008"
-# _rbracket = u"\u3009"
+# _lbracket = "\u3008"
+# _rbracket = "\u3009"
+
+# VERTICAL LINE
+# _straight_bracket = "\u007C"
 
 
 class StateBase(QExpr):
     """Abstract base class for general abstract states in quantum mechanics.
 
     All other state classes defined will need to inherit from this class. It
-    carries the basic structure for all other states such as dual, _eval_dagger
+    carries the basic structure for all other states such as dual, _eval_adjoint
     and label.
 
     This is an abstract base class and you should not instantiate it directly,
@@ -79,12 +94,13 @@ class StateBase(QExpr):
         operator instances. See cartesian.py for examples,
         """
 
-        raise NotImplementedError("Cannot map this state to operators. Method not implemented!")
+        raise NotImplementedError(
+            "Cannot map this state to operators. Method not implemented!")
 
     @property
     def operators(self):
         """Return the operator(s) that this state is an eigenstate of"""
-        from operatorset import state_to_operators #import internally to avoid circular import errors
+        from .operatorset import state_to_operators  # import internally to avoid circular import errors
         return state_to_operators(self)
 
     def _enumerate_state(self, num_states, **options):
@@ -104,12 +120,12 @@ class StateBase(QExpr):
 
     @classmethod
     def dual_class(self):
-        """Return the class used to construt the dual."""
+        """Return the class used to construct the dual."""
         raise NotImplementedError(
             'dual_class must be implemented in a subclass'
         )
 
-    def _eval_dagger(self):
+    def _eval_adjoint(self):
         """Compute the dagger of this state using the dual."""
         return self.dual
 
@@ -117,22 +133,68 @@ class StateBase(QExpr):
     # Printing
     #-------------------------------------------------------------------------
 
-    def _print_contents(self, printer, *args):
-        label = self._print_label(printer, *args)
-        return '%s%s%s' % (self.lbracket, label, self.rbracket)
+    def _pretty_brackets(self, height, use_unicode=True):
+        # Return pretty printed brackets for the state
+        # Ideally, this could be done by pform.parens but it does not support the angled < and >
 
-    def _print_contents_pretty(self, printer, *args):
+        # Setup for unicode vs ascii
+        if use_unicode:
+            lbracket, rbracket = self.lbracket_ucode, self.rbracket_ucode
+            slash, bslash, vert = '\N{BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT}', \
+                                  '\N{BOX DRAWINGS LIGHT DIAGONAL UPPER LEFT TO LOWER RIGHT}', \
+                                  '\N{BOX DRAWINGS LIGHT VERTICAL}'
+        else:
+            lbracket, rbracket = self.lbracket, self.rbracket
+            slash, bslash, vert = '/', '\\', '|'
+
+        # If height is 1, just return brackets
+        if height == 1:
+            return stringPict(lbracket), stringPict(rbracket)
+        # Make height even
+        height += (height % 2)
+
+        brackets = []
+        for bracket in lbracket, rbracket:
+            # Create left bracket
+            if bracket in {_lbracket, _lbracket_ucode}:
+                bracket_args = [ ' ' * (height//2 - i - 1) +
+                                 slash for i in range(height // 2)]
+                bracket_args.extend(
+                    [' ' * i + bslash for i in range(height // 2)])
+            # Create right bracket
+            elif bracket in {_rbracket, _rbracket_ucode}:
+                bracket_args = [ ' ' * i + bslash for i in range(height // 2)]
+                bracket_args.extend([ ' ' * (
+                    height//2 - i - 1) + slash for i in range(height // 2)])
+            # Create straight bracket
+            elif bracket in {_straight_bracket, _straight_bracket_ucode}:
+                bracket_args = [vert] * height
+            else:
+                raise ValueError(bracket)
+            brackets.append(
+                stringPict('\n'.join(bracket_args), baseline=height//2))
+        return brackets
+
+    def _sympystr(self, printer, *args):
+        contents = self._print_contents(printer, *args)
+        return '%s%s%s' % (self.lbracket, contents, self.rbracket)
+
+    def _pretty(self, printer, *args):
         from sympy.printing.pretty.stringpict import prettyForm
-        pform = self._print_label_pretty(printer, *args)
-        pform = prettyForm(*pform.left((self.lbracket_pretty)))
-        pform = prettyForm(*pform.right((self.rbracket_pretty)))
+        # Get brackets
+        pform = self._print_contents_pretty(printer, *args)
+        lbracket, rbracket = self._pretty_brackets(
+            pform.height(), printer._use_unicode)
+        # Put together state
+        pform = prettyForm(*pform.left(lbracket))
+        pform = prettyForm(*pform.right(rbracket))
         return pform
 
-    def _print_contents_latex(self, printer, *args):
-        label = self._print_label_latex(printer, *args)
+    def _latex(self, printer, *args):
+        contents = self._print_contents_latex(printer, *args)
         # The extra {} brackets are needed to get matplotlib's latex
         # rendered to render this properly.
-        return '{%s%s%s}' % (self.lbracket_latex, label, self.rbracket_latex)
+        return '{%s%s%s}' % (self.lbracket_latex, contents, self.rbracket_latex)
 
 
 class KetBase(StateBase):
@@ -143,10 +205,10 @@ class KetBase(StateBase):
     use Ket.
     """
 
-    lbracket = '|'
-    rbracket = '>'
-    lbracket_pretty = prettyForm(_straight_bracket)
-    rbracket_pretty = prettyForm(_rbracket)
+    lbracket = _straight_bracket
+    rbracket = _rbracket
+    lbracket_ucode = _straight_bracket_ucode
+    rbracket_ucode = _rbracket_ucode
     lbracket_latex = r'\left|'
     rbracket_latex = r'\right\rangle '
 
@@ -179,7 +241,7 @@ class KetBase(StateBase):
     #-------------------------------------------------------------------------
 
     def _eval_innerproduct(self, bra, **hints):
-        """Evaluate the inner product betweeen this ket and a bra.
+        """Evaluate the inner product between this ket and a bra.
 
         This is called to compute <bra|ket>, where the ket is ``self``.
 
@@ -213,6 +275,7 @@ class KetBase(StateBase):
         """
         return dispatch_method(self, '_apply_operator', op, **options)
 
+
 class BraBase(StateBase):
     """Base class for Bras.
 
@@ -221,16 +284,16 @@ class BraBase(StateBase):
     instead use Bra.
     """
 
-    lbracket = '<'
-    rbracket = '|'
-    lbracket_pretty = prettyForm(_lbracket)
-    rbracket_pretty = prettyForm(_straight_bracket)
+    lbracket = _lbracket
+    rbracket = _straight_bracket
+    lbracket_ucode = _lbracket_ucode
+    rbracket_ucode = _straight_bracket_ucode
     lbracket_latex = r'\left\langle '
     rbracket_latex = r'\right|'
 
     @classmethod
     def _operators_to_state(self, ops, **options):
-        state = self.dual_class().operators_to_state(ops, **options)
+        state = self.dual_class()._operators_to_state(ops, **options)
         return state.dual
 
     def _state_to_operators(self, op_classes, **options):
@@ -238,7 +301,7 @@ class BraBase(StateBase):
 
     def _enumerate_state(self, num_states, **options):
         dual_states = self.dual._enumerate_state(num_states, **options)
-        return map(lambda x: x.dual, dual_states)
+        return [x.dual for x in dual_states]
 
     @classmethod
     def default_args(self):
@@ -275,7 +338,6 @@ class State(StateBase):
     pass
 
 
-
 class Ket(State, KetBase):
     """A general time-independent Ket in quantum mechanics.
 
@@ -297,7 +359,7 @@ class Ket(State, KetBase):
 
     Create a simple Ket and looking at its properties::
 
-        >>> from sympy.physics.quantum import Ket, Bra
+        >>> from sympy.physics.quantum import Ket
         >>> from sympy import symbols, I
         >>> k = Ket('psi')
         >>> k
@@ -333,12 +395,13 @@ class Ket(State, KetBase):
     References
     ==========
 
-    .. [1] http://en.wikipedia.org/wiki/Bra-ket_notation
+    .. [1] https://en.wikipedia.org/wiki/Bra-ket_notation
     """
 
     @classmethod
     def dual_class(self):
         return Bra
+
 
 class Bra(State, BraBase):
     """A general time-independent Bra in quantum mechanics.
@@ -360,7 +423,7 @@ class Bra(State, BraBase):
 
     Create a simple Bra and look at its properties::
 
-        >>> from sympy.physics.quantum import Ket, Bra
+        >>> from sympy.physics.quantum import Bra
         >>> from sympy import symbols, I
         >>> b = Bra('psi')
         >>> b
@@ -393,7 +456,7 @@ class Bra(State, BraBase):
     References
     ==========
 
-    .. [1] http://en.wikipedia.org/wiki/Bra-ket_notation
+    .. [1] https://en.wikipedia.org/wiki/Bra-ket_notation
     """
 
     @classmethod
@@ -403,6 +466,7 @@ class Bra(State, BraBase):
 #-----------------------------------------------------------------------------
 # Time dependent states, bras and kets.
 #-----------------------------------------------------------------------------
+
 
 class TimeDepState(StateBase):
     """Base class for a general time-dependent quantum state.
@@ -460,29 +524,23 @@ class TimeDepState(StateBase):
     def _print_contents(self, printer, *args):
         label = self._print_label(printer, *args)
         time = self._print_time(printer, *args)
-        return '%s%s;%s%s' % (self.lbracket, label, time, self.rbracket)
+        return '%s;%s' % (label, time)
 
-    def _print_contents_repr(self, printer, *args):
-        label = self._print_label_repr(printer, *args)
+    def _print_label_repr(self, printer, *args):
+        label = self._print_sequence(self.label, ',', printer, *args)
         time = self._print_time_repr(printer, *args)
         return '%s,%s' % (label, time)
 
     def _print_contents_pretty(self, printer, *args):
-        pform = self._print_label_pretty(printer, *args)
-        pform = prettyForm(*pform.left((self.lbracket_pretty)))
-        pform = prettyForm(*pform.right((';')))
-        nextpform = self._print_time_pretty(printer, *args)
-        pform = prettyForm(*pform.right((nextpform)))
-        pform = prettyForm(*pform.right((self.rbracket_pretty)))
-        return pform
+        label = self._print_label_pretty(printer, *args)
+        time = self._print_time_pretty(printer, *args)
+        return printer._print_seq((label, time), delimiter=';')
 
     def _print_contents_latex(self, printer, *args):
-        label = self._print_label_latex(printer, *args)
+        label = self._print_sequence(
+            self.label, self._label_separator, printer, *args)
         time = self._print_time_latex(printer, *args)
-        # The extra {} brackets are needed to get matplotlib's latex
-        # rendered to render this properly.
-        return '{%s%s;%s%s}' %\
-            (self.lbracket_latex, label, time, self.rbracket_latex)
+        return '%s;%s' % (label, time)
 
 
 class TimeDepKet(TimeDepState, KetBase):
@@ -547,7 +605,6 @@ class TimeDepBra(TimeDepState, BraBase):
     ========
 
         >>> from sympy.physics.quantum import TimeDepBra
-        >>> from sympy import symbols, I
         >>> b = TimeDepBra('psi', 't')
         >>> b
         <psi;t|
@@ -564,6 +621,58 @@ class TimeDepBra(TimeDepState, BraBase):
     @classmethod
     def dual_class(self):
         return TimeDepKet
+
+
+class OrthogonalState(State, StateBase):
+    """General abstract quantum state used as a base class for Ket and Bra."""
+    pass
+
+class OrthogonalKet(OrthogonalState, KetBase):
+    """Orthogonal Ket in quantum mechanics.
+
+    The inner product of two states with different labels will give zero,
+    states with the same label will give one.
+
+        >>> from sympy.physics.quantum import OrthogonalBra, OrthogonalKet
+        >>> from sympy.abc import m, n
+        >>> (OrthogonalBra(n)*OrthogonalKet(n)).doit()
+        1
+        >>> (OrthogonalBra(n)*OrthogonalKet(n+1)).doit()
+        0
+        >>> (OrthogonalBra(n)*OrthogonalKet(m)).doit()
+        <n|m>
+    """
+
+    @classmethod
+    def dual_class(self):
+        return OrthogonalBra
+
+    def _eval_innerproduct(self, bra, **hints):
+
+        if len(self.args) != len(bra.args):
+            raise ValueError('Cannot multiply a ket that has a different number of labels.')
+
+        for i in range(len(self.args)):
+            diff = self.args[i] - bra.args[i]
+            diff = diff.expand()
+
+            if diff.is_zero is False:
+                return 0
+
+            if diff.is_zero is None:
+                return None
+
+        return 1
+
+
+class OrthogonalBra(OrthogonalState, BraBase):
+    """Orthogonal Bra in quantum mechanics.
+    """
+
+    @classmethod
+    def dual_class(self):
+        return OrthogonalKet
+
 
 class Wavefunction(Function):
     """Class for representations in continuous bases
@@ -617,7 +726,7 @@ class Wavefunction(Function):
         >>> from sympy.functions import sqrt, sin
         >>> from sympy.physics.quantum.state import Wavefunction
         >>> x, L = symbols('x,L', positive=True)
-        >>> n = symbols('n', integer=True)
+        >>> n = symbols('n', integer=True, positive=True)
         >>> g = sqrt(2/L)*sin(n*pi*x/L)
         >>> f = Wavefunction(g, (x, 0, L))
         >>> f.norm
@@ -661,31 +770,32 @@ class Wavefunction(Function):
                 new_args[ct] = Tuple(*arg)
             else:
                 new_args[ct] = arg
-            ct+=1
+            ct += 1
 
-        return super(Function, cls).__new__(cls, *new_args, **options)
+        return super().__new__(cls, *new_args, **options)
 
     def __call__(self, *args, **options):
         var = self.variables
 
         if len(args) != len(var):
-            raise NotImplementedError("Incorrect number of arguments to function!")
+            raise NotImplementedError(
+                "Incorrect number of arguments to function!")
 
         ct = 0
         #If the passed value is outside the specified bounds, return 0
         for v in var:
-            lower,upper = self.limits[v]
+            lower, upper = self.limits[v]
 
             #Do the comparison to limits only if the passed symbol is actually
             #a symbol present in the limits;
             #Had problems with a comparison of x > L
             if isinstance(args[ct], Expr) and \
-                   not (lower in args[ct].free_symbols \
-                        or upper in args[ct].free_symbols):
+                not (lower in args[ct].free_symbols
+                     or upper in args[ct].free_symbols):
                 continue
 
-            if args[ct] < lower or args[ct] > upper:
-                return 0
+            if (args[ct] < lower) == True or (args[ct] > upper) == True:
+                return S.Zero
 
             ct += 1
 
@@ -705,11 +815,11 @@ class Wavefunction(Function):
 
         return Wavefunction(deriv, *self.args[1:])
 
-    def _eval_dagger(self):
-        return conjugate(self)
-
     def _eval_conjugate(self):
         return Wavefunction(conjugate(self.expr), *self.args[1:])
+
+    def _eval_transpose(self):
+        return self
 
     @property
     def free_symbols(self):
@@ -772,7 +882,7 @@ class Wavefunction(Function):
             {x: (-oo, oo), y: (-1, 2)}
 
         """
-        limits = [(g[1], g[2]) if isinstance(g, Tuple) else (-oo, oo) \
+        limits = [(g[1], g[2]) if isinstance(g, Tuple) else (-oo, oo)
                   for g in self._args[1:]]
         return dict(zip(self.variables, tuple(limits)))
 
@@ -806,7 +916,7 @@ class Wavefunction(Function):
             >>> from sympy.functions import sqrt, sin
             >>> from sympy.physics.quantum.state import Wavefunction
             >>> x, L = symbols('x,L', positive=True)
-            >>> n = symbols('n', integer=True)
+            >>> n = symbols('n', integer=True, positive=True)
             >>> g = sqrt(2/L)*sin(n*pi*x/L)
             >>> f = Wavefunction(g, (x, 0, L))
             >>> f.is_normalized
@@ -816,7 +926,7 @@ class Wavefunction(Function):
 
         return (self.norm == 1.0)
 
-    @property
+    @property  # type: ignore
     @cacheit
     def norm(self):
         """
@@ -832,7 +942,7 @@ class Wavefunction(Function):
             >>> from sympy.functions import sqrt, sin
             >>> from sympy.physics.quantum.state import Wavefunction
             >>> x, L = symbols('x,L', positive=True)
-            >>> n = symbols('n', integer=True)
+            >>> n = symbols('n', integer=True, positive=True)
             >>> g = sqrt(2/L)*sin(n*pi*x/L)
             >>> f = Wavefunction(g, (x, 0, L))
             >>> f.norm
@@ -862,10 +972,11 @@ class Wavefunction(Function):
         ========
 
             >>> from sympy import symbols, pi
-            >>> from sympy.functions import sqrt, sin
+            >>> from sympy.functions import sin
             >>> from sympy.physics.quantum.state import Wavefunction
-            >>> x, L = symbols('x,L', real=True)
-            >>> n = symbols('n', integer=True)
+            >>> x = symbols('x', real=True)
+            >>> L = symbols('L', positive=True)
+            >>> n = symbols('n', integer=True, positive=True)
             >>> g = sin(n*pi*x/L)
             >>> f = Wavefunction(g, (x, 0, L))
             >>> f.normalize()
@@ -874,20 +985,20 @@ class Wavefunction(Function):
         """
         const = self.norm
 
-        if const == oo:
+        if const is oo:
             raise NotImplementedError("The function is not normalizable!")
         else:
             return Wavefunction((const)**(-1)*self.expr, *self.args[1:])
 
     def prob(self):
-        """
+        r"""
         Return the absolute magnitude of the w.f., `|\psi(x)|^2`
 
         Examples
         ========
 
             >>> from sympy import symbols, pi
-            >>> from sympy.functions import sqrt, sin
+            >>> from sympy.functions import sin
             >>> from sympy.physics.quantum.state import Wavefunction
             >>> x, L = symbols('x,L', real=True)
             >>> n = symbols('n', integer=True)

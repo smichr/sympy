@@ -9,15 +9,21 @@ TODO:
   AntiCommutator, represent, apply_operators.
 """
 
-from sympy import Derivative, Expr
+from sympy.core.add import Add
+from sympy.core.expr import Expr
+from sympy.core.function import (Derivative, expand)
+from sympy.core.mul import Mul
+from sympy.core.numbers import (Integer, oo)
 from sympy.printing.pretty.stringpict import prettyForm
 from sympy.physics.quantum.dagger import Dagger
 from sympy.physics.quantum.qexpr import QExpr, dispatch_method
+from sympy.matrices import eye
 
 __all__ = [
     'Operator',
     'HermitianOperator',
     'UnitaryOperator',
+    'IdentityOperator',
     'OuterProduct',
     'DifferentialOperator'
 ]
@@ -25,6 +31,7 @@ __all__ = [
 #-----------------------------------------------------------------------------
 # Operators and outer products
 #-----------------------------------------------------------------------------
+
 
 class Operator(QExpr):
     """Base class for non-commuting quantum operators.
@@ -46,7 +53,7 @@ class Operator(QExpr):
     Create an operator and examine its attributes::
 
         >>> from sympy.physics.quantum import Operator
-        >>> from sympy import symbols, I
+        >>> from sympy import I
         >>> A = Operator('A')
         >>> A
         A
@@ -64,7 +71,7 @@ class Operator(QExpr):
         >>> C
         2*A**2 + I*B
 
-    Operators don't commute::
+    Operators do not commute::
 
         >>> A.is_commutative
         False
@@ -89,13 +96,14 @@ class Operator(QExpr):
     References
     ==========
 
-    .. [1] http://en.wikipedia.org/wiki/Operator_(physics)
-    .. [2] http://en.wikipedia.org/wiki/Observable
+    .. [1] https://en.wikipedia.org/wiki/Operator_%28physics%29
+    .. [2] https://en.wikipedia.org/wiki/Observable
     """
 
     @classmethod
     def default_args(self):
         return ("O",)
+
     #-------------------------------------------------------------------------
     # Printing
     #-------------------------------------------------------------------------
@@ -103,7 +111,7 @@ class Operator(QExpr):
     _label_separator = ','
 
     def _print_operator_name(self, printer, *args):
-        return printer._print(self.__class__.__name__, *args)
+        return self.__class__.__name__
 
     _print_operator_name_latex = _print_operator_name
 
@@ -128,14 +136,14 @@ class Operator(QExpr):
             label_pform = prettyForm(
                 *label_pform.parens(left='(', right=')')
             )
-            pform = prettyForm(*pform.right((label_pform)))
+            pform = prettyForm(*pform.right(label_pform))
             return pform
 
     def _print_contents_latex(self, printer, *args):
         if len(self.label) == 1:
             return self._print_label_latex(printer, *args)
         else:
-            return '%s(%s)' % (
+            return r'%s\left(%s\right)' % (
                 self._print_operator_name_latex(printer, *args),
                 self._print_label_latex(printer, *args)
             )
@@ -162,18 +170,20 @@ class Operator(QExpr):
     def matrix_element(self, *args):
         raise NotImplementedError('matrix_elements is not defined')
 
-    #-------------------------------------------------------------------------
-    # Printing
-    #-------------------------------------------------------------------------
-
     def inverse(self):
         return self._eval_inverse()
 
     inv = inverse
 
     def _eval_inverse(self):
-        # TODO: make non-commutative Exprs print powers using A**-1, not 1/A.
         return self**(-1)
+
+    def __mul__(self, other):
+
+        if isinstance(other, IdentityOperator):
+            return self
+
+        return Mul(self, other)
 
 
 class HermitianOperator(Operator):
@@ -195,8 +205,7 @@ class HermitianOperator(Operator):
     H
     """
 
-    def _eval_dagger(self):
-        return self
+    is_hermitian = True
 
     def _eval_inverse(self):
         if isinstance(self, UnitaryOperator):
@@ -214,6 +223,7 @@ class HermitianOperator(Operator):
                 return self
         else:
             return Operator._eval_power(self, exp)
+
 
 class UnitaryOperator(Operator):
     """A unitary operator that satisfies U*Dagger(U) == 1.
@@ -234,8 +244,87 @@ class UnitaryOperator(Operator):
     1
     """
 
-    def _eval_dagger(self):
+    def _eval_adjoint(self):
         return self._eval_inverse()
+
+
+class IdentityOperator(Operator):
+    """An identity operator I that satisfies op * I == I * op == op for any
+    operator op.
+
+    Parameters
+    ==========
+
+    N : Integer
+        Optional parameter that specifies the dimension of the Hilbert space
+        of operator. This is used when generating a matrix representation.
+
+    Examples
+    ========
+
+    >>> from sympy.physics.quantum import IdentityOperator
+    >>> IdentityOperator()
+    I
+    """
+    @property
+    def dimension(self):
+        return self.N
+
+    @classmethod
+    def default_args(self):
+        return (oo,)
+
+    def __init__(self, *args, **hints):
+        if not len(args) in (0, 1):
+            raise ValueError('0 or 1 parameters expected, got %s' % args)
+
+        self.N = args[0] if (len(args) == 1 and args[0]) else oo
+
+    def _eval_commutator(self, other, **hints):
+        return Integer(0)
+
+    def _eval_anticommutator(self, other, **hints):
+        return 2 * other
+
+    def _eval_inverse(self):
+        return self
+
+    def _eval_adjoint(self):
+        return self
+
+    def _apply_operator(self, ket, **options):
+        return ket
+
+    def _eval_power(self, exp):
+        return self
+
+    def _print_contents(self, printer, *args):
+        return 'I'
+
+    def _print_contents_pretty(self, printer, *args):
+        return prettyForm('I')
+
+    def _print_contents_latex(self, printer, *args):
+        return r'{\mathcal{I}}'
+
+    def __mul__(self, other):
+
+        if isinstance(other, (Operator, Dagger)):
+            return other
+
+        return Mul(self, other)
+
+    def _represent_default_basis(self, **options):
+        if not self.N or self.N == oo:
+            raise NotImplementedError('Cannot represent infinite dimensional' +
+                                      ' identity operator as a matrix')
+
+        format = options.get('format', 'sympy')
+        if format != 'sympy':
+            raise NotImplementedError('Representation in format ' +
+                                      '%s not implemented.' % format)
+
+        return eye(self.N)
 
 
 class OuterProduct(Operator):
@@ -297,27 +386,65 @@ class OuterProduct(Operator):
     References
     ==========
 
-    .. [1] http://en.wikipedia.org/wiki/Outer_product
+    .. [1] https://en.wikipedia.org/wiki/Outer_product
     """
     is_commutative = False
 
     def __new__(cls, *args, **old_assumptions):
         from sympy.physics.quantum.state import KetBase, BraBase
-        ket = args[0]
-        bra = args[1]
-        if not isinstance(ket, KetBase):
-            raise TypeError('KetBase subclass expected, got: %r' % ket)
-        if not isinstance(bra, BraBase):
-            raise TypeError('BraBase subclass expected, got: %r' % ket)
-        if not ket.dual_class() == bra.__class__:
+
+        if len(args) != 2:
+            raise ValueError('2 parameters expected, got %d' % len(args))
+
+        ket_expr = expand(args[0])
+        bra_expr = expand(args[1])
+
+        if (isinstance(ket_expr, (KetBase, Mul)) and
+                isinstance(bra_expr, (BraBase, Mul))):
+            ket_c, kets = ket_expr.args_cnc()
+            bra_c, bras = bra_expr.args_cnc()
+
+            if len(kets) != 1 or not isinstance(kets[0], KetBase):
+                raise TypeError('KetBase subclass expected'
+                                ', got: %r' % Mul(*kets))
+
+            if len(bras) != 1 or not isinstance(bras[0], BraBase):
+                raise TypeError('BraBase subclass expected'
+                                ', got: %r' % Mul(*bras))
+
+            if not kets[0].dual_class() == bras[0].__class__:
+                raise TypeError(
+                    'ket and bra are not dual classes: %r, %r' %
+                    (kets[0].__class__, bras[0].__class__)
+                    )
+
+            # TODO: make sure the hilbert spaces of the bra and ket are
+            # compatible
+            obj = Expr.__new__(cls, *(kets[0], bras[0]), **old_assumptions)
+            obj.hilbert_space = kets[0].hilbert_space
+            return Mul(*(ket_c + bra_c)) * obj
+
+        op_terms = []
+        if isinstance(ket_expr, Add) and isinstance(bra_expr, Add):
+            for ket_term in ket_expr.args:
+                for bra_term in bra_expr.args:
+                    op_terms.append(OuterProduct(ket_term, bra_term,
+                                                 **old_assumptions))
+        elif isinstance(ket_expr, Add):
+            for ket_term in ket_expr.args:
+                op_terms.append(OuterProduct(ket_term, bra_expr,
+                                             **old_assumptions))
+        elif isinstance(bra_expr, Add):
+            for bra_term in bra_expr.args:
+                op_terms.append(OuterProduct(ket_expr, bra_term,
+                                             **old_assumptions))
+        else:
             raise TypeError(
-                'ket and bra are not dual classes: %r, %r' % \
-                (ket.__class__, bra.__class__)
-            )
-        # TODO: make sure the hilbert spaces of the bra and ket are compatible
-        obj = Expr.__new__(cls, *args)
-        obj.hilbert_space = ket.hilbert_space
-        return obj
+                'Expected ket and bra expression, got: %r, %r' %
+                (ket_expr, bra_expr)
+                )
+
+        return Add(*op_terms)
 
     @property
     def ket(self):
@@ -329,11 +456,11 @@ class OuterProduct(Operator):
         """Return the bra on the right side of the outer product."""
         return self.args[1]
 
-    def _eval_dagger(self):
+    def _eval_adjoint(self):
         return OuterProduct(Dagger(self.bra), Dagger(self.ket))
 
     def _sympystr(self, printer, *args):
-        return str(self.ket)+str(self.bra)
+        return printer._print(self.ket) + printer._print(self.bra)
 
     def _sympyrepr(self, printer, *args):
         return '%s(%s,%s)' % (self.__class__.__name__,
@@ -346,12 +473,19 @@ class OuterProduct(Operator):
     def _latex(self, printer, *args):
         k = printer._print(self.ket, *args)
         b = printer._print(self.bra, *args)
-        return k+b
+        return k + b
 
     def _represent(self, **options):
         k = self.ket._represent(**options)
         b = self.bra._represent(**options)
         return k*b
+
+    def _eval_trace(self, **kwargs):
+        # TODO if operands are tensorproducts this may be will be handled
+        # differently.
+
+        return self.ket._eval_trace(self.bra, **kwargs)
+
 
 class DifferentialOperator(Operator):
     """An operator for representing the differential operator, i.e. d/dx
@@ -447,7 +581,7 @@ class DifferentialOperator(Operator):
     @property
     def expr(self):
         """
-        Returns the arbitary expression which is to have the Wavefunction
+        Returns the arbitrary expression which is to have the Wavefunction
         substituted into it
 
         Examples
@@ -496,17 +630,17 @@ class DifferentialOperator(Operator):
     # Printing
     #-------------------------------------------------------------------------
 
-    def _print_contents(self, printer, *args):
+    def _print(self, printer, *args):
         return '%s(%s)' % (
             self._print_operator_name(printer, *args),
             self._print_label(printer, *args)
-          )
+        )
 
-    def _print_contents_pretty(self, printer, *args):
+    def _print_pretty(self, printer, *args):
         pform = self._print_operator_name_pretty(printer, *args)
         label_pform = self._print_label_pretty(printer, *args)
         label_pform = prettyForm(
             *label_pform.parens(left='(', right=')')
         )
-        pform = prettyForm(*pform.right((label_pform)))
+        pform = prettyForm(*pform.right(label_pform))
         return pform

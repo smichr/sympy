@@ -1,19 +1,41 @@
 """Solvers of systems of polynomial equations. """
 
+from sympy.core import S
+from sympy.core.sorting import default_sort_key
 from sympy.polys import Poly, groebner, roots
 from sympy.polys.polytools import parallel_poly_from_expr
 from sympy.polys.polyerrors import (ComputationFailed,
     PolificationFailed, CoercionFailed)
-from sympy.utilities import postfixes
 from sympy.simplify import rcollect
-from sympy.core import S
+from sympy.utilities import postfixes
+from sympy.utilities.misc import filldedent
+
 
 class SolveFailed(Exception):
     """Raised when solver's conditions weren't met. """
 
+
 def solve_poly_system(seq, *gens, **args):
     """
     Solve a system of polynomial equations.
+
+    Parameters
+    ==========
+
+    seq: a list/tuple/set
+        Listing all the equations that are needed to be solved
+    gens: generators
+        generators of the equations in seq for which we want the
+        solutions
+    args: Keyword arguments
+        Special options for solving the equations
+
+    Returns
+    =======
+
+    List[Tuple]
+        A List of tuples. Solutions for symbols that satisfy the
+        equations listed in seq
 
     Examples
     ========
@@ -27,16 +49,13 @@ def solve_poly_system(seq, *gens, **args):
     """
     try:
         polys, opt = parallel_poly_from_expr(seq, *gens, **args)
-    except PolificationFailed, exc:
+    except PolificationFailed as exc:
         raise ComputationFailed('solve_poly_system', len(seq), exc)
 
     if len(polys) == len(opt.gens) == 2:
         f, g = polys
 
-        a, b = f.degree_list()
-        c, d = g.degree_list()
-
-        if a <= 2 and b <= 2 and c <= 2 and d <= 2:
+        if all(i <= 2 for i in f.degree_list() + g.degree_list()):
             try:
                 return solve_biquadratic(f, g, opt)
             except SolveFailed:
@@ -44,8 +63,26 @@ def solve_poly_system(seq, *gens, **args):
 
     return solve_generic(polys, opt)
 
+
 def solve_biquadratic(f, g, opt):
     """Solve a system of two bivariate quadratic polynomial equations.
+
+    Parameters
+    ==========
+
+    f: a single Expr or Poly
+        First equation
+    g: a single Expr or Poly
+        Second Equation
+    opt: an Options object
+        For specifying keyword arguments and generators
+
+    Returns
+    =======
+
+    List[Tuple]
+        A List of tuples. Solutions for symbols that satisfy the
+        equations listed in seq.
 
     Examples
     ========
@@ -63,7 +100,8 @@ def solve_biquadratic(f, g, opt):
     >>> a = Poly(y + x**2 - 3, y, x, domain='ZZ')
     >>> b = Poly(-y + x - 4, y, x, domain='ZZ')
     >>> solve_biquadratic(a, b, NewOption)
-    [(-sqrt(29)/2 + 7/2, -sqrt(29)/2 - 1/2), (sqrt(29)/2 + 7/2, -1/2 + sqrt(29)/2)]
+    [(7/2 - sqrt(29)/2, -sqrt(29)/2 - 1/2), (sqrt(29)/2 + 7/2, -1/2 + \
+      sqrt(29)/2)]
     """
     G = groebner([f, g])
 
@@ -73,14 +111,17 @@ def solve_biquadratic(f, g, opt):
     if len(G) != 2:
         raise SolveFailed
 
-    p, q = G
     x, y = opt.gens
+    p, q = G
+    if not p.gcd(q).is_ground:
+        # not 0-dimensional
+        raise SolveFailed
 
     p = Poly(p, x, expand=False)
-    q = q.ltrim(-1)
+    p_roots = [rcollect(expr, y) for expr in roots(p).keys()]
 
-    p_roots = [ rcollect(expr, y) for expr in roots(p).keys() ]
-    q_roots = roots(q).keys()
+    q = q.ltrim(-1)
+    q_roots = list(roots(q).keys())
 
     solutions = []
 
@@ -89,7 +130,8 @@ def solve_biquadratic(f, g, opt):
             solution = (p_root.subs(y, q_root), q_root)
             solutions.append(solution)
 
-    return sorted(solutions)
+    return sorted(solutions, key=default_sort_key)
+
 
 def solve_generic(polys, opt):
     """
@@ -116,6 +158,21 @@ def solve_generic(polys, opt):
     on the root finding algorithms. If no solutions were found, it
     means only that roots() failed, but the system is solvable. To
     overcome this difficulty use numerical algorithms instead.
+
+    Parameters
+    ==========
+
+    polys: a list/tuple/set
+        Listing all the polynomial equations that are needed to be solved
+    opt: an Options object
+        For specifying keyword arguments and generators
+
+    Returns
+    =======
+
+    List[Tuple]
+        A List of tuples. Solutions for symbols that satisfy the
+        equations listed in seq
 
     References
     ==========
@@ -154,7 +211,7 @@ def solve_generic(polys, opt):
     def _is_univariate(f):
         """Returns True if 'f' is univariate in its last variable. """
         for monom in f.monoms():
-            if any(m > 0 for m in monom[:-1]):
+            if any(monom[:-1]):
                 return False
 
         return True
@@ -171,8 +228,8 @@ def solve_generic(polys, opt):
     def _solve_reduced_system(system, gens, entry=False):
         """Recursively solves reduced polynomial systems. """
         if len(system) == len(gens) == 1:
-            zeros = roots(system[0], gens[-1]).keys()
-            return [ (zero,) for zero in zeros ]
+            zeros = list(roots(system[0], gens[-1]).keys())
+            return [(zero,) for zero in zeros]
 
         basis = groebner(system, gens, polys=True)
 
@@ -182,23 +239,32 @@ def solve_generic(polys, opt):
             else:
                 return None
 
-        univariate = filter(_is_univariate, basis)
+        univariate = list(filter(_is_univariate, basis))
+
+        if len(basis) < len(gens):
+            raise NotImplementedError(filldedent('''
+                only zero-dimensional systems supported
+                (finite number of solutions)
+                '''))
 
         if len(univariate) == 1:
             f = univariate.pop()
         else:
-            raise NotImplementedError("only zero-dimensional systems supported (finite number of solutions)")
+            raise NotImplementedError(filldedent('''
+                only zero-dimensional systems supported
+                (finite number of solutions)
+                '''))
 
         gens = f.gens
         gen = gens[-1]
 
-        zeros = roots(f.ltrim(gen)).keys()
+        zeros = list(roots(f.ltrim(gen)).keys())
 
         if not zeros:
             return []
 
         if len(basis) == 1:
-            return [ (zero,) for zero in zeros ]
+            return [(zero,) for zero in zeros]
 
         solutions = []
 
@@ -215,6 +281,11 @@ def solve_generic(polys, opt):
             for solution in _solve_reduced_system(new_system, new_gens):
                 solutions.append(solution + (zero,))
 
+        if solutions and len(solutions[0]) != len(gens):
+            raise NotImplementedError(filldedent('''
+                only zero-dimensional systems supported
+                (finite number of solutions)
+                '''))
         return solutions
 
     try:
@@ -223,9 +294,10 @@ def solve_generic(polys, opt):
         raise NotImplementedError
 
     if result is not None:
-        return sorted(result)
+        return sorted(result, key=default_sort_key)
     else:
         return None
+
 
 def solve_triangulated(polys, *gens, **args):
     """
@@ -234,6 +306,24 @@ def solve_triangulated(polys, *gens, **args):
     The algorithm proceeds by computing one Groebner basis in the ground
     domain and then by iteratively computing polynomial factorizations in
     appropriately constructed algebraic extensions of the ground domain.
+
+    Parameters
+    ==========
+
+    polys: a list/tuple/set
+        Listing all the equations that are needed to be solved
+    gens: generators
+        generators of the equations in polys for which we want the
+        solutions
+    args: Keyword arguments
+        Special options for solving the equations
+
+    Returns
+    =======
+
+    List[Tuple]
+        A List of tuples. Solutions for symbols that satisfy the
+        equations listed in polys
 
     Examples
     ========
@@ -267,7 +357,7 @@ def solve_triangulated(polys, *gens, **args):
     dom = f.get_domain()
 
     zeros = f.ground_roots()
-    solutions = set([])
+    solutions = set()
 
     for zero in zeros:
         solutions.add(((zero,), dom))
@@ -276,10 +366,10 @@ def solve_triangulated(polys, *gens, **args):
     vars_seq = postfixes(gens[1:])
 
     for var, vars in zip(var_seq, vars_seq):
-        _solutions = set([])
+        _solutions = set()
 
         for values, dom in solutions:
-            H, mapping = [], zip(vars, values)
+            H, mapping = [], list(zip(vars, values))
 
             for g in G:
                 _vars = (var,) + vars
@@ -308,4 +398,4 @@ def solve_triangulated(polys, *gens, **args):
     for i, (solution, _) in enumerate(solutions):
         solutions[i] = solution
 
-    return sorted(solutions)
+    return sorted(solutions, key=default_sort_key)

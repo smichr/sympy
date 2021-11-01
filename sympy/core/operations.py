@@ -1,14 +1,22 @@
-from core import C
-from expr import Expr
-from sympify import _sympify, sympify
-from cache import cacheit
-from compatibility import cmp
+from operator import attrgetter
+from typing import Tuple, Type
+from collections import defaultdict
 
-# from add import Add /cyclic/
-# from mul import Mul /cyclic/
-# from function import Lambda, WildFunction /cyclic/
+from sympy.utilities.exceptions import SymPyDeprecationWarning
 
-class AssocOp(Expr):
+from .sympify import _sympify as _sympify_, sympify
+from .basic import Basic
+from .cache import cacheit
+from .sorting import ordered
+from .logic import fuzzy_and
+from .parameters import global_parameters
+from sympy.utilities.iterables import sift
+from sympy.multipledispatch.dispatcher import (Dispatcher,
+    ambiguity_register_error_ignore_dup,
+    str_signature, RaiseNotImplementedError)
+
+
+class AssocOp(Basic):
     """ Associative operations, can separate noncommutative and
     commutative parts.
 
@@ -18,19 +26,54 @@ class AssocOp(Expr):
 
     This is an abstract base class, concrete derived classes must define
     the attribute `identity`.
+
+    Parameters
+    ==========
+
+    *args :
+        Arguments which are operated
+
+    evaluate : bool, optional
+        Evaluate the operation. If not passed, refer to ``global_parameters.evaluate``.
     """
 
     # for performance reason, we don't let is_commutative go to assumptions,
     # and keep it right here
-    __slots__ = ['is_commutative']
+    __slots__ = ('is_commutative',)  # type: Tuple[str, ...]
+
+    _args_type = None  # type: Type[Basic]
 
     @cacheit
-    def __new__(cls, *args, **options):
-        args = map(_sympify, args)
-        args = [a for a in args if a is not cls.identity]
+    def __new__(cls, *args, evaluate=None, _sympify=True):
+        # Allow faster processing by passing ``_sympify=False``, if all arguments
+        # are already sympified.
+        if _sympify:
+            args = list(map(_sympify_, args))
 
-        if not options.pop('evaluate', True):
-            return cls._from_args(args)
+        # Disallow non-Expr args in Add/Mul
+        typ = cls._args_type
+        if typ is not None:
+            from .relational import Relational
+            if any(isinstance(arg, Relational) for arg in args):
+                raise TypeError("Relational cannot be used in %s" % cls.__name__)
+
+            # This should raise TypeError once deprecation period is over:
+            if not all(isinstance(arg, typ) for arg in args):
+                SymPyDeprecationWarning(
+                    feature="Add/Mul with non-Expr args",
+                    useinstead="Expr args",
+                    issue=19445,
+                    deprecated_since_version="1.7"
+                ).warn()
+
+        if evaluate is None:
+            evaluate = global_parameters.evaluate
+        if not evaluate:
+            obj = cls._from_args(args)
+            obj = cls._exec_constructor_postprocessors(obj)
+            return obj
+
+        args = [a for a in args if a is not cls.identity]
 
         if len(args) == 0:
             return cls.identity
@@ -38,33 +81,42 @@ class AssocOp(Expr):
             return args[0]
 
         c_part, nc_part, order_symbols = cls.flatten(args)
-        obj = cls._from_args(c_part + nc_part, not nc_part)
+        is_commutative = not nc_part
+        obj = cls._from_args(c_part + nc_part, is_commutative)
+        obj = cls._exec_constructor_postprocessors(obj)
 
         if order_symbols is not None:
-            return C.Order(obj, *order_symbols)
+            from sympy.series.order import Order
+            return Order(obj, *order_symbols)
         return obj
 
     @classmethod
     def _from_args(cls, args, is_commutative=None):
-        """Create new instance with already-processed args"""
+        """Create new instance with already-processed args.
+        If the args are not in canonical order, then a non-canonical
+        result will be returned, so use with caution. The order of
+        args may change if the sign of the args is changed."""
         if len(args) == 0:
             return cls.identity
         elif len(args) == 1:
             return args[0]
 
-        obj = Expr.__new__(cls, *args)
+        obj = super().__new__(cls, *args)
         if is_commutative is None:
-            is_commutative = all(a.is_commutative for a in args)
+            is_commutative = fuzzy_and(a.is_commutative for a in args)
         obj.is_commutative = is_commutative
         return obj
 
-    def _new_rawargs(self, *args, **kwargs):
+    def _new_rawargs(self, *args, reeval=True, **kwargs):
         """Create new instance of own class with args exactly as provided by
         caller but returning the self class identity if args is empty.
 
+        Examples
+        ========
+
            This is handy when we want to optimize things, e.g.
 
-               >>> from sympy import Mul, symbols, S
+               >>> from sympy import Mul, S
                >>> from sympy.abc import x, y
                >>> e = Mul(3, x, y)
                >>> e.args
@@ -76,13 +128,11 @@ class AssocOp(Expr):
 
            Note: use this with caution. There is no checking of arguments at
            all. This is best used when you are rebuilding an Add or Mul after
-           simply removing one or more terms. If modification which result,
-           for example, in extra 1s being inserted (as when collecting an
-           expression's numerators and denominators) they will not show up in
-           the result but a Mul will be returned nonetheless:
+           simply removing one or more args. If, for example, modifications,
+           result in extra 1s being inserted they will show up in the result:
 
                >>> m = (x*y)._new_rawargs(S.One, x); m
-               x
+               1*x
                >>> m == x
                False
                >>> m.is_Mul
@@ -100,7 +150,7 @@ class AssocOp(Expr):
            self is non-commutative and kwarg `reeval=False` has not been
            passed.
         """
-        if kwargs.pop('reeval', True) and self.is_commutative is False:
+        if reeval and self.is_commutative is False:
             is_commutative = None
         else:
             is_commutative = self.is_commutative
@@ -115,14 +165,16 @@ class AssocOp(Expr):
         new_seq = []
         while seq:
             o = seq.pop()
-            if o.__class__ is cls: # classes must match exactly
+            if o.__class__ is cls:  # classes must match exactly
                 seq.extend(o.args)
             else:
                 new_seq.append(o)
+        new_seq.reverse()
+
         # c_part, nc_part, order_symbols
         return [], new_seq, None
 
-    def _matches_commutative(self, expr, repl_dict={}):
+    def _matches_commutative(self, expr, repl_dict=None, old=False):
         """
         Matches Add/Mul "pattern" to an expression "expr".
 
@@ -131,7 +183,8 @@ class AssocOp(Expr):
 
         This function is the main workhorse for Add/Mul.
 
-        For instance:
+        Examples
+        ========
 
         >>> from sympy import symbols, Wild, sin
         >>> a = Wild("a")
@@ -160,6 +213,14 @@ class AssocOp(Expr):
         equivalent.
 
         """
+        # make sure expr is Expr if pattern is Expr
+        from .expr import Expr
+        if isinstance(self, Expr) and not isinstance(expr, Expr):
+            return None
+
+        if repl_dict is None:
+            repl_dict = dict()
+
         # handle simple patterns
         if self == expr:
             return repl_dict
@@ -169,65 +230,188 @@ class AssocOp(Expr):
             return d
 
         # eliminate exact part from pattern: (2+a+w1+w2).matches(expr) -> (w1+w2).matches(expr-a-2)
-        wild_part = []
-        exact_part = []
-        from function import WildFunction
-        from symbol import Wild
-        for p in self.args:
-            if p.has(Wild, WildFunction) and (not expr.has(p)):
-                # not all Wild should stay Wilds, for example:
-                # (w2+w3).matches(w1) -> (w1+w3).matches(w1) -> w3.matches(0)
-                wild_part.append(p)
-            else:
-                exact_part.append(p)
-
-        if exact_part:
-            newpattern = self.func(*wild_part)
-            newexpr = self._combine_inverse(expr, self.func(*exact_part))
+        from .function import WildFunction
+        from .symbol import Wild
+        wild_part, exact_part = sift(self.args, lambda p:
+            p.has(Wild, WildFunction) and not expr.has(p),
+            binary=True)
+        if not exact_part:
+            wild_part = list(ordered(wild_part))
+            if self.is_Add:
+                # in addition to normal ordered keys, impose
+                # sorting on Muls with leading Number to put
+                # them in order
+                wild_part = sorted(wild_part, key=lambda x:
+                    x.args[0] if x.is_Mul and x.args[0].is_Number else
+                    0)
+        else:
+            exact = self._new_rawargs(*exact_part)
+            free = expr.free_symbols
+            if free and (exact.free_symbols - free):
+                # there are symbols in the exact part that are not
+                # in the expr; but if there are no free symbols, let
+                # the matching continue
+                return None
+            newexpr = self._combine_inverse(expr, exact)
+            if not old and (expr.is_Add or expr.is_Mul):
+                if newexpr.count_ops() > expr.count_ops():
+                    return None
+            newpattern = self._new_rawargs(*wild_part)
             return newpattern.matches(newexpr, repl_dict)
 
         # now to real work ;)
-        if expr.is_Add:
-            i, d = expr.as_independent(C.Symbol)
-            expr_list = (i,) + self.make_args(expr)
-        else:
-            expr_list = self.make_args(expr)
-        for last_op in reversed(expr_list):
-            for w in reversed(wild_part):
-                d1 = w.matches(last_op, repl_dict)
-                if d1 is not None:
-                    d2 = self.xreplace(d1).matches(expr, d1)
-                    if d2 is not None:
-                        return d2
+        i = 0
+        saw = set()
+        while expr not in saw:
+            saw.add(expr)
+            args = tuple(ordered(self.make_args(expr)))
+            if self.is_Add and expr.is_Add:
+                # in addition to normal ordered keys, impose
+                # sorting on Muls with leading Number to put
+                # them in order
+                args = tuple(sorted(args, key=lambda x:
+                    x.args[0] if x.is_Mul and x.args[0].is_Number else
+                    0))
+            expr_list = (self.identity,) + args
+            for last_op in reversed(expr_list):
+                for w in reversed(wild_part):
+                    d1 = w.matches(last_op, repl_dict)
+                    if d1 is not None:
+                        d2 = self.xreplace(d1).matches(expr, d1)
+                        if d2 is not None:
+                            return d2
+
+            if i == 0:
+                if self.is_Mul:
+                    # make e**i look like Mul
+                    if expr.is_Pow and expr.exp.is_Integer:
+                        from .mul import Mul
+                        if expr.exp > 0:
+                            expr = Mul(*[expr.base, expr.base**(expr.exp - 1)], evaluate=False)
+                        else:
+                            expr = Mul(*[1/expr.base, expr.base**(expr.exp + 1)], evaluate=False)
+                        i += 1
+                        continue
+
+                elif self.is_Add:
+                    # make i*e look like Add
+                    c, e = expr.as_coeff_Mul()
+                    if abs(c) > 1:
+                        from .add import Add
+                        if c > 0:
+                            expr = Add(*[e, (c - 1)*e], evaluate=False)
+                        else:
+                            expr = Add(*[-e, (c + 1)*e], evaluate=False)
+                        i += 1
+                        continue
+
+                    # try collection on non-Wild symbols
+                    from sympy.simplify.radsimp import collect
+                    was = expr
+                    did = set()
+                    for w in reversed(wild_part):
+                        c, w = w.as_coeff_mul(Wild)
+                        free = c.free_symbols - did
+                        if free:
+                            did.update(free)
+                            expr = collect(expr, free)
+                    if expr != was:
+                        i += 0
+                        continue
+
+                break  # if we didn't continue, there is nothing more to do
 
         return
 
-    def _eval_template_is_attr(self, is_attr, when_multiple=False):
-        # return True if all elements have the property;
-        # False if one doesn't have the property; and
-        # if more than one doesn't have property, return
-        #    False if when_multiple = False
-        #    None if when_multiple is not False
-        quick = when_multiple is None
-        multi = False
-        for t in self.args:
-            a = getattr(t, is_attr)
-            if a is True:
-                continue
-            if a is None:
-                return
-            if quick and multi:
-                return None
-            multi = True
-        return not multi
+    def _has_matcher(self):
+        """Helper for .has()"""
+        def _ncsplit(expr):
+            # this is not the same as args_cnc because here
+            # we don't assume expr is a Mul -- hence deal with args --
+            # and always return a set.
+            cpart, ncpart = sift(expr.args,
+                lambda arg: arg.is_commutative is True, binary=True)
+            return set(cpart), ncpart
+
+        c, nc = _ncsplit(self)
+        cls = self.__class__
+
+        def is_in(expr):
+            if expr == self:
+                return True
+            elif not isinstance(expr, Basic):
+                return False
+            elif isinstance(expr, cls):
+                _c, _nc = _ncsplit(expr)
+                if (c & _c) == c:
+                    if not nc:
+                        return True
+                    elif len(nc) <= len(_nc):
+                        for i in range(len(_nc) - len(nc) + 1):
+                            if _nc[i:i + len(nc)] == nc:
+                                return True
+            return False
+        return is_in
 
     def _eval_evalf(self, prec):
-        return self.func(*[s._evalf(prec) for s in self.args])
+        """
+        Evaluate the parts of self that are numbers; if the whole thing
+        was a number with no functions it would have been evaluated, but
+        it wasn't so we must judiciously extract the numbers and reconstruct
+        the object. This is *not* simply replacing numbers with evaluated
+        numbers. Numbers should be handled in the largest pure-number
+        expression as possible. So the code below separates ``self`` into
+        number and non-number parts and evaluates the number parts and
+        walks the args of the non-number part recursively (doing the same
+        thing).
+        """
+        from .add import Add
+        from .mul import Mul
+        from .symbol import Symbol
+        from .function import AppliedUndef
+        if isinstance(self, (Mul, Add)):
+            x, tail = self.as_independent(Symbol, AppliedUndef)
+            # if x is an AssocOp Function then the _evalf below will
+            # call _eval_evalf (here) so we must break the recursion
+            if not (tail is self.identity or
+                    isinstance(x, AssocOp) and x.is_Function or
+                    x is self.identity and isinstance(tail, AssocOp)):
+                # here, we have a number so we just call to _evalf with prec;
+                # prec is not the same as n, it is the binary precision so
+                # that's why we don't call to evalf.
+                x = x._evalf(prec) if x is not self.identity else self.identity
+                args = []
+                tail_args = tuple(self.func.make_args(tail))
+                for a in tail_args:
+                    # here we call to _eval_evalf since we don't know what we
+                    # are dealing with and all other _eval_evalf routines should
+                    # be doing the same thing (i.e. taking binary prec and
+                    # finding the evalf-able args)
+                    newa = a._eval_evalf(prec)
+                    if newa is None:
+                        args.append(a)
+                    else:
+                        args.append(newa)
+                return self.func(x, *args)
+
+        # this is the same as above, but there were no pure-number args to
+        # deal with
+        args = []
+        for a in self.args:
+            newa = a._eval_evalf(prec)
+            if newa is None:
+                args.append(a)
+            else:
+                args.append(newa)
+        return self.func(*args)
 
     @classmethod
     def make_args(cls, expr):
         """
         Return a sequence of elements `args` such that cls(*args) == expr
+
+        Examples
+        ========
 
         >>> from sympy import Symbol, Mul, Add
         >>> x, y = map(Symbol, 'xy')
@@ -243,14 +427,25 @@ class AssocOp(Expr):
         if isinstance(expr, cls):
             return expr.args
         else:
-            return (expr,)
+            return (sympify(expr),)
+
+    def doit(self, **hints):
+        if hints.get('deep', True):
+            terms = [term.doit(**hints) for term in self.args]
+        else:
+            terms = self.args
+        return self.func(*terms, evaluate=True)
 
 class ShortCircuit(Exception):
     pass
 
+
 class LatticeOp(AssocOp):
     """
     Join/meet operations of an algebraic lattice[1].
+
+    Explanation
+    ===========
 
     These binary operations are associative (op(op(a, b), c) = op(a, op(b, c))),
     commutative (op(a, b) = op(b, a)) and idempotent (op(a, a) = op(a) = a).
@@ -260,6 +455,9 @@ class LatticeOp(AssocOp):
 
     This is an abstract base class, concrete derived classes must declare
     attributes zero and identity. All defining properties are then respected.
+
+    Examples
+    ========
 
     >>> from sympy import Integer
     >>> from sympy.core.operations import LatticeOp
@@ -277,65 +475,226 @@ class LatticeOp(AssocOp):
 
     References:
 
-    [1] - http://en.wikipedia.org/wiki/Lattice_(order)
+    .. [1] https://en.wikipedia.org/wiki/Lattice_%28order%29
     """
 
     is_commutative = True
 
     def __new__(cls, *args, **options):
-        args = (sympify(arg) for arg in args)
+        args = (_sympify_(arg) for arg in args)
+
         try:
+            # /!\ args is a generator and _new_args_filter
+            # must be careful to handle as such; this
+            # is done so short-circuiting can be done
+            # without having to sympify all values
             _args = frozenset(cls._new_args_filter(args))
         except ShortCircuit:
-            return cls.zero
+            return sympify(cls.zero)
         if not _args:
-            return cls.identity
+            return sympify(cls.identity)
         elif len(_args) == 1:
             return set(_args).pop()
         else:
-            obj = Expr.__new__(cls, _args)
+            # XXX in almost every other case for __new__, *_args is
+            # passed along, but the expectation here is for _args
+            obj = super(AssocOp, cls).__new__(cls, *ordered(_args))
             obj._argset = _args
             return obj
 
     @classmethod
-    def _new_args_filter(cls, arg_sequence):
+    def _new_args_filter(cls, arg_sequence, call_cls=None):
         """Generator filtering args"""
+        ncls = call_cls or cls
         for arg in arg_sequence:
-            if arg == cls.zero:
+            if arg == ncls.zero:
                 raise ShortCircuit(arg)
-            elif arg == cls.identity:
+            elif arg == ncls.identity:
                 continue
-            elif arg.func == cls:
-                for x in arg.iter_basic_args():
-                    yield x
+            elif arg.func == ncls:
+                yield from arg.args
             else:
                 yield arg
 
     @classmethod
     def make_args(cls, expr):
         """
-        Return a sequence of elements `args` such that cls(*args) == expr
-
-        >>> from sympy import Symbol, Mul, Add
-        >>> x, y = map(Symbol, 'xy')
-
-        >>> Mul.make_args(x*y)
-        (x, y)
-        >>> Add.make_args(x*y)
-        (x*y,)
-        >>> set(Add.make_args(x*y + y)) == set([y, x*y])
-        True
-
+        Return a set of args such that cls(*arg_set) == expr.
         """
         if isinstance(expr, cls):
             return expr._argset
         else:
-            return frozenset([expr])
-
-    @property
-    def args(self):
-        return tuple(self._argset)
+            return frozenset([sympify(expr)])
 
     @staticmethod
     def _compare_pretty(a, b):
-        return cmp(str(a), str(b))
+        return (str(a) > str(b)) - (str(a) < str(b))
+
+
+class AssocOpDispatcher:
+    """
+    Handler dispatcher for associative operators
+
+    .. notes::
+       This approach is experimental, and can be replaced or deleted in the future.
+       See https://github.com/sympy/sympy/pull/19463.
+
+    Explanation
+    ===========
+
+    If arguments of different types are passed, the classes which handle the operation for each type
+    are collected. Then, a class which performs the operation is selected by recursive binary dispatching.
+    Dispatching relation can be registered by ``register_handlerclass`` method.
+
+    Priority registration is unordered. You cannot make ``A*B`` and ``B*A`` refer to
+    different handler classes. All logic dealing with the order of arguments must be implemented
+    in the handler class.
+
+    Examples
+    ========
+
+    >>> from sympy import Add, Expr, Symbol
+    >>> from sympy.core.add import add
+
+    >>> class NewExpr(Expr):
+    ...     @property
+    ...     def _add_handler(self):
+    ...         return NewAdd
+    >>> class NewAdd(NewExpr, Add):
+    ...     pass
+    >>> add.register_handlerclass((Add, NewAdd), NewAdd)
+
+    >>> a, b = Symbol('a'), NewExpr()
+    >>> add(a, b) == NewAdd(a, b)
+    True
+
+    """
+    def __init__(self, name, doc=None):
+        self.name = name
+        self.doc = doc
+        self.handlerattr = "_%s_handler" % name
+        self._handlergetter = attrgetter(self.handlerattr)
+        self._dispatcher = Dispatcher(name)
+
+    def __repr__(self):
+        return "<dispatched %s>" % self.name
+
+    def register_handlerclass(self, classes, typ, on_ambiguity=ambiguity_register_error_ignore_dup):
+        """
+        Register the handler class for two classes, in both straight and reversed order.
+
+        Paramteters
+        ===========
+
+        classes : tuple of two types
+            Classes who are compared with each other.
+
+        typ:
+            Class which is registered to represent *cls1* and *cls2*.
+            Handler method of *self* must be implemented in this class.
+        """
+        if not len(classes) == 2:
+            raise RuntimeError(
+                "Only binary dispatch is supported, but got %s types: <%s>." % (
+                len(classes), str_signature(classes)
+            ))
+        if len(set(classes)) == 1:
+            raise RuntimeError(
+                "Duplicate types <%s> cannot be dispatched." % str_signature(classes)
+            )
+        self._dispatcher.add(tuple(classes), typ, on_ambiguity=on_ambiguity)
+        self._dispatcher.add(tuple(reversed(classes)), typ, on_ambiguity=on_ambiguity)
+
+    @cacheit
+    def __call__(self, *args, _sympify=True, **kwargs):
+        """
+        Parameters
+        ==========
+
+        *args :
+            Arguments which are operated
+        """
+        if _sympify:
+            args = tuple(map(_sympify_, args))
+        handlers = frozenset(map(self._handlergetter, args))
+
+        # no need to sympify again
+        return self.dispatch(handlers)(*args, _sympify=False, **kwargs)
+
+    @cacheit
+    def dispatch(self, handlers):
+        """
+        Select the handler class, and return its handler method.
+        """
+
+        # Quick exit for the case where all handlers are same
+        if len(handlers) == 1:
+            h, = handlers
+            if not isinstance(h, type):
+                raise RuntimeError("Handler {!r} is not a type.".format(h))
+            return h
+
+        # Recursively select with registered binary priority
+        for i, typ in enumerate(handlers):
+
+            if not isinstance(typ, type):
+                raise RuntimeError("Handler {!r} is not a type.".format(typ))
+
+            if i == 0:
+                handler = typ
+            else:
+                prev_handler = handler
+                handler = self._dispatcher.dispatch(prev_handler, typ)
+
+                if not isinstance(handler, type):
+                    raise RuntimeError(
+                        "Dispatcher for {!r} and {!r} must return a type, but got {!r}".format(
+                        prev_handler, typ, handler
+                    ))
+
+        # return handler class
+        return handler
+
+    @property
+    def __doc__(self):
+        docs = [
+            "Multiply dispatched associative operator: %s" % self.name,
+            "Note that support for this is experimental, see the docs for :class:`AssocOpDispatcher` for details"
+        ]
+
+        if self.doc:
+            docs.append(self.doc)
+
+        s = "Registered handler classes\n"
+        s += '=' * len(s)
+        docs.append(s)
+
+        amb_sigs = []
+
+        typ_sigs = defaultdict(list)
+        for sigs in self._dispatcher.ordering[::-1]:
+            key = self._dispatcher.funcs[sigs]
+            typ_sigs[key].append(sigs)
+
+        for typ, sigs in typ_sigs.items():
+
+            sigs_str = ', '.join('<%s>' % str_signature(sig) for sig in sigs)
+
+            if isinstance(typ, RaiseNotImplementedError):
+                amb_sigs.append(sigs_str)
+                continue
+
+            s = 'Inputs: %s\n' % sigs_str
+            s += '-' * len(s) + '\n'
+            s += typ.__name__
+            docs.append(s)
+
+        if amb_sigs:
+            s = "Ambiguous handler classes\n"
+            s += '=' * len(s)
+            docs.append(s)
+
+            s = '\n'.join(amb_sigs)
+            docs.append(s)
+
+        return '\n\n'.join(docs)

@@ -1,6 +1,9 @@
 """The anti-commutator: ``{A,B} = A*B + B*A``."""
 
-from sympy import S, Expr, Mul, Integer
+from sympy.core.expr import Expr
+from sympy.core.mul import Mul
+from sympy.core.numbers import Integer
+from sympy.core.singleton import S
 from sympy.printing.pretty.stringpict import prettyForm
 
 from sympy.physics.quantum.operator import Operator
@@ -18,11 +21,14 @@ __all__ = [
 class AntiCommutator(Expr):
     """The standard anticommutator, in an unevaluated state.
 
+    Explanation
+    ===========
+
     Evaluating an anticommutator is defined [1]_ as: ``{A, B} = A*B + B*A``.
     This class returns the anticommutator in an unevaluated form.  To evaluate
     the anticommutator, use the ``.doit()`` method.
 
-    Cannonical ordering of an anticommutator is ``{A, B}`` for ``A < B``. The
+    Canonical ordering of an anticommutator is ``{A, B}`` for ``A < B``. The
     arguments of the anticommutator are put into canonical order using
     ``__cmp__``. If ``B < A``, then ``{A, B}`` is returned as ``{B, A}``.
 
@@ -70,7 +76,7 @@ class AntiCommutator(Expr):
     References
     ==========
 
-    .. [1] http://en.wikipedia.org/wiki/Commutator
+    .. [1] https://en.wikipedia.org/wiki/Commutator
     """
     is_commutative = False
 
@@ -83,13 +89,14 @@ class AntiCommutator(Expr):
 
     @classmethod
     def eval(cls, a, b):
-        if not (a and b): return S.Zero
-        if a == b: return Integer(2)*a**2
+        if not (a and b):
+            return S.Zero
+        if a == b:
+            return Integer(2)*a**2
         if a.is_commutative or b.is_commutative:
             return Integer(2)*a*b
 
         # [xA,yB]  ->  xy*[A,B]
-        # from sympy.physics.qmul import QMul
         ca, nca = a.args_cnc()
         cb, ncb = b.args_cnc()
         c_part = ca + cb
@@ -99,11 +106,7 @@ class AntiCommutator(Expr):
         # Canonical ordering of arguments
         #The Commutator [A,B] is on canonical form if A < B.
         if a.compare(b) == 1:
-            return cls(b,a)
-
-    def _eval_expand_anticommutator(self, **hints):
-        # No changes, so return self
-        return self
+            return cls(b, a)
 
     def doit(self, **hints):
         """ Evaluate anticommutator """
@@ -121,21 +124,23 @@ class AntiCommutator(Expr):
                 return comm.doit(**hints)
         return (A*B + B*A).doit(**hints)
 
-    def _eval_dagger(self):
+    def _eval_adjoint(self):
         return AntiCommutator(Dagger(self.args[0]), Dagger(self.args[1]))
 
     def _sympyrepr(self, printer, *args):
         return "%s(%s,%s)" % (
-            self.__class__.__name__, printer._print(self.args[0]), printer._print(self.args[1])
+            self.__class__.__name__, printer._print(
+                self.args[0]), printer._print(self.args[1])
         )
 
     def _sympystr(self, printer, *args):
-        return "{%s,%s}" % (self.args[0], self.args[1])
+        return "{%s,%s}" % (
+            printer._print(self.args[0]), printer._print(self.args[1]))
 
     def _pretty(self, printer, *args):
         pform = printer._print(self.args[0], *args)
-        pform = prettyForm(*pform.right((prettyForm(u','))))
-        pform = prettyForm(*pform.right((printer._print(self.args[1], *args))))
+        pform = prettyForm(*pform.right(prettyForm(',')))
+        pform = prettyForm(*pform.right(printer._print(self.args[1], *args)))
         pform = prettyForm(*pform.parens(left='{', right='}'))
         return pform
 

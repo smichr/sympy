@@ -1,9 +1,12 @@
-from sympy.core.numbers import igcdex, igcd
+from functools import reduce
+
 from sympy.core.mul import prod
-from sympy.ntheory.residue_ntheory import int_tested
+from sympy.core.numbers import igcdex, igcd
 from sympy.ntheory.primetest import isprime
 from sympy.polys.domains import ZZ
 from sympy.polys.galoistools import gf_crt, gf_crt1, gf_crt2
+from sympy.utilities.misc import as_int
+
 
 def symmetric_residue(a, m):
     """Return the residual mod m such that it is within half of the modulus.
@@ -16,8 +19,8 @@ def symmetric_residue(a, m):
     """
     if a <= m // 2:
         return a
-    else:
-        return a - m
+    return a - m
+
 
 def crt(m, v, symmetric=False, check=True):
     r"""Chinese Remainder Theorem.
@@ -35,10 +38,13 @@ def crt(m, v, symmetric=False, check=True):
     The keyword ``check`` can be set to False if it is known that the moduli
     are coprime.
 
+    Examples
+    ========
+
     As an example consider a set of residues ``U = [49, 76, 65]``
     and a set of moduli ``M = [99, 97, 95]``. Then we have::
 
-       >>> from sympy.ntheory.modular import crt, solve_congruence
+       >>> from sympy.ntheory.modular import crt
 
        >>> crt([99, 97, 95], [49, 76, 65])
        (639985, 912285)
@@ -75,17 +81,16 @@ def crt(m, v, symmetric=False, check=True):
     sympy.polys.galoistools.gf_crt : low level crt routine used by this routine
     """
     if check:
-        m = int_tested(*m)
-        v = int_tested(*v)
+        m = list(map(as_int, m))
+        v = list(map(as_int, v))
 
     result = gf_crt(v, m, ZZ)
     mm = prod(m)
 
     if check:
         if not all(v % m == result % m for v, m in zip(v, m)):
-            result = solve_congruence(*zip(v, m),
-                                      **dict(check=False,
-                                             symmetric=symmetric))
+            result = solve_congruence(*list(zip(v, m)),
+                    check=False, symmetric=symmetric)
             if result is None:
                 return result
             result, mm = result
@@ -93,6 +98,7 @@ def crt(m, v, symmetric=False, check=True):
     if symmetric:
         return symmetric_residue(result, mm), mm
     return result, mm
+
 
 def crt1(m):
     """First part of Chinese Remainder Theorem, for multiple application.
@@ -106,6 +112,7 @@ def crt1(m):
     """
 
     return gf_crt1(m, ZZ)
+
 
 def crt2(m, v, mm, e, s, symmetric=False):
     """Second part of Chinese Remainder Theorem, for multiple application.
@@ -124,6 +131,7 @@ def crt2(m, v, mm, e, s, symmetric=False):
     if symmetric:
         return symmetric_residue(result, mm), mm
     return result, mm
+
 
 def solve_congruence(*remainder_modulus_pairs, **hint):
     """Compute the integer ``n`` that has the residual ``ai`` when it is
@@ -184,9 +192,8 @@ def solve_congruence(*remainder_modulus_pairs, **hint):
         References
         ==========
 
-        - http://en.wikipedia.org/wiki/Method_of_successive_substitution
+        .. [1] https://en.wikipedia.org/wiki/Method_of_successive_substitution
         """
-        from sympy.core.numbers import igcdex
         a1, m1 = c1
         a2, m2 = c2
         a, b, c = m1, a2 - a1, m2
@@ -204,7 +211,7 @@ def solve_congruence(*remainder_modulus_pairs, **hint):
     symmetric = hint.get('symmetric', False)
 
     if hint.get('check', True):
-        rm = [int_tested(*pair) for pair in rm]
+        rm = [(as_int(r), as_int(m)) for r, m in rm]
 
         # ignore redundant pairs but raise an error otherwise; also
         # make sure that a unique set of bases is sent to gf_crt if
@@ -225,14 +232,14 @@ def solve_congruence(*remainder_modulus_pairs, **hint):
                     return None
                 continue
             uniq[m] = r
-        rm = [(r, m) for m, r in uniq.iteritems()]
+        rm = [(r, m) for m, r in uniq.items()]
         del uniq
 
         # if the moduli are co-prime, the crt will be significantly faster;
         # checking all pairs for being co-prime gets to be slow but a prime
         # test is a good trade-off
         if all(isprime(m) for r, m in rm):
-            r, m = zip(*rm)
+            r, m = list(zip(*rm))
             return crt(m, r, symmetric=symmetric, check=False)
 
     rv = (0, 1)

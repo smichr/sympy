@@ -1,36 +1,64 @@
-__all__ = []
+__all__ = [
+    'vector',
 
-# The following pattern is used below for importing sub-modules:
-#
-# 1. "from foo import *".  This imports all the names from foo.__all__ into
-#    this module. But, this does not put those names into the __all__ of
-#    this module. This enables "from sympy.physics.mechanics import kinematics" to
-#    work.
-# 2. "import foo; __all__.extend(foo.__all__)". This adds all the names in
-#    foo.__all__ to the __all__ of this module. The names in __all__
-#    determine which names are imported when
-#    "from sympy.physics.mechanics import *" is done.
+    'CoordinateSym', 'ReferenceFrame', 'Dyadic', 'Vector', 'Point', 'cross',
+    'dot', 'express', 'time_derivative', 'outer', 'kinematic_equations',
+    'get_motion_params', 'partial_velocity', 'dynamicsymbols', 'vprint',
+    'vsstrrepr', 'vsprint', 'vpprint', 'vlatex', 'init_vprinting', 'curl',
+    'divergence', 'gradient', 'is_conservative', 'is_solenoidal',
+    'scalar_potential', 'scalar_potential_difference',
 
-import kane
-from kane import *
-__all__.extend(kane.__all__)
+    'KanesMethod',
 
-import rigidbody
-from rigidbody import *
-__all__.extend(rigidbody.__all__)
+    'RigidBody',
 
-import functions
-from functions import *
-__all__.extend(functions.__all__)
+    'inertia', 'inertia_of_point_mass', 'linear_momentum', 'angular_momentum',
+    'kinetic_energy', 'potential_energy', 'Lagrangian', 'mechanics_printing',
+    'mprint', 'msprint', 'mpprint', 'mlatex', 'msubs', 'find_dynamicsymbols',
 
-import particle
-from particle import *
-__all__.extend(particle.__all__)
+    'Particle',
 
-import point
-from point import *
-__all__.extend(point.__all__)
+    'LagrangesMethod',
 
-import essential
-from essential import *
-__all__.extend(essential.__all__)
+    'Linearizer',
+
+    'Body',
+
+    'SymbolicSystem',
+
+    'PinJoint', 'PrismaticJoint',
+
+    'JointsMethod'
+]
+
+from sympy.physics import vector
+
+from sympy.physics.vector import (CoordinateSym, ReferenceFrame, Dyadic, Vector, Point,
+        cross, dot, express, time_derivative, outer, kinematic_equations,
+        get_motion_params, partial_velocity, dynamicsymbols, vprint,
+        vsstrrepr, vsprint, vpprint, vlatex, init_vprinting, curl, divergence,
+        gradient, is_conservative, is_solenoidal, scalar_potential,
+        scalar_potential_difference)
+
+from .kane import KanesMethod
+
+from .rigidbody import RigidBody
+
+from .functions import (inertia, inertia_of_point_mass, linear_momentum,
+        angular_momentum, kinetic_energy, potential_energy, Lagrangian,
+        mechanics_printing, mprint, msprint, mpprint, mlatex, msubs,
+        find_dynamicsymbols)
+
+from .particle import Particle
+
+from .lagrange import LagrangesMethod
+
+from .linearize import Linearizer
+
+from .body import Body
+
+from .system import SymbolicSystem
+
+from .jointsmethod import JointsMethod
+
+from .joint import PinJoint, PrismaticJoint
