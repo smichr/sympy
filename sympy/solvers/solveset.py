@@ -2441,7 +2441,7 @@ def linear_coeffs(eq, *syms, **_kw):
     d = defaultdict(list)
     eq = _sympify(eq)
     symset = set(syms)
-    has = eq.free_symbols & symset
+    has = set([i for i in symset if eq.has_free(i)])
     if not has:
         return [S.Zero]*len(syms) + [eq]
     c, terms = eq.as_coeff_add(*has)

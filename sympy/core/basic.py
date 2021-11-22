@@ -124,6 +124,48 @@ class Basic(Printable, metaclass=ManagedProperties):
         obj._args = args  # all items in args must be Basic objects
         return obj
 
+    def has_free(self, x):
+        """return True if self has object(s) ``x`` as a free expression
+        else False.
+
+        Examples
+        ========
+
+        >>> from sympy import Integral, Function
+        >>> from sympy.abc import x, y
+        >>> f = Function('f')
+        >>> g = Function('g')
+        >>> expr = Integral(f(x), (f(x), 1, g(y)))
+        >>> expr.free_symbols
+        {y}
+        >>> expr.has_free(g(y))
+        True
+        >>> expr.has_free((x, f(x)))
+        False
+
+        This works for functions, too:
+
+        >>> expr.has_free(f)
+        False
+        >>> expr.has_free(g)
+        True
+
+        """
+        from sympy.utilities.iterables import iterable
+        if not iterable(x):
+            x = [x]
+        xset = set(x)
+        # have as_dummy hide all bound objects (which occur in unevaluated
+        # nodes like Integral and are fast to rebuild after putting Dummy
+        # symbols in place) then see if any objects of interest are present
+        masked = self.as_dummy() if self.args else self
+        args = [masked]
+        for i in args:
+            if i in xset:
+                return True
+            args.extend(i.args)
+        return False
+
     def copy(self):
         return self.func(*self.args)
 
