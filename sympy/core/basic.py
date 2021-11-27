@@ -1271,27 +1271,53 @@ class Basic(Printable, metaclass=ManagedProperties):
         False
 
         """
-        return any(self._has(pattern) for pattern in patterns)
+        from sympy.utilities.iterables import sift
+        from sympy.core.expr import Expr
+        e, o = sift(patterns, lambda x: isinstance(x, Expr
+            ) and x.is_commutative, binary=True)
+        if e:
+            eo, e = sift(e, lambda x: x.is_Mul or x.is_Add, binary=True)
+            o.extend(eo)
+            e = set(e)
+            more = [self]
+            for i in more:
+                if i in e:
+                    return True
+                try:
+                    more.extend(i.args)
+                except TypeError:
+                    pass
+            if not o:
+                return False
+        return any(self._has(pattern) for pattern in o)
 
     def _has(self, pattern):
         """Helper for .has()"""
-        from .function import UndefinedFunction, Function
+        from .function import UndefinedFunction, AppliedUndef
+        from .traversal import iterargs
+
+        args = iterargs(self)
+
         if isinstance(pattern, UndefinedFunction):
-            return any(pattern in (f, f.func)
-                       for f in self.atoms(Function, UndefinedFunction))
+            for i in args:
+                if isinstance(i, AppliedUndef):
+                    i = i.func
+                if isinstance(i, UndefinedFunction) and i == pattern:
+                    return True
+            return False
 
         if isinstance(pattern, BasicMeta):
-            subtrees = _preorder_traversal(self)
-            return any(isinstance(arg, pattern) for arg in subtrees)
+            return any(isinstance(arg, pattern) for arg in args)
 
         pattern = _sympify(pattern)
 
         _has_matcher = getattr(pattern, '_has_matcher', None)
         if _has_matcher is not None:
             match = _has_matcher()
-            return any(match(arg) for arg in _preorder_traversal(self))
-        else:
-            return any(arg == pattern for arg in _preorder_traversal(self))
+            return any(match(arg) for arg in args)
+
+        # fallback
+        return any(arg == pattern for arg in args)
 
     def _has_matcher(self):
         """Helper for .has()"""

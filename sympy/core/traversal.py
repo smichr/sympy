@@ -5,6 +5,19 @@ from sympy.utilities.iterables import iterable
 
 
 
+def iterargs(expr):
+    if isinstance(expr, Basic):
+        args = [expr]
+        for i in args:
+            yield i
+            try:
+                args.extend(i.args)
+            except TypeError:
+                pass
+    else:
+        yield expr
+
+
 class preorder_traversal:
     """
     Do a pre-order traversal of a tree.
