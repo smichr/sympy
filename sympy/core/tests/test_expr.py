@@ -1597,7 +1597,7 @@ def test_has_free():
     assert x.has_free(x)
     assert not x.has_free(y)
     assert (x + y).has_free(x)
-    assert (x + y).has_free((x, z))
+    assert (x + y).has_free(*(x, z))
     assert f(x).has_free(x)
     assert f(x).has_free(f(x))
     assert Integral(f(x), (f(x), 1, y)).has_free(y)

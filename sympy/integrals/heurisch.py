@@ -702,7 +702,7 @@ def heurisch(f, x, rewrite=False, hints=None, mappings=None, retries=3,
                 pass # ignore trivial numbers
             elif expr in syms:
                 pass # ignore variables
-            elif not expr.has_free(syms):
+            elif not expr.has_free(*syms):
                 non_syms.add(expr)
             elif expr.is_Add or expr.is_Mul or expr.is_Pow:
                 list(map(find_non_syms, expr.args))

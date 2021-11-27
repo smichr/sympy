@@ -2078,7 +2078,7 @@ class Expr(Basic, EvalfMixin):
 
         """
         if deps:
-            if not self.has_free(deps):
+            if not self.has_free(*deps):
                 return self, tuple()
         return S.Zero, (self,)
 
@@ -2640,7 +2640,7 @@ class Expr(Basic, EvalfMixin):
         return self._eval_is_polynomial(syms)
 
     def _eval_is_polynomial(self, syms):
-        if not self.has_free(syms):
+        if not self.has_free(*syms):
             # constant polynomial
             return True
         else:
@@ -2708,7 +2708,7 @@ class Expr(Basic, EvalfMixin):
         return self._eval_is_rational_function(syms)
 
     def _eval_is_rational_function(self, syms):
-        if not self.has_free(syms):
+        if not self.has_free(*syms):
             return True
         return False
 
