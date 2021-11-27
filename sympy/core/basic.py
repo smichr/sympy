@@ -1181,6 +1181,7 @@ class Basic(Printable, metaclass=ManagedProperties):
                 return self.func(*args), True
         return self, False
 
+    @cacheit
     def has_free(self, *x):
         """return True if self has object(s) ``x`` as a free expression
         else False.
