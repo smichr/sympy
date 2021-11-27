@@ -1182,50 +1182,6 @@ class Basic(Printable, metaclass=ManagedProperties):
         return self, False
 
     @cacheit
-    def has_free(self, *x):
-        """return True if self has object(s) ``x`` as a free expression
-        else False.
-
-        Examples
-        ========
-
-        >>> from sympy import Integral, Function
-        >>> from sympy.abc import x, y
-        >>> f = Function('f')
-        >>> g = Function('g')
-        >>> expr = Integral(f(x), (f(x), 1, g(y)))
-        >>> expr.free_symbols
-        {y}
-        >>> expr.has_free(g(y))
-        True
-        >>> expr.has_free(*(x, f(x)))
-        False
-
-        This only works for expressions which match a node in the
-        expression tree:
-
-        >>> expr.has_free(g)
-        False
-        >>> (x + y + 1).has_free(y + 1)
-        False
-
-        """
-        from sympy.utilities.iterables import iterable
-        if not iterable(x):
-            x = [x]
-        xset = set(x)
-        # have as_dummy hide all bound objects (which occur in unevaluated
-        # nodes like Integral and are fast to rebuild after putting Dummy
-        # symbols in place) then see if any objects of interest are present
-        masked = self.as_dummy() if self.args else self
-        args = [masked]
-        for i in args:
-            if i in xset:
-                return True
-            args.extend(i.args)
-        return False
-
-    @cacheit
     def has(self, *patterns):
         """
         Test whether any subexpression matches any of the patterns.
@@ -1273,6 +1229,7 @@ class Basic(Printable, metaclass=ManagedProperties):
 
         """
         from sympy.utilities.iterables import sift
+        from .traversal import iterargs
         from sympy.core.expr import Expr
         e, o = sift(patterns, lambda x: isinstance(x, Expr
             ) and x.is_commutative, binary=True)
@@ -1290,14 +1247,57 @@ class Basic(Printable, metaclass=ManagedProperties):
                     pass
             if not o:
                 return False
-        return any(self._has(pattern) for pattern in o)
+        return any(self._has(pattern, iterargs) for pattern in o)
 
-    def _has(self, pattern):
+    @cacheit
+    def has_free(self, *patterns):
+        """return True if self has object(s) ``x`` as a free expression
+        else False.
+
+        Examples
+        ========
+
+        >>> from sympy import Integral, Function
+        >>> from sympy.abc import x, y
+        >>> f = Function('f')
+        >>> g = Function('g')
+        >>> expr = Integral(f(x), (f(x), 1, g(y)))
+        >>> expr.free_symbols
+        {y}
+        >>> expr.has_free(g(y))
+        True
+        >>> expr.has_free(*(x, f(x)))
+        False
+
+        This only works for subexpressions and types, too:
+
+        >>> expr.has_free(g)
+        True
+        >>> (x + y + 1).has_free(y + 1)
+        True
+
+        """
+        from sympy.utilities.iterables import sift
+        from .traversal import iterfreeargs
+        from sympy.core.expr import Expr
+        e, o = sift(patterns, lambda x: isinstance(x, Expr
+            ) and x.is_commutative, binary=True)
+        if e:
+            eo, e = sift(e, lambda x: x.is_Mul or x.is_Add, binary=True)
+            o.extend(eo)
+            e = set(e)
+            for i in iterfreeargs(self):
+                if i in e:
+                    return True
+            if not o:
+                return False
+        return any(self._has(pattern, iterfreeargs) for pattern in o)
+
+    def _has(self, pattern, argit):
         """Helper for .has()"""
         from .function import UndefinedFunction, AppliedUndef
-        from .traversal import iterargs
 
-        args = iterargs(self)
+        args = argit(self)
 
         if isinstance(pattern, UndefinedFunction):
             for i in args:

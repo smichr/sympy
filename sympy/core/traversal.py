@@ -18,6 +18,21 @@ def iterargs(expr):
         yield expr
 
 
+def iterfreeargs(expr):
+    if isinstance(expr, Basic):
+        args = [expr]
+        for i in args:
+            yield i
+            if hasattr(i, 'bound_symbols'):
+                i = i.as_dummy()
+            try:
+                args.extend(i.args)
+            except TypeError:
+                pass
+    else:
+        yield expr
+
+
 class preorder_traversal:
     """
     Do a pre-order traversal of a tree.
