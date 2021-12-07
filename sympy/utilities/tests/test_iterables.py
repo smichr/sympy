@@ -19,7 +19,7 @@ from sympy.utilities.iterables import (
     prefixes, reshape, rotate_left, rotate_right, runs, sift,
     strongly_connected_components, subsets, take, topological_sort, unflatten,
     uniq, variations, ordered_partitions, rotations, is_palindromic, iterable,
-    NotIterable, multiset_derangements)
+    NotIterable, multiset_derangements, shape)
 from sympy.utilities.enumerative import (
     factoring_visitor, multiset_partitions_taocp )
 
@@ -870,3 +870,14 @@ def test_iterable():
         _iterable = False
 
     assert iterable(Test6()) is False
+
+
+def test_shape():
+    it = [[1], {2}, 3, {1: 2}, [3, {4: 5}]]
+    F, S = ([1, 2, 3, 1, 2, 3, 4, 5], [[1], {1}, 1, {1: 1}, [1, {1: 1}]])
+    f, s = shape(it)
+    assert F == f
+    assert S == s
+    IT = reshape(f, s)[0]
+    assert IT == it
+    assert all(type(i) == type(j) for i, j in zip(it, IT))

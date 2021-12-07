@@ -124,9 +124,49 @@ def unflatten(iter, n=2):
     """Group ``iter`` into tuples of length ``n``. Raise an error if
     the length of ``iter`` is not a multiple of ``n``.
     """
+    # return reshape(list(iter), (n,))
     if n < 1 or len(iter) % n:
         raise ValueError('iter length is not a multiple of %i' % n)
     return list(zip(*(iter[i::n] for i in range(n))))
+
+
+def shape(it):
+    """return flattened iterable/dict and its shape
+
+    Examples
+    ========
+
+    >>> from sympy.utilities.iterables import shape, reshape
+    >>> f, s = shape([1, 2, (3, 4), [5, 6], 7, 8, {1: 2, 3: 4}])
+    >>> f
+    [1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4]
+    >>> reshape(f, s)[0]
+    [1, 2, (3, 4), [5, 6], 7, 8, {1: 2, 3: 4}]
+    """
+    from itertools import groupby
+    iterable = lambda x: isinstance(x, (list, set, tuple))
+    if isinstance(it, dict):
+        n = len(it)
+        if any(iterable(i) for i in it.keys()) or any(
+                iterable(i) for i in it.values()):
+            raise NotImplemented  # nesting in dictionary
+        return flatten(it.items()), {len(it): len(it)}
+    if not any(iterable(i) or isinstance(i, dict) for i in it):
+        return list(it), type(it)([len(it)])
+    rv = []
+    flat = []
+    for b, i in groupby(it, lambda x: 1 if iterable(x) else (
+            2 if isinstance(x, dict) else 0)):
+        i = list(i)
+        if b:
+            for j in i:
+                f, s = shape(j)
+                rv.append(s)
+                flat.extend(f)
+        else:
+            rv.append(len(i))
+            flat.extend(i)
+    return flat, rv
 
 
 def reshape(seq, how):
@@ -143,6 +183,12 @@ def reshape(seq, how):
 
     >>> reshape(seq, (4,)) # tuples of 4
     [(1, 2, 3, 4), (5, 6, 7, 8)]
+
+    >>> reshape(seq, {4}) # sets of 4
+    [{1, 2, 3, 4}, {5, 6, 7, 8}]
+
+    >>> reshape(seq, {2: 2}) # 2-item dicts
+    [{1: 2, 3: 4}, {5: 6, 7: 8}]
 
     >>> reshape(seq, (2, 2)) # tuples of 4
     [(1, 2, 3, 4), (5, 6, 7, 8)]
@@ -166,26 +212,49 @@ def reshape(seq, how):
     [[0, 1, [2, 3, 4], {5, 6}, (7, (8, 9, 10), 11)]]
 
     """
-    m = sum(flatten(how))
-    n, rem = divmod(len(seq), m)
+    def sumit(i, t=0):
+        if isinstance(i, dict):
+            if not (len(i) == 1 and len(set(*i.items())) == 1):
+                raise ValueError(
+                    'dict of n items should be given as {n:n}')
+            return 2*list(i)[0]
+        elif iterable(i):
+            return sum(sumit(_) for _ in i)
+        else:
+            return int(i)
+    m = sumit(how)
+    nit, rem = divmod(len(seq), m)
     if m < 0 or rem:
         raise ValueError('template must sum to positive number '
         'that divides the length of the sequence')
-    i = 0
+
     container = type(how)
-    rv = [None]*n
+    pop = isinstance(how, dict)
+    rv = [None]*nit
+    i = 0
     for k in range(len(rv)):
         rv[k] = []
-        for hi in how:
+        for hi in ([how] if isinstance(how, dict) else how):
             if type(hi) is int:
                 rv[k].extend(seq[i: i + hi])
                 i += hi
-            else:
-                n = sum(flatten(hi))
+            elif type(hi) is dict:
+                a, b = list(hi.items())[0]
+                n = 2*a
+                rv[k].append(dict(reshape(seq[i: i + n], [2])))
+                i += n
+            elif iterable(hi):
+                n = sumit(hi)
                 hi_type = type(hi)
                 rv[k].append(hi_type(reshape(seq[i: i + n], hi)[0]))
                 i += n
-        rv[k] = container(rv[k])
+            else:
+                rv[k].extend(seq[i: i + 1])
+                i += 1
+        if pop:
+            rv[k] = rv[k].pop()
+        else:
+            rv[k] = container(rv[k])
     return type(seq)(rv)
 
 
