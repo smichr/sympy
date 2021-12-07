@@ -153,6 +153,7 @@ def test_iterable_is_sequence():
 def test_Dict():
     x, y, z = symbols('x y z')
     d = Dict({x: 1, y: 2, z: 3})
+    assert Dict(zip((x, y, z), (1, 2, 3))) == d
     assert d[x] == 1
     assert d[y] == 2
     raises(KeyError, lambda: d[2])

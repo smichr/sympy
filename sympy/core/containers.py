@@ -225,8 +225,13 @@ class Dict(Basic):
     """
 
     def __new__(cls, *args):
-        if len(args) == 1 and isinstance(args[0], (dict, Dict)):
-            items = [Tuple(k, v) for k, v in args[0].items()]
+        if len(args) == 1 and (isinstance(args[0], (dict, Dict)
+                ) or type(args[0]) is zip):
+            kv = args[0]
+            if type(kv) is zip:
+                items = [Tuple(k, v) for k, v in kv]
+            else:
+                items = [Tuple(k, v) for k, v in kv.items()]
         elif iterable(args) and all(len(arg) == 2 for arg in args):
             items = [Tuple(k, v) for k, v in args]
         else:
