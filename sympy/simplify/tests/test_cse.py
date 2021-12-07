@@ -3,7 +3,7 @@ import itertools
 from operator import add
 
 from sympy.core.add import Add
-from sympy.core.containers import Tuple
+from sympy.core.containers import Tuple, Dict
 from sympy.core.function import Function
 from sympy.core.mul import Mul
 from sympy.core.power import Pow
@@ -589,12 +589,18 @@ def test_cse_list():
     assert _cse(x) == ([], x)
     assert _cse('x') == ([], 'x')
     it = [x]
-    for c in (list, tuple, set):
+    for c in (list, tuple, set, Tuple):
         assert _cse(c(it)) == ([], c(it))
-    #Tuple works different from tuple:
     assert _cse(Tuple(*it)) == ([], Tuple(*it))
     d = {x: 1}
     assert _cse(d) == ([], d)
+    e = x + 1
+    ans = ([(x0, x + 1)], [x0, (cos(x0), x0), Tuple(sin(x0))])
+    got = cse([e, (cos(e), e), Tuple(sin(e))])
+    assert got == ans
+    assert type(got[1]) is list
+    assert all(type(i) == type(j) for i, j in zip(got[1], ans[1]))
+
 
 
 def test_issue_18991():
@@ -605,3 +611,25 @@ def test_issue_18991():
 def test_unevaluated_Mul():
     m = [Mul(1, 2, evaluate=False)]
     assert cse(m) == ([], m)
+
+
+def test_cse_shape():
+    d = {1: cos(x - 1) + sin(x - 1)}
+    def check(d, list, ans):
+        got = cse(d, list=list)
+        assert got == ans
+        if list:
+            D = got[1][0]
+        else:
+            D = got[1]
+        assert type(d) == type(D)
+    for t in (dict, Dict):
+        d = t(d)
+        assert type(d) is t
+        check(d, True, ([(x0, x - 1)], [{1: sin(x0) + cos(x0)}]))
+        check(d, False, ([(x0, x - 1)], {1: sin(x0) + cos(x0)}))
+    assert cse([x - 1, d]) == ([(x0, x - 1)],
+        [x0, {1: sin(x0) + cos(x0)}])
+    it = [(-sqrt(z + 1) - 1, sqrt(z + 1) + 1), (sqrt(z + 1) - 1, 1 - sqrt(z + 1))]
+    assert cse(it) == ([(x0, sqrt(z + 1)), (x1, x0 + 1), (x2, x0 - 1)],
+        [(-x1, x1), (x2, -x2)])

@@ -1,13 +1,14 @@
 """ Tools for doing common subexpression elimination.
 """
 from sympy.core import Basic, Mul, Add, Pow, sympify
-from sympy.core.containers import Tuple, OrderedSet
+from sympy.core.containers import Tuple, OrderedSet, Dict
 from sympy.core.exprtools import factor_terms
 from sympy.core.singleton import S
 from sympy.core.sorting import ordered
 from sympy.core.symbol import symbols, Symbol
-from sympy.utilities.iterables import numbered_symbols, sift, \
-        topological_sort, iterable
+from sympy.utilities.iterables import (numbered_symbols, sift,
+        topological_sort, iterable, shape, reshape, flatten,
+        unflatten)
 
 from . import cse_opts
 
@@ -774,19 +775,26 @@ def cse(exprs, symbols=None, optimizations=None, postprocess=None,
     """
     from sympy.matrices import (MatrixBase, Matrix, ImmutableMatrix,
                                 SparseMatrix, ImmutableSparseMatrix)
-
-    if not list:
-        return _cse_homogeneous(exprs,
-            symbols=symbols, optimizations=optimizations,
+    kw = dict(symbols=symbols, optimizations=optimizations,
             postprocess=postprocess, order=order, ignore=ignore)
+    if not list:
+        return _cse_homogeneous(exprs, **kw)
 
     if isinstance(exprs, (int, float)):
         exprs = sympify(exprs)
 
     # Handle the case if just one expression was passed.
-    if isinstance(exprs, (Basic, MatrixBase)):
+    if isinstance(exprs, (Basic, MatrixBase, dict, Dict)):
         exprs = [exprs]
 
+    # handle any nesting
+    f, s = shape(exprs)
+    if len(s) != 1:
+        r, e = cse(f, **kw)
+        e = reshape(e, s)[0]
+        return r, e
+
+    # handle flat list of expressions
     copy = exprs
     temp = []
     for e in exprs:
@@ -794,6 +802,8 @@ def cse(exprs, symbols=None, optimizations=None, postprocess=None,
             temp.append(Tuple(*e.flat()))
         elif isinstance(e, (SparseMatrix, ImmutableSparseMatrix)):
             temp.append(Tuple(*e.todok().items()))
+        elif isinstance(e, (dict, Dict)):
+            temp.append(Tuple(*flatten(e.items())))
         else:
             temp.append(e)
     exprs = temp
@@ -829,9 +839,13 @@ def cse(exprs, symbols=None, optimizations=None, postprocess=None,
     reduced_exprs = [postprocess_for_cse(e, optimizations)
                      for e in reduced_exprs]
 
-    # Get the matrices back
+    # Get the matrices/dict back
     for i, e in enumerate(exprs):
-        if isinstance(e, (Matrix, ImmutableMatrix)):
+        if isinstance(e, dict):
+            reduced_exprs[i] = type(e)(unflatten(reduced_exprs[i]))
+        elif isinstance(e, Dict):
+            reduced_exprs[i] = type(e)(*unflatten(reduced_exprs[i]))
+        elif isinstance(e, (Matrix, ImmutableMatrix)):
             reduced_exprs[i] = Matrix(e.rows, e.cols, reduced_exprs[i])
             if isinstance(e, ImmutableMatrix):
                 reduced_exprs[i] = reduced_exprs[i].as_immutable()
