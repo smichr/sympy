@@ -153,8 +153,6 @@ def cse_release_variables(r, e):
         i -= 1
     rv.reverse()
     return rv, esyms
-
-
 # ====end of cse postprocess idioms===========================
 
 

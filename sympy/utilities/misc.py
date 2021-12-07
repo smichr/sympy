@@ -32,6 +32,185 @@ def filldedent(s, w=70):
     return '\n' + fill(dedent(str(s)).strip('\n'), width=w)
 
 
+def fprint(x, c=None):
+    """print a standard filldedent expression or print as
+    continued strings of length c
+
+    Examples
+    ========
+
+    >>> from sympy.utilities.misc import fprint
+    >>> from sympy import Piecewise
+    >>> from sympy.abc import y
+    >>> p = Piecewise((0, (y > -1) & (y > 0) & (y < 1) & ((y >= 1) | (y <= -1)) &
+    ... ((y >= 1) | (y <= 0))), (-1, (y <= 0) & (y > -1) & (y < 1) & ((y >= 1)
+    ... | (y <= -1))), (y**2 - 1, (y > -1) & (y < 1) & ((y >= 1) | (y <=
+    ... -1))), (2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | (y <= -1)) &
+    ... ((y >= 1) | (y <= 0))), (1, (y <= -1) & (y <= 0) & (y < 1) & ((y >= 1)
+    ... | (y <= -1))), (y**2 + 1, (y <= -1) & (y < 1) & ((y >= 1) | (y <=
+    ... -1))), (2.5 - y**2/2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | (y
+    ... <= 0))), (1.5 - y**2/2, (y <= -1) & (y <= 0) & (y < 1)), (y**2/2 +
+    ... 1.5, (y <= -1) & (y < 1)), (1 - y, (y > 0) & (y < 1) & ((y >= 1) | (y
+    ... <= -1)) & ((y >= 1) | (y <= 0))), (-y, (y <= 0) & (y < 1) & ((y >= 1)
+    ... | (y <= -1))), (y**2 - y, (y < 1) & ((y >= 1) | (y <= -1))), (-y**2/2
+    ... - y + 1.5, (y > 0) & (y < 1) & ((y >= 1) | (y <= 0))), (-y**2/2 - y +
+    ... 0.5, (y <= 0) & (y < 1)), (y**2/2 - y + 0.5, y < 1), (0, True))
+    >>> fprint(p, 55)
+    (
+    'Piecewise((0, (y > -1) & (y > 0) & (y < 1) & ((y >= 1'
+    ') | (y <= -1)) & ((y >= 1) | (y <= 0))), (-1, (y <= 0'
+    ') & (y > -1) & (y < 1) & ((y >= 1) | (y <= -1))), (y*'
+    '*2 - 1, (y > -1) & (y < 1) & ((y >= 1) | (y <= -1))),'
+    ' (2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | (y <'
+    '= -1)) & ((y >= 1) | (y <= 0))), (1, (y <= -1) & (y <'
+    '= 0) & (y < 1) & ((y >= 1) | (y <= -1))), (y**2 + 1, '
+    '(y <= -1) & (y < 1) & ((y >= 1) | (y <= -1))), (2.5 -'
+    ' y**2/2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | '
+    '(y <= 0))), (1.5 - y**2/2, (y <= -1) & (y <= 0) & (y '
+    '< 1)), (y**2/2 + 1.5, (y <= -1) & (y < 1)), (1 - y, ('
+    'y > 0) & (y < 1) & ((y >= 1) | (y <= -1)) & ((y >= 1)'
+    ' | (y <= 0))), (-y, (y <= 0) & (y < 1) & ((y >= 1) | '
+    '(y <= -1))), (y**2 - y, (y < 1) & ((y >= 1) | (y <= -'
+    '1))), (-y**2/2 - y + 1.5, (y > 0) & (y < 1) & ((y >= '
+    '1) | (y <= 0))), (-y**2/2 - y + 0.5, (y <= 0) & (y < '
+    '1)), (y**2/2 - y + 0.5, y < 1), (0, True))'
+    )
+    >>> fprint(p)
+    <BLANKLINE>
+    Piecewise((0, (y > -1) & (y > 0) & (y < 1) & ((y >= 1) | (y <= -1)) &
+    ((y >= 1) | (y <= 0))), (-1, (y <= 0) & (y > -1) & (y < 1) & ((y >= 1)
+    | (y <= -1))), (y**2 - 1, (y > -1) & (y < 1) & ((y >= 1) | (y <=
+    -1))), (2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | (y <= -1)) &
+    ((y >= 1) | (y <= 0))), (1, (y <= -1) & (y <= 0) & (y < 1) & ((y >= 1)
+    | (y <= -1))), (y**2 + 1, (y <= -1) & (y < 1) & ((y >= 1) | (y <=
+    -1))), (2.5 - y**2/2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | (y
+    <= 0))), (1.5 - y**2/2, (y <= -1) & (y <= 0) & (y < 1)), (y**2/2 +
+    1.5, (y <= -1) & (y < 1)), (1 - y, (y > 0) & (y < 1) & ((y >= 1) | (y
+    <= -1)) & ((y >= 1) | (y <= 0))), (-y, (y <= 0) & (y < 1) & ((y >= 1)
+    | (y <= -1))), (y**2 - y, (y < 1) & ((y >= 1) | (y <= -1))), (-y**2/2
+    - y + 1.5, (y > 0) & (y < 1) & ((y >= 1) | (y <= 0))), (-y**2/2 - y +
+    0.5, (y <= 0) & (y < 1)), (y**2/2 - y + 0.5, y < 1), (0, True))
+    """
+    if not c:
+        print(filldedent(x))
+    else:
+        print(strlines(str(x), c, short=True))
+
+
+def print_cse(expr):
+    """
+    Examples
+    ========
+
+    >>> from sympy import Piecewise
+    >>> from sympy.abc import y
+    >>> from sympy.utilities.misc import print_cse
+    >>> p = Piecewise((0, (y > -1) & (y > 0) & (y < 1) & ((y >= 1) | (y <= -1)) &
+    ... ((y >= 1) | (y <= 0))), (-1, (y <= 0) & (y > -1) & (y < 1) & ((y >= 1)
+    ... | (y <= -1))), (y**2 - 1, (y > -1) & (y < 1) & ((y >= 1) | (y <=
+    ... -1))), (2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | (y <= -1)) &
+    ... ((y >= 1) | (y <= 0))), (1, (y <= -1) & (y <= 0) & (y < 1) & ((y >= 1)
+    ... | (y <= -1))), (y**2 + 1, (y <= -1) & (y < 1) & ((y >= 1) | (y <=
+    ... -1))), (2.5 - y**2/2, (y <= -1) & (y > 0) & (y < 1) & ((y >= 1) | (y
+    ... <= 0))), (1.5 - y**2/2, (y <= -1) & (y <= 0) & (y < 1)), (y**2/2 +
+    ... 1.5, (y <= -1) & (y < 1)), (1 - y, (y > 0) & (y < 1) & ((y >= 1) | (y
+    ... <= -1)) & ((y >= 1) | (y <= 0))), (-y, (y <= 0) & (y < 1) & ((y >= 1)
+    ... | (y <= -1))), (y**2 - y, (y < 1) & ((y >= 1) | (y <= -1))), (-y**2/2
+    ... - y + 1.5, (y > 0) & (y < 1) & ((y >= 1) | (y <= 0))), (-y**2/2 - y +
+    ... 0.5, (y <= 0) & (y < 1)), (y**2/2 - y + 0.5, y < 1), (0, True))
+    >>> print_cse(p)
+    var('y')
+    _r0 = Rational(1, 2)
+    x0 = y > -1
+    x1 = y > 0
+    x2 = y < 1
+    x3 = y >= 1
+    x4 = y <= -1
+    x5 = x3 | x4
+    x6 = y <= 0
+    x7 = x3 | x6
+    x8 = y**2
+    x9 = _r0*x8
+    x10 = x9 - 1.5
+    x11 = -y
+    cse_ans = (
+    <BLANKLINE>
+    Piecewise((0, x0 & x1 & x2 & x5 & x7), (-1, x0 & x2 & x5 & x6), (x8 -
+    1, x0 & x2 & x5), (2, x1 & x2 & x4 & x5 & x7), (1, x2 & x4 & x5 & x6),
+    (x8 + 1, x2 & x4 & x5), (2.5 - x9, x1 & x2 & x4 & x7), (-x10, x2 & x4
+    & x6), (x9 + 1.5, x2 & x4), (1 - y, x1 & x2 & x5 & x7), (x11, x2 & x5
+    & x6), (x11 + x8, x2 & x5), (-x10 - y, x1 & x2 & x7), (-x9 - y + 0.5,
+    x2 & x6), (x11 + x9 + 0.5, x2), (0, True)))
+
+    >>> x0 = y > -1
+    >>> x1 = y > 0
+    >>> x2 = y < 1
+    >>> x3 = y >= 1
+    >>> x4 = y <= -1
+    >>> x5 = x3 | x4
+    >>> x6 = y <= 0
+    >>> x7 = x3 | x6
+    >>> x8 = y**2
+    >>> x9 = x8/2
+    >>> x10 = x9 - 1.5
+    >>> x11 = -y
+    >>> cse_ans = [
+    ...
+    ... Piecewise((0, x0 & x1 & x2 & x5 & x7), (-1, x0 & x2 & x5 & x6), (x8 -
+    ... 1, x0 & x2 & x5), (2, x1 & x2 & x4 & x5 & x7), (1, x2 & x4 & x5 & x6),
+    ... (x8 + 1, x2 & x4 & x5), (2.5 - x9, x1 & x2 & x4 & x7), (-x10, x2 & x4
+    ... & x6), (x9 + 1.5, x2 & x4), (1 - y, x1 & x2 & x5 & x7), (x11, x2 & x5
+    ... & x6), (x11 + x8, x2 & x5), (-x10 - y, x1 & x2 & x7), (-x9 - y + 0.5,
+    ... x2 & x6), (x11 + x9 + 0.5, x2), (0, True),
+    ... evaluate=False)]
+    >>> cse_ans[0] == p
+    True
+    """
+    from sympy import ordered, Expr, Tuple, sign, Dummy, Symbol, cse
+    from sympy.core.function import AppliedUndef
+    tweak = lambda eq: eq.replace(
+        lambda x: x.is_Pow
+        and all(_.is_Integer for _ in x.args)
+        or x.is_Mul
+        and x.args[0].is_Rational,
+        lambda x: x.func(*x.args))
+
+    if isinstance(expr, Expr):
+        expr = [expr]
+        alist = False
+    else:
+        alist = True
+    arat = lambda x: x.is_Rational and not x.is_Integer
+    reps = {}
+    tu = Tuple(*expr)
+    free = tu.free_symbols
+    funcs = set([i.func for i in tu.atoms(AppliedUndef)])
+    tu = tweak(tu).replace(
+        lambda x: arat(x),
+        lambda x: sign(x) * reps.setdefault(abs(x), Dummy()))
+    kee = sorted(reps)
+    remap = {reps[k]: Symbol("_r" + str(i)) for i, k in enumerate(kee)}
+    tu = tu.xreplace(remap)
+    r, e = cse(list(tu), list=alist)
+    r = [(remap[reps[k]], "Rational(%s, %s)" % k.as_numer_denom()
+        ) for k in kee] + r
+    if free:
+        print("var('%s')" % ",".join([str(i) for i in ordered(free)]))
+    if funcs:
+        print("var('%s', cls=Function)" % ",".join([str(i)
+            for i in ordered(funcs)]))
+    for ri in r:
+        print("%s = %s" % ri)
+    if alist:
+        print("cse_ans = [")
+    else:
+        print("cse_ans = (")
+    N = len(e) - 1
+    for i, ei in enumerate(e):
+        t = ("]" if alist else ")") if i == N else ","
+        fprint("%s%s" % (ei, t))
+
+
 def strlines(s, c=64, short=False):
     """Return a cut-and-pastable string that, when printed, is
     equivalent to the input.  The lines will be surrounded by
