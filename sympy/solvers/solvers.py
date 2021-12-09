@@ -3315,7 +3315,7 @@ def unrad(eq, *syms, **flags):
     if not gens:
         return
 
-    # easy case
+    # easy case  XXX handle unrad(x**(x/11) + pi/11, x)
     if len(gens) == 1:
         G = gens[0]
         G_root = G.exp.as_coeff_Mul()[0].q
