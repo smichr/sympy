@@ -1680,8 +1680,9 @@ def _solve(f, *symbols, **flags):
                 eq, cov = u
                 if cov:
                     isym, ieq = cov
-                    inv = _solve(ieq, symbol, **flags)[0]
-                    rv = {inv.subs(isym, xi) for xi in _solve(eq, isym, **flags)}
+                    inv = _solve(ieq, symbol, **flags)
+                    xsol = _solve(eq, isym, **flags)
+                    rv = {i.subs(isym, xi) for xi in xsol for i in inv}
                 else:
                     try:
                         rv = set(_solve(eq, symbol, **flags))
@@ -3234,6 +3235,16 @@ def unrad(eq, *syms, **flags):
             eq = eq.xreplace(rep)
             cov = [p.xreplace(rep), e.xreplace(rep)]
 
+        # simple case where p**a - c, [p, p**b - x] -> x**a - c**b, []
+        if cov:
+            p, i = cov
+            if i.is_Add and eq.is_Add:
+                A, B = eq.as_independent(p)
+                a, b = i.as_independent(p)
+                if b.is_Pow and B.is_Pow and b.base == B.base == p:
+                    cov[:] = []
+                    return (-a)**B.exp - (-A)**b.exp, []
+
         # remove constants and powers of factors since these don't change
         # the location of the root; XXX should factor or factor_terms be used?
         eq = factor_terms(_mexpand(eq.as_numer_denom()[0], recursive=True), clear=True)
@@ -3288,6 +3299,8 @@ def unrad(eq, *syms, **flags):
     cov, nwas, rpt = [flags.setdefault(k, v) for k, v in
         sorted(dict(cov=[], n=None, rpt=0).items())]
 
+    covsym = Dummy('p', nonnegative=True)
+
     # preconditioning
     eq = powdenest(factor_terms(eq, radical=True, clear=True))
     eq = eq.as_numer_denom()[0]
@@ -3301,6 +3314,32 @@ def unrad(eq, *syms, **flags):
     gens = [g for g in poly.gens if _take(g)]
     if not gens:
         return
+
+    # easy case
+    if len(gens) == 1:
+        G = gens[0]
+        G_root = G.exp.as_coeff_Mul()[0].q
+        if G_root != 2:
+            # expansion may have separated base of G:
+            # (x - y)**(5/4) -> x*(x - y)**(1/4) - y*(x - y)**(1/4)
+            coveq = collect(eq.subs(G, covsym), covsym)
+            co = coveq.coeff(covsym)
+            if not co.is_number:
+                coveq = coveq.xreplace({
+                    covsym: covsym/co*factor_terms(co).subs(
+                    G.base, covsym**G.exp.q)})
+            free = eq.free_symbols - coveq.free_symbols
+            if len(free) == 1:
+                x = free.pop()
+                b = G.base
+                try:
+                    inv = _solve(covsym**G_root - b, x, **uflags)
+                except NotImplementedError:
+                    return
+                if not inv:
+                    return  # if we return a cov, it can be solved
+                _cov(covsym, covsym**G_root - b)
+                return _canonical(coveq, cov)
 
     # recast poly in terms of eigen-gens
     poly = eq.as_poly(*gens)
@@ -3324,8 +3363,6 @@ def unrad(eq, *syms, **flags):
                 bases.add(g.base)
         return rads, bases, lcm
     rads, bases, lcm = _rads_bases_lcm(poly)
-
-    covsym = Dummy('p', nonnegative=True)
 
     # only keep in syms symbols that actually appear in radicals;
     # and update gens

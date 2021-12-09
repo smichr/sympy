@@ -1012,9 +1012,9 @@ def test_unrad1():
     assert check(unrad(sqrt(x)*root(x, 3) + 2),
         (x**5 - 64, []))
     assert check(unrad(sqrt(x) + (x + 1)**Rational(1, 3)),
-        (x**3 - (x + 1)**2, []))
+        (-x**3 + x**2 + 2*x + 1, []))
     assert check(unrad(sqrt(x) + sqrt(x + 1) + sqrt(2*x)),
-        (-2*sqrt(2)*x - 2*x + 1, []))
+        (2*sqrt(2)*x + 2*x - 1, []))
     assert check(unrad(sqrt(x) + sqrt(x + 1) + 2),
         (16*x - 9, []))
     assert check(unrad(sqrt(x) + sqrt(x + 1) + sqrt(1 - x)),
@@ -1044,7 +1044,7 @@ def test_unrad1():
         {S.Zero, Rational(9, 16)}
 
     assert check(unrad(sqrt(x) + root(x + 1, 3) + 2*sqrt(y), y),
-        (S('2*sqrt(x)*(x + 1)**(1/3) + x - 4*y + (x + 1)**(2/3)'), []))
+        (2*sqrt(x)*(x + 1)**(S(1)/3) + x - 4*y + (x + 1)**(S(2)/3), []))
     assert check(unrad(sqrt(x/(1 - x)) + (x + 1)**Rational(1, 3)),
         (x**5 - x**4 - x**3 + 2*x**2 + x - 1, []))
     assert check(unrad(sqrt(x/(1 - x)) + 2*sqrt(y), y),
@@ -1100,7 +1100,7 @@ def test_unrad1():
     # fails through a different code path
     raises(NotImplementedError, lambda: solve(-sqrt(2) + cosh(x)/x))
     # unrad some
-    assert solve(sqrt(x + root(x, 3))+root(x - y, 5), y) == [
+    assert solve(sqrt(x + root(x, 3)) + root(x - y, 5), y) == [
         x + (x**Rational(1, 3) + x)**Rational(5, 2)]
     assert check(unrad(sqrt(x) - root(x + 1, 3)*sqrt(x + 2) + 2),
         (s**10 + 8*s**8 + 24*s**6 - 12*s**5 - 22*s**4 - 160*s**3 - 212*s**2 -
@@ -1120,7 +1120,7 @@ def test_unrad1():
     assert check(unrad(x + root(x + y, 5) + root(x + y, 5)**3, y),
         (s**3 + s + x, [s, s**5 - x - y]))
     assert check(unrad(x + root(x + y, 5) + root(x + y, 5)**3, x),
-        (s**5 + s**3 + s - y, [s, s**5 - x - y]))
+        (s**3 + s + x, [s, s**5 - x - y]))
     assert check(unrad(root(x - 1, 3) + root(x + 1, 5) + root(2, 5)),
         (s**5 + 5*2**Rational(1, 5)*s**4 + s**3 + 10*2**Rational(2, 5)*s**3 +
         10*2**Rational(3, 5)*s**2 + 5*2**Rational(4, 5)*s + 4, [s, s**3 - x + 1]))
@@ -1173,7 +1173,8 @@ def test_unrad1():
     assert check(unrad(S('(x+y)**(2*y/3) + (x+y)**(1/3) + 1'), x),
         (s**(2*y) + s + 1, [s, s**3 - x - y]))
     # should _Q be so lenient?
-    assert unrad(x**(S.Half/y) + y, x) == (x**(1/y) - y**2, [])
+    assert check(unrad(x**(S.Half/y) + y, x),
+        (x**(1/y) - y**2, []))
 
     # This tests two things: that if full unrad is attempted and fails
     # the solution should still be found; also it tests that the use of
@@ -1271,8 +1272,9 @@ def test_unrad1():
         (-s**5 + s**3 - 3**(S(1)/3) - (-1)**(S(3)/5)*3**(S(1)/5), [s, s**15 - x]))
 
     # make sure buried radicals are exposed
-    s = sqrt(x) - 1
-    assert unrad(s**2 - s**3) == (x**3 - 6*x**2 + 9*x - 4, [])
+    e = sqrt(x) - 1
+    assert check(unrad(e**2 - e**3),
+        (x**3 - 6*x**2 + 9*x - 4, []))
     # make sure numerators which are already polynomial are rejected
     assert unrad((x/(x + 1) + 3)**(-2), x) is None
 
@@ -2427,3 +2429,36 @@ def test_issue_21942():
     eq = -d + (a*c**(1 - e) + b**(1 - e)*(1 - a))**(1/(1 - e))
     sol = solve(eq, c, simplify=False, check=False)
     assert sol == [(b/b**e - b/(a*b**e) + d**(1 - e)/a)**(1/(1 - e))]
+
+
+def test_issue_22584():
+    _r0 = Rational(1, 8)
+    _r1 = Rational(1, 5)
+    _r2 = Rational(1, 4)
+    _r3 = Rational(1, 2)
+    _r4 = Rational(5, 8)
+    _r5 = Rational(4, 5)
+    _r6 = Rational(975, 22)
+    _r7 = Rational(31450, 11)
+    x0 = -y*_r6 + _r7
+    x1 = 5**_r3
+    x2 = _r0*x1
+    x3 = x0**_r1
+    x4 = I*x3
+    x5 = x4*(_r4 - x2)**_r3
+    x6 = _r2*x3
+    x7 = x1*x6
+    x8 = x6 + x7
+    x9 = x4*(_r4 + x2)**_r3
+    cse_ans = [
+    y - x0**_r5,
+    y - (-x5 - x8)**4,
+    y - (x5 - x8)**4,
+    y - (-x6 + x7 - x9)**4,
+    y - (-x6 + x7 + x9)**4]
+
+    eq = Eq(132*(y - x)**Rational(5, 4)/100 + 585*y/10, 3774)
+
+    assert solve(eq, x, check=False) == cse_ans
+    z = eq.rewrite(Add)
+    assert z.subs(x, cse_ans[0]).expand() == 0  # others not easily excluded
