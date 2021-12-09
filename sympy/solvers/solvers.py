@@ -3315,31 +3315,32 @@ def unrad(eq, *syms, **flags):
     if not gens:
         return
 
-    # easy case  XXX handle unrad(x**(x/11) + pi/11, x)
+    # easy case
     if len(gens) == 1:
         G = gens[0]
-        G_root = G.exp.as_coeff_Mul()[0].q
-        if G_root != 2:
-            # expansion may have separated base of G:
-            # (x - y)**(5/4) -> x*(x - y)**(1/4) - y*(x - y)**(1/4)
-            coveq = collect(eq.subs(G, covsym), covsym)
-            co = coveq.coeff(covsym)
-            if not co.is_number:
-                coveq = coveq.xreplace({
-                    covsym: covsym/co*factor_terms(co).subs(
-                    G.base, covsym**G.exp.q)})
-            free = eq.free_symbols - coveq.free_symbols
-            if len(free) == 1:
-                x = free.pop()
-                b = G.base
-                try:
-                    inv = _solve(covsym**G_root - b, x, **uflags)
-                except NotImplementedError:
-                    return
-                if not inv:
-                    return  # if we return a cov, it can be solved
-                _cov(covsym, covsym**G_root - b)
-                return _canonical(coveq, cov)
+        if G.base.free_symbols - G.exp.free_symbols:  # no x**(x/2)
+            G_root = G.exp.as_coeff_Mul()[0].q
+            if G_root != 2:
+                # expansion may have separated base of G:
+                # (x - y)**(5/4) -> x*(x - y)**(1/4) - y*(x - y)**(1/4)
+                coveq = collect(eq.subs(G, covsym), covsym)
+                co = coveq.coeff(covsym)
+                if not co.is_number:
+                    coveq = coveq.xreplace({
+                        covsym: covsym/co*factor_terms(co).subs(
+                        G.base, covsym**G.exp.q)})
+                free = eq.free_symbols - coveq.free_symbols
+                if len(free) == 1:
+                    x = free.pop()
+                    b = G.base
+                    try:
+                        inv = _solve(covsym**G_root - b, x, **uflags)
+                    except NotImplementedError:
+                        return
+                    if not inv:
+                        return  # if we return a cov, it can be solved
+                    _cov(covsym, covsym**G_root - b)
+                    return _canonical(coveq, cov)
 
     # recast poly in terms of eigen-gens
     poly = eq.as_poly(*gens)

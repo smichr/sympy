@@ -1003,6 +1003,9 @@ def test_unrad1():
             str(rv[1]) == str(ans[1])
 
     assert unrad(1) is None
+    assert unrad(x**(x/2) - 1) is None
+    assert unrad((x + y)**(x/2) - 2) is None
+    assert unrad((x + y)**(x/2) - 2, y) == ((x + y)**x - 4, [])
     assert check(unrad(sqrt(x)),
         (x, []))
     assert check(unrad(sqrt(x) + 1),
