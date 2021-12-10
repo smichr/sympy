@@ -3371,7 +3371,6 @@ def unrad(eq, *syms, **flags):
             # raising their powers in the expression to be solved.
             c, p = r.as_coeff_Mul()
             if p.is_Pow:
-                # r**lcm = (-others)**lcm or (c*b**lcm)**e = (-others)**lcm -> c**e*p = (-others); [p**lcm = b]
                 others /= c
                 _cov(covsym, covsym**lcm - p.base)
                 eq = covsym**(p.exp*lcm) + others

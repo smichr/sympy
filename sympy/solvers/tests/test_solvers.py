@@ -1001,8 +1001,7 @@ def test_unrad1():
         ans = (ans[0].subs(reps).expand(), [ans[1][0].subs(reps), ans[1][1].subs(reps)])
         return str(rv[0]) in [str(ans[0]), str(-ans[0])] and \
             str(rv[1]) == str(ans[1])
-    from time import time
-    tim = time()
+
     assert unrad(1) is None
     assert unrad(x**(x/2) - 1) is None
     assert unrad((x + y)**(x/2) - 2) is None
@@ -1012,8 +1011,6 @@ def test_unrad1():
         (x, []))
     assert check(unrad(sqrt(x) + 1),
         (x - 1, []))
-    print(time()-tim)
-    tim = time()
     assert check(unrad(sqrt(x) + root(x, 3) + 2),
         (s**3 + s**2 + 2, [s, s**6 - x]))
     assert check(unrad(sqrt(x)*root(x, 3) + 2),
@@ -1022,8 +1019,6 @@ def test_unrad1():
         (-x**3 + x**2 + 2*x + 1, []))
     assert check(unrad(sqrt(x) + sqrt(x + 1) + sqrt(2*x)),
         (2*sqrt(2)*x + 2*x - 1, []))
-    print(time()-tim)
-    tim = time()
     assert check(unrad(sqrt(x) + sqrt(x + 1) + 2),
         (16*x - 9, []))
     assert check(unrad(sqrt(x) + sqrt(x + 1) + sqrt(1 - x)),
@@ -1032,8 +1027,6 @@ def test_unrad1():
         ((a*sqrt(x) + b*sqrt(x))**2 - (c*sqrt(y) + d*sqrt(y))**2, []))
     assert check(unrad(sqrt(x) + sqrt(1 - x)),
         (2*x - 1, []))
-    print(time()-tim)
-    tim = time()
     assert check(unrad(sqrt(x) + sqrt(1 - x) - 3),
         (x**2 - x + 16, []))
     assert check(unrad(sqrt(x) + sqrt(1 - x) + sqrt(2 + x)),
@@ -1042,8 +1035,6 @@ def test_unrad1():
         (25*x**4 + 376*x**3 + 1256*x**2 - 2272*x + 784, []))
     assert unrad(sqrt(x) + sqrt(1 - x) + sqrt(2 + x) - sqrt(1 - 2*x)) == \
         (41*x**4 + 40*x**3 + 232*x**2 - 160*x + 16, [])  # orig root at 0.487
-    print(time()-tim)
-    tim = time()
     assert check(unrad(sqrt(x) + sqrt(x + 1)), (S.One, []))
 
     eq = sqrt(x) + sqrt(x + 1) + sqrt(1 - sqrt(x))
@@ -1052,29 +1043,23 @@ def test_unrad1():
     assert set(solve(eq, check=False)) == {S.Zero, Rational(9, 16)}
     assert solve(eq) == []
     # but this one really does have those solutions
-    print(time()-tim)
-    tim = time()
     assert set(solve(sqrt(x) - sqrt(x + 1) + sqrt(1 - sqrt(x)))) == \
         {S.Zero, Rational(9, 16)}
 
     assert check(unrad(sqrt(x) + root(x + 1, 3) + 2*sqrt(y), y),
-        (2*s + sqrt(x) + root(x + 1, 3), [s, s**2 - y]))#(2*sqrt(x)*(x + 1)**(S(1)/3) + x - 4*y + (x + 1)**(S(2)/3), []))
+        (2*s + sqrt(x) + root(x + 1, 3), [s, s**2 - y]))
     assert check(unrad(sqrt(x/(1 - x)) + (x + 1)**Rational(1, 3)),
         (x**5 - x**4 - x**3 + 2*x**2 + x - 1, []))
-    print(time()-tim)
-    tim = time()
     assert check(unrad(sqrt(x/(1 - x)) + 2*sqrt(y), y),
-        (2*s + sqrt(x/(1 - x)), [s, s**2 - y]))#(4*x*y + x - 4*y, []))
+        (2*s + sqrt(x/(1 - x)), [s, s**2 - y]))
     assert check(unrad(sqrt(x/(1 - x)) + 2*sqrt(y), x),
-        (s + 2*sqrt(y), [s, s**2 - x/(1 - x)]))#(4*x*y + x - 4*y, []))
+        (s + 2*sqrt(y), [s, s**2 - x/(1 - x)]))
     assert check(unrad(sqrt(x)*sqrt(1 - x) + 2, x),
         (x**2 - x + 4, []))
     # how can you know whether to do the special "case1"
     # handling or let the general algorithm work? These
     # two represent the competing limits:
     # case1 is better; standard alg includes Piecewise quartic
-    print(time()-tim)
-    tim = time()
     assert unrad(x + 1 - root(x**4 + 4*x**3 - x, 4)) == (
         6*x**2 + 5*x + 1, [])
     # general algorithm is better; case1 gives a quintic that
@@ -1082,8 +1067,6 @@ def test_unrad1():
     assert check(unrad(117*y/2 + 33*(-x + y)**(S(5)/4)/25 - 3774, x),
         (22*s**5 + 975*y - 62900, [s, s**4 + x - y]))
 
-    print(time()-tim)
-    tim = time()
     # http://tutorial.math.lamar.edu/
     #        Classes/Alg/SolveRadicalEqns.aspx#Solve_Rad_Ex2_a
     assert solve(Eq(x, sqrt(x + 6))) == [3]
@@ -1092,8 +1075,6 @@ def test_unrad1():
     assert set(solve(Eq(sqrt(5*x + 6) - 2, x))) == {-S.One, S(2)}
     assert set(solve(Eq(sqrt(2*x - 1) - sqrt(x - 4), 2))) == {S(5), S(13)}
     assert solve(Eq(sqrt(x + 7) + 2, sqrt(3 - x))) == [-6]
-    print(time()-tim)
-    tim = time()
     # http://www.purplemath.com/modules/solverad.htm
     assert solve((2*x - 5)**Rational(1, 3) - 3) == [16]
     assert set(solve(x + 1 - root(x**4 + 4*x**3 - x, 4))) == \
@@ -1102,8 +1083,6 @@ def test_unrad1():
     assert solve(sqrt(2*x + 9) - sqrt(x + 1) - sqrt(x + 4)) == [0]
     assert solve(sqrt(x + 4) + sqrt(2*x - 1) - 3*sqrt(x - 1)) == [5]
     assert solve(sqrt(x)*sqrt(x - 7) - 12) == [16]
-    print(time()-tim)
-    tim = time()
     assert solve(sqrt(x - 3) + sqrt(x) - 3) == [4]
     assert solve(sqrt(9*x**2 + 4) - (3*x + 2)) == [0]
     assert solve(sqrt(x) - 2 - 5) == [49]
@@ -1112,8 +1091,6 @@ def test_unrad1():
     assert solve(sqrt(x - 2) - 5) == [27]
     assert solve(sqrt(17*x - sqrt(x**2 - 5)) - 7) == [3]
     assert solve(sqrt(x) - sqrt(x - 1) + sqrt(sqrt(x))) == []
-    print(time()-tim)
-    tim = time()
 
     # don't posify the expression in unrad and do use _mexpand
     z = sqrt(2*x + 1)/sqrt(x) - sqrt(2 + 1/x)
@@ -1122,8 +1099,6 @@ def test_unrad1():
     assert solve(z) == []
     assert solve(z + 6*I) == [Rational(-1, 11)]
     assert solve(p + 6*I) == []
-    print(time()-tim)
-    tim = time()
     # issue 8622
     assert unrad(root(x + 1, 5) - root(x, 3)) == (
         -(x**5 - x**3 - 3*x**2 - 3*x - 1), [])
@@ -1132,8 +1107,6 @@ def test_unrad1():
         (s**3 + s**2 + s + sqrt(y), [s, s**3 - x]))
 
     # for coverage
-    print(time()-tim)
-    tim = time()
     assert check(unrad(sqrt(x) + root(x, 3) + y),
         (s**3 + s**2 + y, [s, s**6 - x]))
     assert solve(sqrt(x) + root(x, 3) - 2) == [1]
@@ -1142,8 +1115,6 @@ def test_unrad1():
     # fails through a different code path
     raises(NotImplementedError, lambda: solve(-sqrt(2) + cosh(x)/x))
     # unrad some
-    print(time()-tim)
-    tim = time()
     assert solve(sqrt(x + root(x, 3)) + root(x - y, 5), y) == [
         x + (x**Rational(1, 3) + x)**Rational(5, 2)]
     assert check(unrad(sqrt(x) - root(x + 1, 3)*sqrt(x + 2) + 2),
@@ -1152,18 +1123,12 @@ def test_unrad1():
     e = root(x + 1, 3) + root(x, 3)
     assert unrad(e) == (2*x + 1, [])
     eq = (sqrt(x) + sqrt(x + 1) + sqrt(1 - x) - 6*sqrt(5)/5)
-    print(time()-tim)
-    tim = time()
     assert check(unrad(eq),
         (15625*x**4 + 173000*x**3 + 355600*x**2 - 817920*x + 331776, []))
     assert check(unrad(root(x, 4) + root(x, 4)**3 - 1),
-        (s**3 + s - 1, [s, s**4 - x]))#(-x**6 + 4*x**5 - 6*x**4 + 6*x**3 + 11*x**2 + 2*x - 1, []))
-    assert check(unrad(root(x, 4) + root(x, 4)**3 - 1, prefer_nocov=False),
         (s**3 + s - 1, [s, s**4 - x]))
     assert check(unrad(root(x, 2) + root(x, 2)**3 - 1),
         (x**3 + 2*x**2 + x - 1, []))
-    print(time()-tim)
-    tim = time()
     assert unrad(x**0.5) is None
     assert check(unrad(t + root(x + y, 5) + root(x + y, 5)**3),
         (s**3 + s + t, [s, s**5 - x - y]))
@@ -1171,8 +1136,6 @@ def test_unrad1():
         (s**3 + s + x, [s, s**5 - x - y]))
     assert check(unrad(x + root(x + y, 5) + root(x + y, 5)**3, x),
         (s**5 + s**3 + s - y, [s, s**5 - x - y]))
-    print(time()-tim)
-    tim = time()
     assert check(unrad(root(x - 1, 3) + root(x + 1, 5) + root(2, 5)),
         (s**5 + 5*2**Rational(1, 5)*s**4 + s**3 +
         10*2**Rational(2, 5)*s**3 + 10*2**Rational(3, 5)*s**2 +
@@ -1182,8 +1145,6 @@ def test_unrad1():
 
     # the simplify flag should be reset to False for unrad results;
     # if it's not then this next test will take a long time
-    print(time()-tim)
-    tim = time()
     assert solve(root(x, 3) + root(x, 5) - 2) == [1]
     eq = (sqrt(x) + sqrt(x + 1) + sqrt(1 - x) - 6*sqrt(5)/5)
     assert check(unrad(eq),
@@ -1192,8 +1153,6 @@ def test_unrad1():
         [4/5, -1484/375 + 172564/(140625*(114*sqrt(12657)/78125 +
         12459439/52734375)**(1/3)) +
         4*(114*sqrt(12657)/78125 + 12459439/52734375)**(1/3)]''')
-    print(time()-tim)
-    tim = time()
     assert solve(eq) == ans
     # duplicate radical handling
     assert check(unrad(sqrt(x + root(x + 1, 3)) - root(x + 1, 3) - 2),
@@ -1201,10 +1160,9 @@ def test_unrad1():
     # cov post-processing
     e = root(x**2 + 1, 3) - root(x**2 - 1, 5) - 2
     assert check(unrad(e),
-        (s**5 - 10*s**4 + 39*s**3 - 80*s**2 + 80*s - 30, [s, s**3 - x**2 - 1]))
+        (s**5 - 10*s**4 + 39*s**3 - 80*s**2 + 80*s - 30,
+        [s, s**3 - x**2 - 1]))
 
-    print(time()-tim)
-    tim = time()
     e = sqrt(x + root(x + 1, 2)) - root(x + 1, 3) - 2
     assert check(unrad(e),
         (s**6 - 2*s**5 - 7*s**4 - 3*s**3 + 26*s**2 + 40*s + 25,
@@ -1212,8 +1170,6 @@ def test_unrad1():
     assert check(unrad(e, _reverse=True),
         (s**6 - 14*s**5 + 73*s**4 - 187*s**3 + 276*s**2 - 228*s + 89,
         [s, s**2 - x - sqrt(x + 1)]))
-    print(time()-tim)
-    tim = time()
     # this one needs r0, r1 reversal to work
     assert check(unrad(sqrt(x + sqrt(root(x, 3) - 1)) - root(x, 6) - 2),
         (s**12 - 2*s**8 - 8*s**7 - 8*s**6 + s**4 + 8*s**3 + 23*s**2 +
@@ -1223,8 +1179,6 @@ def test_unrad1():
     assert unrad(root(cosh(x), 3)/x*root(x + 1, 5) - 1) == (
         -(x**15 - x**3*cosh(x)**5 - 3*x**2*cosh(x)**5 - 3*x*cosh(x)**5
         - cosh(x)**5), [])
-    print(time()-tim)
-    tim = time()
     # and this fail?
     #assert unrad(sqrt(cosh(x)/x) + root(x + 1, 3)*sqrt(x) - 1) == (
     #    -s**6 + 6*s**5 - 15*s**4 + 20*s**3 - 15*s**2 + 6*s + x**5 +
@@ -1232,8 +1186,6 @@ def test_unrad1():
 
     # watch for symbols in exponents
     assert unrad(S('(x+y)**(2*y/3) + (x+y)**(1/3) + 1')) is None
-    print(time()-tim)
-    tim = time()
     assert check(unrad(S('(x+y)**(2*y/3) + (x+y)**(1/3) + 1'), x),
         (s**(2*y) + s + 1, [s, s**3 - x - y]))
     # should _Q be so lenient?
@@ -1243,16 +1195,12 @@ def test_unrad1():
     # This tests two things: that if full unrad is attempted and fails
     # the solution should still be found; also it tests that the use of
     # the composite flag
-    print(time()-tim)
-    tim = time()
     assert len(solve(sqrt(y)*x + x**3 - 1, x)) == 3
     assert len(solve(-512*y**3 + 1344*(x + 2)**Rational(1, 3)*y**2 -
         1176*(x + 2)**Rational(2, 3)*y - 169*x + 686, y, _unrad=False)) == 3
 
     # watch out for when the cov doesn't involve the symbol of interest
     eq = S('-x + (7*y/8 - (27*x/2 + 27*sqrt(x**2)/2)**(1/3)/3)**3 - 1')
-    print(time()-tim)
-    tim = time()
     assert solve(eq, y) == [
         2**(S(2)/3)*(27*x + 27*sqrt(x**2))**(S(1)/3)*S(4)/21 + (512*x/343 +
         S(512)/343)**(S(1)/3)*(-S(1)/2 - sqrt(3)*I/2), 2**(S(2)/3)*(27*x +
@@ -1261,8 +1209,6 @@ def test_unrad1():
         27*sqrt(x**2))**(S(1)/3)*S(4)/21 + (512*x/343 + S(512)/343)**(S(1)/3)]
 
     eq = root(x + 1, 3) - (root(x, 3) + root(x, 5))
-    print(time()-tim)
-    tim = time()
     assert check(unrad(eq),
         (3*s**13 + 3*s**11 + s**9 - 1, [s, s**15 - x]))
     assert check(unrad(eq - 2),
@@ -1271,8 +1217,6 @@ def test_unrad1():
     assert check(unrad(root(x, 3) - root(x + 1, 4)/2 + root(x + 2, 3)),
         (s*(4096*s**9 + 960*s**8 + 48*s**7 - s**6 - 1728),
         [s, s**4 - x - 1]))  # orig expr has two real roots: -1, -.389
-    print(time()-tim)
-    tim = time()
     assert check(unrad(root(x, 3) + root(x + 1, 4) - root(x + 2, 3)/2),
         (343*s**13 + 2904*s**12 + 1344*s**11 + 512*s**10 - 1323*s**9 -
         3024*s**8 - 1728*s**7 + 1701*s**5 + 216*s**4 - 729*s, [s, s**4 - x -
@@ -1281,8 +1225,6 @@ def test_unrad1():
         (729*s**13 - 216*s**12 + 1728*s**11 - 512*s**10 + 1701*s**9 -
         3024*s**8 + 1344*s**7 + 1323*s**5 - 2904*s**4 + 343*s, [s, s**4 - x -
         1]))  # orig expr has 2 real roots: -0.91, -0.15
-    print(time()-tim)
-    tim = time()
     assert check(unrad(root(x, 3)/2 - root(x + 1, 4) + root(x + 2, 3) - 2),
         (729*s**13 + 1242*s**12 + 18496*s**10 + 129701*s**9 + 388602*s**8 +
         453312*s**7 - 612864*s**6 - 3337173*s**5 - 6332418*s**4 - 7134912*s**3
@@ -1291,8 +1233,6 @@ def test_unrad1():
 
     ans = solve(sqrt(x) + sqrt(x + 1) -
                 sqrt(1 - x) - sqrt(2 + x))
-    print(time()-tim)
-    tim = time()
     assert len(ans) == 1 and NS(ans[0])[:4] == '0.73'
     # the fence optimization problem
     # https://github.com/sympy/sympy/issues/4793#issuecomment-36994519
@@ -1306,8 +1246,6 @@ def test_unrad1():
             break
     else:
         assert None  # no answer was found
-    print(time()-tim)
-    tim = time()
     assert solve(sqrt(x + 1) + root(x, 3) - 2) == S('''
         [(-11/(9*(47/54 + sqrt(93)/6)**(1/3)) + 1/3 + (47/54 +
         sqrt(93)/6)**(1/3))**3]''')
@@ -1320,8 +1258,6 @@ def test_unrad1():
     assert solve(sqrt(x) + root(sqrt(x) + 1, 3) - 2) == S('''
         [(-(81/2 + 3*sqrt(741)/2)**(1/3)/3 + (81/2 + 3*sqrt(741)/2)**(-1/3) +
         2)**2]''')
-    print(time()-tim)
-    tim = time()
     eq = S('''
         -x + (1/2 - sqrt(3)*I/2)*(3*x**3/2 - x*(3*x**2 - 34)/2 + sqrt((-3*x**3
         + x*(3*x**2 - 34) + 90)**2/4 - 39304/27) - 45)**(1/3) + 34/(3*(1/2 -
@@ -1334,8 +1270,6 @@ def test_unrad1():
         471648*sqrt(3)*I), [s, s**3 - 306*x - sqrt(3)*sqrt(31212*x**2 -
         165240*x + 61484) + 810]))
 
-    print(time()-tim)
-    tim = time()
     assert solve(eq) == [] # not other code errors
     eq = root(x, 3) - root(y, 3) + root(x, 5)
     assert check(unrad(eq),
@@ -1348,8 +1282,6 @@ def test_unrad1():
     raises(NotImplementedError,
            lambda: unrad(root(x, 3) + root(y, 3) + root(x*y, 5)))
 
-    print(time()-tim)
-    tim = time()
     # Test unrad with an Equality
     eq = Eq(-x**(S(1)/5) + x**(S(1)/3), -3**(S(1)/3) - (-1)**(S(3)/5)*3**(S(1)/5))
     assert check(unrad(eq),
