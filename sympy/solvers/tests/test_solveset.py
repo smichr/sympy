@@ -2089,24 +2089,24 @@ def test_issue_21022():
     res = nonlinsolve(eqs, syb)
 
     ans = FiniteSet(
-    (efg, sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16),
-    efg, 16, 8, 8 + sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16),
-    sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16, -8*sqrt(5)),
-    (efg, sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16),
-    efg, 16, 8, 8 + sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16),
-    sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16, 8*sqrt(5)),
-    (efg, -sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16),
-    efg, 16, 8, -sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16) + 8,
-    sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16, -8*sqrt(5)),
-    (efg, -sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16),
-    efg, 16, 8, -sqrt(-16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16)*sqrt(16 + sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16) + 8,
-    sqrt(640 - 128*sqrt(5))*sqrt(128*sqrt(5) + 640)/16, 8*sqrt(5))
+        (efg, -sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)), efg, 16, 8,
+        -sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)) + 8, 16*sqrt(5),
+        -8*sqrt(5)), (efg, -sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)), efg,
+        16, 8, -sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)) + 8, 16*sqrt(5),
+        8*sqrt(5)), (efg, sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)), efg,
+        16, 8, 8 + sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)), 16*sqrt(5),
+        -8*sqrt(5)), (efg, sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)), efg,
+        16, 8, 8 + sqrt(-16 + 16*sqrt(5))*sqrt(16 + 16*sqrt(5)), 16*sqrt(5),
+        8*sqrt(5))
     )
 
     assert len(res) == len(ans) == 4
     assert res == ans
     for result in res.args:
         assert len(result) == 8
+    # confirmed that this is the same as previous answer
+    z = [[i.xreplace(dict(zip(syb, s))).simplify() for i in eqs] for s in res]
+    assert len(list(filter(None, flatten(z)))) == 2
 
 
 def test_issue_17940():
