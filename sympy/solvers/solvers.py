@@ -3357,7 +3357,7 @@ def unrad(eq, *syms, **flags):
     depth = sqrt_depth(eq)
 
     if len(rterms) == 1 and not (rterms[0].is_Add and lcm > 2):
-        r = factor_terms(rterms[0])
+        r = rterms[0]
         if not others.is_number:
             rfree = r.free_symbols
             ofree = others.free_symbols
