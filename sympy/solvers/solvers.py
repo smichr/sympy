@@ -3357,10 +3357,7 @@ def unrad(eq, *syms, **flags):
     depth = sqrt_depth(eq)
 
     if len(rterms) == 1 and not (rterms[0].is_Add and lcm > 2):
-        ok = True
         r = factor_terms(rterms[0])
-        # will a change of variables take care of a symbol
-        # of interest?
         if not others.is_number:
             rfree = r.free_symbols
             ofree = others.free_symbols
@@ -3369,21 +3366,20 @@ def unrad(eq, *syms, **flags):
         else:
             pred = False
         if pred:
-            # yes
+            # there are symbols in others that don't involve radicals
+            # that we wanted to be free of radicals. So try to avoid
+            # raising their powers in the expression to be solved.
             c, p = r.as_coeff_Mul()
             if p.is_Pow:
                 # r**lcm = (-others)**lcm or (c*b**lcm)**e = (-others)**lcm -> c**e*p = (-others); [p**lcm = b]
                 others /= c
                 _cov(covsym, covsym**lcm - p.base)
                 eq = covsym**(p.exp*lcm) + others
-            else:
-                print(2)
-                _cov(covsym, covsym - p)
-                eq = covsym + others
+                ok = True
         else:
-            # no
             eq = r**lcm - ((-others)**lcm)
-    else:
+            ok = True
+    if not ok:
         if len(rterms) == 1 and rterms[0].is_Add:
             rterms = list(rterms[0].args)
         if len(bases) == 1:

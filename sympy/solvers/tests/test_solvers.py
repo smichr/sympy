@@ -1027,7 +1027,7 @@ def test_unrad1():
     assert check(unrad(sqrt(x) + sqrt(x + 1) + 2),
         (16*x - 9, []))
     assert check(unrad(sqrt(x) + sqrt(x + 1) + sqrt(1 - x)),
-        (5*x**2 - 4*x, []))
+        (x*(5*x - 4), []))
     assert check(unrad(a*sqrt(x) + b*sqrt(x) + c*sqrt(y) + d*sqrt(y)),
         ((a*sqrt(x) + b*sqrt(x))**2 - (c*sqrt(y) + d*sqrt(y))**2, []))
     assert check(unrad(sqrt(x) + sqrt(1 - x)),
