@@ -1680,8 +1680,9 @@ def _solve(f, *symbols, **flags):
                 eq, cov = u
                 if cov:
                     isym, ieq = cov
-                    inv = _solve(ieq, symbol, **flags)[0]
-                    rv = {inv.subs(isym, xi) for xi in _solve(eq, isym, **flags)}
+                    inv = _solve(ieq, symbol, **flags)
+                    xsol = _solve(eq, isym, **flags)
+                    rv = {i.subs(isym, xi) for xi in xsol for i in inv}
                 else:
                     try:
                         rv = set(_solve(eq, symbol, **flags))
@@ -3356,8 +3357,32 @@ def unrad(eq, *syms, **flags):
     depth = sqrt_depth(eq)
 
     if len(rterms) == 1 and not (rterms[0].is_Add and lcm > 2):
-        eq = rterms[0]**lcm - ((-others)**lcm)
         ok = True
+        r = factor_terms(rterms[0])
+        # will a change of variables take care of a symbol
+        # of interest?
+        if not others.is_number:
+            rfree = r.free_symbols
+            ofree = others.free_symbols
+            elim = rfree - ofree
+            pred = elim & syms
+        else:
+            pred = False
+        if pred:
+            # yes
+            c, p = r.as_coeff_Mul()
+            if p.is_Pow:
+                # r**lcm = (-others)**lcm or (c*b**lcm)**e = (-others)**lcm -> c**e*p = (-others); [p**lcm = b]
+                others /= c
+                _cov(covsym, covsym**lcm - p.base)
+                eq = covsym**(p.exp*lcm) + others
+            else:
+                print(2)
+                _cov(covsym, covsym - p)
+                eq = covsym + others
+        else:
+            # no
+            eq = r**lcm - ((-others)**lcm)
     else:
         if len(rterms) == 1 and rterms[0].is_Add:
             rterms = list(rterms[0].args)
