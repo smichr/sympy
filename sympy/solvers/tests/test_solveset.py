@@ -29,7 +29,7 @@ from sympy.sets.sets import (Complement, FiniteSet,
     Intersection, Interval, Union, imageset, ProductSet)
 from sympy.simplify import simplify
 from sympy.tensor.indexed import Indexed
-from sympy.utilities.iterables import numbered_symbols
+from sympy.utilities.iterables import numbered_symbols, flatten
 
 from sympy.testing.pytest import (XFAIL, raises, skip, slow, SKIP, _both_exp_pow)
 from sympy.core.random import verify_numerically as tn
