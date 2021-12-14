@@ -19,7 +19,7 @@ from sympy.simplify.radsimp import collect
 from sympy.simplify.simplify import simplify
 from sympy.core.exprtools import (decompose_power, Factors, Term, _gcd_terms,
                                   gcd_terms, factor_terms, factor_nc, _mask_nc,
-                                  _monotonic_sign)
+                                  _monotonic_sign, model)
 from sympy.core.mul import _keep_coeff as _keep_coeff
 from sympy.simplify.cse_opts import sub_pre
 from sympy.testing.pytest import raises
@@ -479,7 +479,32 @@ def test_issue_17256():
     r2 = s2.xreplace({x:a})
     assert r1 == r2
 
+
 def test_issue_21623():
     from sympy.matrices.expressions.matexpr import MatrixSymbol
     M = MatrixSymbol('X', 2, 2)
     assert gcd_terms(M[0,0], 1) == M[0,0]
+
+
+def test_modelit():
+    C0, C1, C2 = symbols('C:3')
+    def sok(eq, ans):
+        flat = lambda x: ''.join(str(x).split())
+        return flat(eq) == flat(ans)
+    assert sok(model(-2*x, x),
+        (-C0*x, [(C0, 2)]))
+    assert sok(model(2 - 3*x, x),
+        (C0*(C1 - x), [(C1, S(2)/3), (C0, 3)]))
+    assert sok(model(2 - 2*x, x),
+        (C0*(1 - x), [(C0, 2)]))
+    assert sok([model(i, x) for i in (
+        2*x/(y + x**2),
+        x/(y + x**2/2),
+        2*x/(2*y + x**2))], [
+        (C1*x/(C0 + x**2), [(C1, 2), (C0, y)]),
+        (C2*x/(C1 + x**2), [(C2, 2), (C1, 2*y),
+        (C0, S.Half)]), (C1*x/(C0 + x**2), [(C1, 2), (C0, 2*y)])])
+    assert sok(model(3 - 2**(x + 1), x),
+        (2**x*C2 + C1, [(C2, -2), (C1, 3), (C0, 1)]))
+    assert sok(model(y**(x + 3) + y**(3*x), x),
+        (C2*y**x + y**(C0*x), [(C2, y**3), (C0, 3)]))

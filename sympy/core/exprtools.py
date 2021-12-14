@@ -1572,3 +1572,136 @@ def factor_nc(expr):
 
         # mid was an Add that didn't factor successfully
         return _keep_coeff(c, g*l*mid*r)
+
+
+def model(eq, *s, name='C'):
+    """Return the ``(m, r)`` where ``m`` is the expression obtained after
+    replacing additive terms and multiplicative factors with constants;
+    ``r`` contains tuples of ``(c, e)`` where ``c`` are uniquely named
+    constants that replaced ``e`` in ``eq``. The constants will be
+    non-clashing with any symbols in the expression starting with "C" unless
+    a different name is given.
+
+    Examples
+    ========
+
+    >>> from sympy.core.exprtools import model
+    >>> from sympy.abc import x, y
+    >>> model(-2*x, x)
+    (-C0*x, [(C0, 2)])
+
+    There may be redundant replacements; note that ``C0`` does
+    not appear in the returned expression:
+
+    >>> model(3 - 2**(x + 1),x)
+    (2**x*C2 + C1, [(C2, -2), (C1, 3), (C0, 1)])
+
+    There may also be missing constant numbers if redundant
+    constants were identified during the replacements. ``C1`` is
+    missing in the replacement below:
+
+    >>> model(y**(x + 3)+y**(3*x), x)
+    (C2*y**x + y**(C0*x), [(C2, y**3), (C0, 3)])
+
+    Although the expression is not simplified, the coefficient on
+    the last ordered term of a sum will always be 1:
+
+    >>> model(2 - 3*x, x)
+    (C0*(C1 - x), [(C1, 2/3), (C0, 3)])
+    >>> model(2 - 2*x,x)
+    (C0*(1 - x), [(C0, 2)])
+    >>> [model(i, x)[0] for i in (2*x/(y + x**2), x/(y + x**2/2), 2*x/(2*y + x**2))]
+    [C1*x/(C0 + x**2), C2*x/(C1 + x**2), C1*x/(C0 + x**2)]
+    """
+    from sympy.core.symbol import uniquely_named_symbol, Symbol
+    from sympy.utilities.iterables import numbered_symbols
+    from sympy.core.function import _coeff_isneg, expand_power_exp
+    from sympy.core.assumptions import assumptions
+    invitems = lambda d: [(v, k) for k, v in reversed(list(d.items()))]
+    if name is None:
+        name = 'C'
+    if type(name) is str:
+        gen = numbered_symbols(uniquely_named_symbol('C', eq))
+    else:
+        gen = name
+    def do(x, *s, reps):
+        sym = lambda x: reps.setdefault(x,
+            Symbol(next(gen).name, **assumptions(x)))
+        if not x.has_free(*s):
+            return sym(x)
+        if x.is_Add:
+            # get s-independent factors on last ordered s-dependent term
+            hass = [i for i in x.args if i.has_free(*s)]
+            # - get the last one
+            last = next(reversed(list(ordered(hass))))
+            # - get the s-independent factor
+            co = last.as_independent(*s)[0]
+            # - ignore leading negative
+            sign = _coeff_isneg(co)
+            if sign:
+                co = -co
+            if co is not S.One:
+                resid = []  # extract if possible, else divide
+                co_factor = True
+                for j in x.args:
+                    r = j.extract_multiplicatively(co)
+                    if r is None:
+                        co_factor = False
+                        r = j/co
+                    resid.append(r)
+                sco = sym(co)
+                if co_factor:
+                    # co factored out, like 2 + 2*x -> 2*(1 + x)
+                    return sco*x.func(*resid)
+                # it didn't factor out, so rebuild x/co
+                x = x.func(*resid)
+            else:
+                sco = None
+        else:
+            sco = None
+        i, d = x.as_independent(*s)
+        if i is x.identity or (-i) is x.identity:
+            rv = x
+        elif i.is_Number and i < 0:
+            rv = x.func(-sym(-i), d)
+        else:
+            rv = x.func(sym(i), d)
+        if sco is None:
+            return rv
+        return sco*rv
+    rv = eq
+    add = {}
+    # sums, like 2 + 2*x to C0*(1 + x) or 2 + 3*x to C0*(C1 + x)
+    rv = rv.replace(lambda x: x.is_Add, lambda e: do(e, *s, reps=add))
+    # expand, like y**(x + 3) to C0*y**x
+    rv = expand_power_exp(rv)
+    # muls, like 2*x*y to C0*x
+    mul = {}
+    rv = rv.replace(lambda x: x.is_Mul, lambda e: do(e, *s, reps=mul))
+    # prepare for return
+    iadd = invitems(add)
+    # see if atoms identified in sums were also identified in products
+    # and use the same symbol, e.g. 2*x + 1/(x + 2) will identify a
+    # 2 on the add and mul pass
+    atoms = [(k, v) for k, v in iadd if v.is_Atom]
+    imul = []
+    dups = []
+    for k, v in invitems(mul):
+        # replace any constants in v that appeared in sums
+        # with their values
+        v = v.subs(atoms)
+        if v in add:
+            # this was a duplicate
+            ka = add[v]
+            dups.append((k, ka))
+        elif -v in add:
+            # the negated value was a duplicate
+            ka = -add[-v]
+            dups.append((k, ka))
+        else:
+            # no match, so this is a valid mul
+            # items
+            imul.append((k, v))
+    if dups:
+        rv = rv.subs(dups)
+    return rv, imul + iadd
