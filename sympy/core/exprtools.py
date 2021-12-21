@@ -1621,7 +1621,7 @@ def model(eq, *s, name='C'):
     if name is None:
         name = 'C'
     if type(name) is str:
-        gen = numbered_symbols(uniquely_named_symbol('C', eq))
+        gen = numbered_symbols(uniquely_named_symbol(name, eq))
     else:
         gen = name
     def do(x, *s, reps):
