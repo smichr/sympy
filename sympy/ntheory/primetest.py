@@ -109,7 +109,26 @@ def is_square(n, prep=True):
         return False
     if not 0x121065188e001c46298213 & (1 << (m % 85)):
         return False
+    if not n % 2:
+        from sympy.ntheory.factor_ import trailing
+        # remove powers of 4
+        t = trailing(n)
+        if t % 2:  # odd exponent on 2 -> not square
+            return False
+        n >>= t
+        if n == 1:  # an even power of 2
+            return True
+    # we now have an odd potential square
+    # which must be in the form 4*k*(k + 1) + 1
+    # (i.e. 8*Tk + 1 where Tk is a triangular number)
+    # https://math.stackexchange.com/questions/4226869/how-well-does-this-method-of-checking-if-an-integer-n-is-a-square-perform
+    ab, r = divmod(n - 1, 4)
+    if r:
+        return False
+    if ab % 2:
+        return False
     return integer_nthroot(n, 2)[1]
+
 
 def _test(n, base, s, t):
     """Miller-Rabin strong pseudoprime test for one base.

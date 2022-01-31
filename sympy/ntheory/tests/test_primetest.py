@@ -151,6 +151,10 @@ def test_is_square():
     assert not is_square(84 ** 7)
     assert not is_square(105 ** 9)
     assert not is_square(120 ** 3)
+    # coverage
+    assert not is_square(39040)
+    assert not is_square(32704)
+    assert not is_square(49984)
 
 def test_is_gaussianprime():
     assert is_gaussian_prime(7*I)
