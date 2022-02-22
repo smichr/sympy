@@ -307,3 +307,43 @@ def ordered(seq, keys=None, default=True, warn=False):
                         'not enough keys to break ties: %s' % u)
         yield from d[k]
         d.pop(k)
+
+
+def repsort(*replace):
+    """Return sorted replacement tuples ``(o, n)`` such
+    that ``(o_i, n_i)`` will appear before ``(o_j, n_j)`` if
+    ``o_j`` appears in ``n_i``. An error will be raised if ``o_j``
+    appears in ``n_i`` and ``o_i`` appears in ``n_k`` if ``k >= i``.
+
+    Examples
+    ========
+
+    >>> from sympy.core.sorting import repsort
+    >>> from sympy.abc import a, x, y, z
+    >>> repsort((x, y + 1), (z, x + 2))
+    [(z, x + 2), (x, y + 1)]
+    >>> repsort((x, y + 1), (z, x**2))
+    [(z, x**2), (x, y + 1)]
+
+    Thus ordered, the rightmost element of the first element
+    can be explicated by substitution:
+
+    >>> reps = repsort((x, y + 1), (z, a), (y, z**2))
+    >>> lhs, rhs = reps[0]
+    >>> rhs = rhs.subs(reps)
+    >>> lhs, rhs
+    (x, a**2 + 1)
+    
+    Any two of the following 3 tuples will not raise an error,
+    but together they contain a cycle that raises an error:
+
+    >>> repsort((x, y), (y, z), (z, x))
+    Traceback (most recent call last):
+    ...
+    ValueError: cycle detected
+    """
+    from itertools import permutations
+    from sympy.utilities import topological_sort
+    edges = [(i, j) for i, j in permutations(replace, 2) if 
+        i[1].has(j[0]) and (not j[0].is_Symbol or i[1].has_free(j[0]))]
+    return topological_sort([replace, edges], ordered)

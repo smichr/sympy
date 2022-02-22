@@ -1,7 +1,7 @@
-from sympy.core.sorting import default_sort_key, ordered
+from sympy.core.sorting import default_sort_key, ordered, repsort
 from sympy.testing.pytest import raises
 
-from sympy.abc import x
+from sympy.abc import x, y, z
 
 
 def test_default_sort_key():
@@ -26,3 +26,9 @@ def test_ordered():
     assert list(ordered(l, warn=True)) == [[1], [1], [2]]
     raises(ValueError, lambda: list(ordered(['a', 'ab'], keys=[lambda x: x[0]],
         default=False, warn=True)))
+
+
+def test_repsort():
+    assert repsort((x, y + 1), (z, x + 2)) == [(z, x + 2), (x, y + 1)]
+    assert repsort((x, y + 1), (z, x**2)) == [(z, x**2), (x, y + 1)]
+    raises(ValueError, lambda: repsort((x, y), (y, z), (z, x)))
