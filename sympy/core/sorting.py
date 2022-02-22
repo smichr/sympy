@@ -333,7 +333,7 @@ def repsort(*replace):
     >>> rhs = rhs.subs(reps)
     >>> lhs, rhs
     (x, a**2 + 1)
-    
+
     Any two of the following 3 tuples will not raise an error,
     but together they contain a cycle that raises an error:
 
@@ -344,6 +344,5 @@ def repsort(*replace):
     """
     from itertools import permutations
     from sympy.utilities import topological_sort
-    edges = [(i, j) for i, j in permutations(replace, 2) if 
-        i[1].has(j[0]) and (not j[0].is_Symbol or i[1].has_free(j[0]))]
+    edges = [(i, j) for i, j in permutations(replace, 2) if i[1].has_free(j[0])]
     return topological_sort([replace, edges], ordered)
