@@ -2497,3 +2497,17 @@ def test_issue_23110():
 
     assert solve((x*y, x*z, x*v, y - 2*z)) == [
         {x: 0, y: 2*z}, {v: 0, y: 0, z: 0}]
+
+
+def test_issue_20210():
+    L = symbols("L")
+    eqs = Eq(2*x*y**2*z**2, 2*L*x), Eq(2*x**2*y*z**2, 2*L*y), Eq(2*x**2*y**2*z, 2*L*z), Eq(x**2 + y**2 + z**2 - 1, 0)
+    assert solve(eqs) == [
+        {L: 0, x: 0, y: sqrt(1 - z**2)},
+        {L: 0, z: 0, x: -sqrt(1 - y**2)},
+        {L: 0, y: 0, x: -sqrt(1 - z**2)},
+        {L: 0, x: 0, y: 0, z: -1},
+        {L: 0, x: 0, y: 0, z: 1},
+        {L: 0, z: 0, x: -sqrt(2)/2, y: -sqrt(2)/2},
+        {L: S(1)/9, x: -sqrt(3)/3, y: -sqrt(3)/3, z: -sqrt(3)/3},
+        {L: S(1)/9, x: -sqrt(3)/3, y: -sqrt(3)/3, z: sqrt(3)/3}]
