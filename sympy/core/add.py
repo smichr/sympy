@@ -421,7 +421,7 @@ class Add(Expr, AssocOp):
         were not present will return a coefficient of 0. If an expression is
         not an Add it is considered to have a single term.
 
-        If symbols `sym` are provided, any multiplicative terms
+        If symbols `syms` are provided, any multiplicative terms
         independent of them will be considered a coefficient and a
         regular dictionary of syms-dependent generators as keys and
         their corresponding coefficients as values will be returned.
