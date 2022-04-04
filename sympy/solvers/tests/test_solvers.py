@@ -53,7 +53,7 @@ def test_swap_back():
     assert solve([fx + y - 2, fx - gx - 5], fx, y, gx) == \
         {fx: gx + 5, y: -gx - 3}
     assert solve(fx + gx*x - 2, [fx, gx], dict=True)[0] == {fx: 2, gx: 0}
-    assert solve(fx + gx**2*x - y, [fx, gx], dict=True) == [{fx: y - gx**2*x}]
+    assert solve(fx + gx**2*x - y, [fx, gx], dict=True)[0] == {gx: 0, fx: y}
     assert solve([f(1) - 2, x + 2], dict=True) == [{x: -2, f(1): 2}]
 
 
@@ -162,8 +162,9 @@ def test_solve_args():
     assert solve(eq, [h, p, k], exclude=[a, b, c], **flags) == \
         [{k: (4*a*c - b**2)/(4*a), h: -b/(2*a), p: 1/(4*a)}]
     # failing undetermined system
-    assert solve(a*x + b**2/(x + 4) - 3*x - 4/x, a, b, dict=True) == \
-        [{a: (-b**2*x + 3*x**3 + 12*x**2 + 4*x + 16)/(x**2*(x + 4))}]
+    assert solve(a*x + b**2/(x + 4) - 3*x - 4/x, a, b, dict=True) == []
+    assert solve(a*x + b**2/(x + 4) - 3*x - 4/x, dict=True) == [
+        {a: (-b**2*x + 3*x**3 + 12*x**2 + 4*x + 16)/(x**2*(x + 4))}]
     # failed single equation
     assert solve(1/(1/x - y + exp(y))) == []
     raises(
@@ -1467,7 +1468,9 @@ def test_issue_5901():
     assert solve([f(x) - 3*f(x).diff(x), f(x)**2 - y + 4], f(x), y) == \
         [{f(x): 3*D, y: 9*D**2 + 4}]
     assert solve(-f(a)**2*g(a)**2 + f(a)**2*h(a)**2 + g(a).diff(a),
-                h(a), g(a), set=True) == \
+                h(a), g(a), set=True) == ([], set())
+    assert solve(-f(a)**2*g(a)**2 + f(a)**2*h(a)**2 + g(a).diff(a),
+                g(a), set=True) == \
         ([g(a)], {
         (-sqrt(h(a)**2*f(a)**2 + G)/f(a),),
         (sqrt(h(a)**2*f(a)**2+ G)/f(a),)})

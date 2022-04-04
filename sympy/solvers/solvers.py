@@ -45,6 +45,7 @@ from sympy.matrices.common import NonInvertibleMatrixError
 from sympy.matrices import Matrix, zeros
 from sympy.polys import roots, cancel, factor, Poly
 from sympy.polys.polyerrors import GeneratorsNeeded, PolynomialError
+from sympy.polys.polytools import div
 from sympy.polys.solvers import sympy_eqs_to_ring, solve_lin_sys
 from sympy.utilities.lambdify import lambdify
 from sympy.utilities.misc import filldedent, debug
@@ -89,12 +90,16 @@ def recast_to_symbols(eqs, symbols):
     """
     if not iterable(eqs) and iterable(symbols):
         raise ValueError('Both eqs and symbols must be iterable')
+    orig = list(symbols)
+    symbols = list(ordered(symbols))
     new_symbols = list(symbols)
     swap_sym = {}
-    for i, s in enumerate(symbols):
+    i = 0
+    for j, s in enumerate(symbols):
         if not isinstance(s, Symbol) and s not in swap_sym:
             swap_sym[s] = Dummy('X%d' % i)
-            new_symbols[i] = swap_sym[s]
+            i += 1
+            new_symbols[j] = swap_sym[s]
     new_f = []
     for i in eqs:
         isubs = getattr(i, 'subs', None)
@@ -102,8 +107,8 @@ def recast_to_symbols(eqs, symbols):
             new_f.append(isubs(swap_sym))
         else:
             new_f.append(i)
-    swap_sym = {v: k for k, v in swap_sym.items()}
-    return new_f, new_symbols, swap_sym
+    restore = {v: k for k, v in swap_sym.items()}
+    return new_f, [swap_sym.get(i, i) for i in orig], restore
 
 
 def _ispow(e):
@@ -568,8 +573,8 @@ def solve(f, *symbols, **flags):
                 {x: -3, y: 1}
                 >>> solve((x + 5*y - 2, -3*x + 6*y - 15), x, y, z)
                 {x: -3, y: 1}
-                >>> solve((x + 5*y - 2, -3*x + 6*y - z), z, x, y)
-                {x: 2 - 5*y, z: 21*y - 6}
+                >>> solve((x + y - 3, -x + 2*y - 3*z), z, x, y)
+                {x: 3 - y, z: y - 1}
 
             * Without a solution:
 
@@ -581,8 +586,8 @@ def solve(f, *symbols, **flags):
             >>> solve([x**2 + y -2, y**2 - 4], x, y, set=True)
             ([x, y], {(-2, -2), (0, 2), (2, -2)})
 
-        * If no *symbols* are given, all free *symbols* will be selected and a
-          list of mappings returned:
+        * If no symbols are given (or if they are given in an unordered
+          containter like a set) then a list of mappings is returned:
 
             >>> solve([x - 2, x**2 + y])
             [{x: 2, y: -4}]
@@ -861,11 +866,6 @@ def solve(f, *symbols, **flags):
             consider using a solver like `diophantine` if you are
             looking for a solution in integers."""))
 
-    ordered_symbols = (symbols and
-                       symbols[0] and
-                       (isinstance(symbols[0], Symbol) or
-                        is_sequence(symbols[0],
-                        include=GeneratorType)))
     f, symbols = (_sympified_list(w) for w in [f, symbols])
     if isinstance(f, list):
         f = [s for s in f if s is not S.true and s is not True]
@@ -873,6 +873,7 @@ def solve(f, *symbols, **flags):
 
     # preprocess symbol(s)
     ###########################################################################
+    ordered_symbols = False
     if not symbols:
         # get symbols from equations
         symbols = set().union(*[fi.free_symbols for fi in f])
@@ -885,10 +886,11 @@ def solve(f, *symbols, **flags):
                         symbols.add(p)
                         pot.skip()  # don't go any deeper
         symbols = list(symbols)
-
-        ordered_symbols = False
-    elif len(symbols) == 1 and iterable(symbols[0]):
-        symbols = symbols[0]
+    else:
+        if len(symbols) == 1 and iterable(symbols[0]):
+            symbols = symbols[0]
+        ordered_symbols = symbols and is_sequence(symbols,
+                        include=GeneratorType)
 
     # remove symbols the user is not interested in
     exclude = flags.pop('exclude', set())
@@ -933,9 +935,10 @@ def solve(f, *symbols, **flags):
         if isinstance(fi, Poly):
             f[i] = fi.as_expr()
 
-        # rewrite hyperbolics in terms of exp
+        # rewrite hyperbolics in terms of exp if they have symbols of
+        # interest
         f[i] = f[i].replace(lambda w: isinstance(w, HyperbolicFunction) and \
-            (len(w.free_symbols & set(symbols)) > 0), lambda w: w.rewrite(exp))
+            w.has_free(*symbols), lambda w: w.rewrite(exp))
 
         # if we have a Matrix, we need to iterate over its elements again
         if f[i].is_Matrix:
@@ -1009,6 +1012,8 @@ def solve(f, *symbols, **flags):
         # contains a system of nonlinear equations; all other cases should
         # be unambiguous
         symbols = sorted(symbols, key=default_sort_key)
+    else:
+        ordered_symbols = list(symbols)
 
     # we can solve for non-symbol entities by replacing them with Dummy symbols
     f, symbols, swap_sym = recast_to_symbols(f, symbols)
@@ -1098,6 +1103,7 @@ def solve(f, *symbols, **flags):
     # capture any denominators before rewriting since
     # they may disappear after the rewrite, e.g. issue 14779
     flags['_denominators'] = _simple_dens(f[0], symbols)
+
     # Any embedded piecewise functions need to be brought out to the
     # top level so that the appropriate strategy gets selected.
     # However, this is necessary only if one of the piecewise
@@ -1114,7 +1120,7 @@ def solve(f, *symbols, **flags):
     if len(f) == 1 and len(symbols) > 1:
         cs = coefficient_system(f[0], symbols)
         if cs:
-            bare_f = False
+            bare_f = None
             f = cs
 
     #
@@ -1178,7 +1184,7 @@ def solve(f, *symbols, **flags):
     # solved with poly-system if all symbols are present
     if (
             not flags.get('dict', False) and
-            solution and
+            solution and bare_f is not False and
             ordered_symbols and
             not isinstance(solution, dict) and
             all(isinstance(sol, dict) for sol in solution)
@@ -1353,6 +1359,14 @@ def _solve(f, *symbols, **flags):
                 rhs_s |= vfree
                 got_s.add(xi)
                 result.append({xi: v})
+                # check to see if this was a factor of f
+                w, r = div(f, xi - v)
+                if not r:
+                    f = w
+                elif not w:
+                    # it is not a factor so any other solutions will
+                    # just be a re-arrangement of this relationship
+                    break
             elif xi:  # there might be a non-linear solution if xi is not 0
                 nonlin_s.append(s)
         if not nonlin_s:
