@@ -30,8 +30,9 @@ from sympy.core.function import nfloat
 from sympy.solvers import solve_linear_system, solve_linear_system_LU, \
     solve_undetermined_coeffs
 from sympy.solvers.bivariate import _filtered_gens, _solve_lambert, _lambert
-from sympy.solvers.solvers import _invert, unrad, checksol, posify, _ispow, \
-    det_quick, det_perm, det_minor, _simple_dens, denoms
+from sympy.solvers.solvers import (_invert, unrad, checksol, posify,
+    _ispow, det_quick, det_perm, det_minor, _simple_dens, denoms,
+    coefficient_system)
 
 from sympy.physics.units import cm
 from sympy.polys.rootoftools import CRootOf
@@ -145,6 +146,7 @@ def test_solve_args():
     assert solve(x + y - 3) == [{x: 3 - y}]
     # multiple symbols might represent an undetermined coefficients system
     assert solve(a + b*x - 2, [a, b]) == {a: 2, b: 0}
+    assert solve((a*x + b*x - b + d), (a, b)) == {a: -d, b: d}
     args = (a + b)*x - b**2 + 2, a, b
     assert solve(*args) == \
         [(-sqrt(2), sqrt(2)), (sqrt(2), -sqrt(2))]
@@ -155,7 +157,7 @@ def test_solve_args():
     eq = a*x**2 + b*x + c - ((x - h)**2 + 4*p*k)/4/p
     flags = dict(dict=True)
     assert solve(eq, [h, p, k], exclude=[a, b, c], **flags) == \
-        [{k: c - b**2/(4*a), h: -b/(2*a), p: 1/(4*a)}]
+        [{h: -b/(2*a), p: 1/(4*a), k: (4*a*c - b**2)/(4*a)}]
     flags.update(dict(simplify=False))
     assert solve(eq, [h, p, k], exclude=[a, b, c], **flags) == \
         [{k: (4*a*c - b**2)/(4*a), h: -b/(2*a), p: 1/(4*a)}]
@@ -718,10 +720,13 @@ def test_solve_undetermined_coeffs():
     # Test that rational functions work
     assert solve_undetermined_coeffs(a/x + b/(x + 1) - (2*x + 1)/(x**2 + x), [a, b], x) == \
         {a: 1, b: 1}
-    # Test cancellation in rational functions
+    # Test cancellation in rational functions  # XXX is this an important feature?
     assert solve_undetermined_coeffs(((c + 1)*a*x**2 + (c + 1)*b*x**2 +
     (c + 1)*b*x + (c + 1)*2*c*x + (c + 1)**2)/(c + 1), [a, b, c], x) == \
         {a: -2, b: 2, c: -1}
+    # reject non-linear cases; let user create their own set of equations
+    # to solve or else pass the system to solve
+    assert solve_undetermined_coeffs(a**2*x - 4*x + b - 3, (a, b), x) is None
 
 
 def test_solve_inequalities():
@@ -2500,3 +2505,12 @@ def test_issue_22768():
 def test_issue_22717():
     assert solve((-y**2 + log(y**2/x) + 2, -2*x*y + 2*x/y)) == [
         {y: -1, x: E}, {y: 1, x: E}]
+
+
+def test_coefficient_system():
+    assert coefficient_system(y*(a*x + b + c), [a, b, c]) is None
+    assert coefficient_system(a*x + b + c, [a, b]) == [a, b + c]
+    assert coefficient_system(a**2*x + b + c, [a, b]) == [a**2, b + c]
+    assert coefficient_system(a*x + b + c, [a, b, c]) == [a, b + c]
+    assert coefficient_system(a*(1 + x)**2 + b + 2*(1 + x)**2 - 3,
+        [a, b]) == [a + 2, 2*a + 4, a + b - 1]
