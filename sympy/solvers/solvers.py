@@ -2426,9 +2426,11 @@ def solve_undetermined_coeffs(equ, coeffs, sym, **flags):
 
     >>> assert solve_undetermined_coeffs(a**2*x + b - x, [a, b], x) is None
 
-    See Also
-    ========
-    coefficient_system
+    A system of equations can be obtained, however:
+
+    >>> from sympy.solvers.solvers import coefficient_system
+    >>> coefficient_system(a**2*x + b - x, [a, b])
+    {b, a**2 - 1}
     """
     if isinstance(equ, Eq):
         # got equation, so move all the
