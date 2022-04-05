@@ -1930,7 +1930,7 @@ def _remove_linear_univariates(exprs):  # XXX rename to suggest monotonic
 def _solve_connected(exprs, symbols, **flags):
     """solve a system of connected equations, i.e. every equation has 1
     or more symbols of interest that appear in other equations."""
-    # XXX TODO A connected system of equations is not the same as a
+    # A connected system of equations is not the same as a
     # system which must be solved simultaneously, e.g. the system
     # (x - 1, x + y - 2) is weakly connected because the first
     # expression does not depend on the second. So the
@@ -1942,7 +1942,78 @@ def _solve_connected(exprs, symbols, **flags):
     # second to give y=1 so the simultaneous equations are
     # [v + z + 3, v**2 + z + 1]
     #
+    compact = flags.get('compact', False)
+    syms = set(symbols)
+    uni = {}
+    free = [i.free_symbols & syms for i in exprs]
+    for i in range(len(exprs)):
+        if len(free[i]) == 1:
+            syms -= free[i]
+            x = free[i].pop()
+            uni[x] = _solve(exprs[i], x, **flags)
+            if not uni[x]:
+                return False, []
+            free[i] = set()
+    if uni:
+        linear = all(len(i) == 1 for i in uni.values())
+        exprs = [exprs[i] for i in range(len(exprs)) if free[i]]
+        if not exprs:
+            x = list(uni)
+            if not compact:
+                sol = [dict(zip(x, v)) for v in product(*uni.values())]
+            else:
+                sol = [uni]
+            return linear, sol
+        gen = 1
+        if gen or compact:
+            # will there be equations that can be solved if symbols are substituted
+            # but otherwise not? Or is this already handled by breaking system
+            # into groups of factors?
+            b, ds = _solve_connected(exprs, syms, **flags)
+            linear = linear & b
+            if compact:
+                rv = []
+                for d in ds:
+                    r = uni.copy()
+                    r.update(d)
+                    rv.append(r)
+                return linear, rv
+        rv = []
+        for u in product(*uni.values()):
+            r = dict(zip(list(uni), u))
+            if not gen:
+                b, ds = _solve_connected([i.xreplace(r) for i in exprs], syms, **flags)
+                linear = linear and b
+            for i in range(len(ds)):
+                if gen:
+                    d = r.copy()
+                    d.update({k: v.xreplace(r) for k, v in ds[i].items()})
+                else:
+                    d = r.copy()
+                    d.update(ds[i])
+                rv.append(d)
+        return linear, rv
     return _solve_simultaneous(exprs, symbols, **flags)
+
+
+def isol(d):
+    x = set(d)
+    sim, uni = sift(d.keys, lambda i: any(y.has_free(*x) for y in d[i]), binary=True)
+    if not uni:
+        return d
+    for u in product(*uni.values()):
+        r = dict(zip(list(uni), u))
+        if not sim:
+            yield r
+            continue
+        for i in range(len(sim)):
+            if gen:
+                d = r.copy()
+                d.update({k: v.xreplace(r) for k, v in sim[i].items()})
+            else:
+                d = r.copy()
+                d.update(sim[i])
+            yield d
 
 
 def _solve_simultaneous(exprs, symbols, **flags):
