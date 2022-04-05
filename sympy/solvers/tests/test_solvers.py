@@ -2670,3 +2670,12 @@ def test_issue_15441():
         -1, x25: 1, x26: -1, x27: 0, x28: 0, x29: 0, x3: -1, x30: 1, x31: 0,
         x32: 0, x33: 0, x34: 0, x35: 0, x4: -1, x5: 1, x6: 1, x7: 0, x8: S.Half +
         sqrt(5)/2, x9: 0}]
+
+
+def test_issue_23322():
+    eqs = (d + p - x, d**2 + k**2 - y**2, -k**2 - p**2 + z**2)
+    sol = solve(eqs, (d, p, x), dict=True)
+    # with the simple form of the equations, expansion alone is sufficient
+    # to demonstrate the solution
+    assert count_ops(sol) == 89
+    assert not any(flatten([[i.xreplace(s).expand() for i in eqs] for s in sol]))

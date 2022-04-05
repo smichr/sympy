@@ -1997,23 +1997,47 @@ def _solve_connected(exprs, symbols, **flags):
 
 
 def isol(d):
+    """yield fully back-substituted solutions from a compact solution
+    dictionary whose keys are the variables and whose values are list
+    corresponding to solutions for those variables.
+
+    Examples
+    ========
+
+    >>> from sympy import Tuple as T
+    >>> list(isol({x: T(1), y: T(2, 3)}))
+    [{x: 1, y: 2}, {x: 1, y: 3}]
+    >>> dicts = isol({x: T(1), y: T(2, x), z: T(x + 1, y - 1)})
+    >>> dicts[0]
+    {x: 1, y: 2, z: 2}
+    >>> [tuple(i.values()) for i in dicts]
+    [(1, 2, 2), (1, 2, 1), (1, 1, 2), (1, 1, 0)]
+
+    >>> list(isol({x: [y], y: [x]}))
+    Traceback (most recent call last):
+    ...
+    ValueError: invalid solution dictionary
+    """
+    def idict(d):
+        x = list(d)
+        for v in product(*d.values()):
+            yield dict(zip(x, v))
     x = set(d)
-    sim, uni = sift(d.keys, lambda i: any(y.has_free(*x) for y in d[i]), binary=True)
-    if not uni:
-        return d
-    for u in product(*uni.values()):
-        r = dict(zip(list(uni), u))
-        if not sim:
-            yield r
-            continue
-        for i in range(len(sim)):
-            if gen:
-                d = r.copy()
-                d.update({k: v.xreplace(r) for k, v in sim[i].items()})
-            else:
-                d = r.copy()
-                d.update(sim[i])
-            yield d
+    dep, ind = sift(d.keys(), lambda i: any(y.has_free(*x) for y in d[i]), binary=True)
+    if not dep:
+        yield from idict(d)
+    elif not ind:
+        # there are circular references that a solver should have
+        # resolved
+        raise ValueError('invalid solution dictionary')
+    else:
+        D = {k: d[k] for k in dep}
+        x = list(ind)
+        for i in idict({k: d[k] for k in ind}) or {}:
+            for di in isol(D):
+                d = i.copy()
+                d.update({k: v.xreplace(i) for k, v in di.items()})
+                yield d
 
 
 def _solve_simultaneous(exprs, symbols, **flags):
