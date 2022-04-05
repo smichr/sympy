@@ -3503,20 +3503,20 @@ def nonlinsolve(system, *symbols):
     Returns
     =======
 
-    A :class:`~.FiniteSet` of ordered tuple of values of `symbols` for which the `system`
-    has solution. Order of values in the tuple is same as symbols present in
-    the parameter `symbols`.
+    A :class:`~.FiniteSet` of ordered tuple of values of `symbols` for
+    which the `system` has a solution. The order of values in the tuple
+    is the same as symbols present in the parameter `symbols`.
 
     Please note that general :class:`~.FiniteSet` is unordered, the solution
     returned here is not simply a :class:`~.FiniteSet` of solutions, rather it
     is a :class:`~.FiniteSet` of ordered tuple, i.e. the first and only
     argument to :class:`~.FiniteSet` is a tuple of solutions, which is
-    ordered, and, hence ,the returned solution is ordered.
+    ordered, and, hence, the returned solution is ordered.
 
     Also note that solution could also have been returned as an ordered tuple,
     FiniteSet is just a wrapper ``{}`` around the tuple. It has no other
     significance except for the fact it is just used to maintain a consistent
-    output format throughout the solveset.
+    output format for `solveset`.
 
     For the given set of equations, the respective input types
     are given below:
