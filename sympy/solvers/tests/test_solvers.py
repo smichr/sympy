@@ -136,15 +136,14 @@ def test_solve_args():
     assert solve(y - 3, {y}) == [3]
     # more than 1
     assert solve(y - 3, {x, y}) == [{y: 3}]
-    # multiple symbols: take the first linear solution+
-    # - return as tuple with values for all requested symbols
-    assert solve(x + y - 3, [x, y]) == [(3 - y, y)]
-    # - unless dict is True
-    assert solve(x + y - 3, [x, y], dict=True) == [{x: 3 - y}]
-    # - or no symbols are given
+    # no symbols are given: find solution for each factor
     assert solve(x + y - 3) == [{x: 3 - y}]
-    # multiple symbols might represent an undetermined coefficients system
+    # multiple symbols: return first solution (linear if possible)
+    assert solve(x + y - 3, [x, y]) == [{x: 3 - y}]
+    # multiple symbols might represent a coefficients system
+    # - that is linear
     assert solve(a + b*x - 2, [a, b]) == {a: 2, b: 0}
+    # this is nonlinear
     args = (a + b)*x - b**2 + 2, a, b
     assert solve(*args) == \
         [(-sqrt(2), sqrt(2)), (sqrt(2), -sqrt(2))]
@@ -778,8 +777,8 @@ def test_issue_4793():
     ans = solve(eq, x)
     assert len(ans) == 5 and all(eq.subs(x, a).n(chop=True) == 0 for a in ans)
     assert solve(log(x**2) - y**2/exp(x), x, y, set=True) == (
-        [x, y],
-        {(x, sqrt(exp(x) * log(x ** 2))), (x, -sqrt(exp(x) * log(x ** 2)))})
+        [y],
+        {(-sqrt(exp(x)*log(x**2)),), (sqrt(exp(x)*log(x**2)),)})
     assert solve(x**2*z**2 - z**2*y**2) == [{x: -y}, {x: y}, {z: 0}]
     assert solve((x - 1)/(1 + 1/(x - 1))) == []
     assert solve(x**(y*z) - x, x) == [1]
@@ -1460,12 +1459,12 @@ def test_issue_5901():
     assert solve([f(x) - 3*f(x).diff(x)], f(x)) == \
         {f(x): 3*D}
     assert solve([f(x) - 3*f(x).diff(x), f(x)**2 - y + 4], f(x), y) == \
-        [{f(x): 3*D, y: 9*D**2 + 4}]
+        [(3*D, 9*D**2 + 4)]
     assert solve(-f(a)**2*g(a)**2 + f(a)**2*h(a)**2 + g(a).diff(a),
-                h(a), g(a), set=True) == \
-        ([g(a)], {
-        (-sqrt(h(a)**2*f(a)**2 + G)/f(a),),
-        (sqrt(h(a)**2*f(a)**2+ G)/f(a),)})
+                h(a), g(a), set=True) == (
+        [h(a)], {
+        (-sqrt(g(a)**2*f(a)**2 - G)/f(a),),
+        (sqrt(g(a)**2*f(a)**2 - G)/f(a),)})
     args = [f(x).diff(x, 2)*(f(x) + g(x)) - g(x)**2 + 2, f(x), g(x)]
     assert set(solve(*args)) == \
         {(-sqrt(2), sqrt(2)), (sqrt(2), -sqrt(2))}
@@ -1654,7 +1653,6 @@ def test_minsolve_linear_system():
     # and give a good error message if someone tries to use
     # particular with a single equation
     raises(ValueError, lambda: solve(x + 1, particular=True))
-
 
 
 def test_real_roots():
