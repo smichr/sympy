@@ -2679,7 +2679,7 @@ def linear_eq_to_matrix(equations, *symbols, strict=True, fmt=''):
 
     # construct the dictionaries
     try:
-        eq, c = _linear_eq_to_dict(equations, symbols, strict=strict, _expand=False)
+        eq, c = _linear_eq_to_dict(equations, symbols, strict=strict)
     except PolyNonlinearError as err:
         raise NonlinearError(str(err)) from err
     n, m = shape = len(eq), len(symbols)
@@ -2705,7 +2705,7 @@ def linear_eq_to_matrix(equations, *symbols, strict=True, fmt=''):
     return A, b
 
 
-def linsolve(system, *symbols, strict=True, _expand=True):
+def linsolve(system, *symbols, strict=True):
     r"""
     Solve system of $N$ linear equations with $M$ variables; both
     underdetermined and overdetermined systems are supported.
@@ -2913,10 +2913,8 @@ def linsolve(system, *symbols, strict=True, _expand=True):
             #
             eqs = system
             eqs = [sympify(eq) for eq in eqs]
-            eqs = [i.rewrite(Add, evaluate=_expand) if isinstance(i, Eq
-                ) else i for i in eqs]
             try:
-                sol = _linsolve(eqs, symbols, strict, _expand)
+                sol = _linsolve(eqs, symbols, strict)
             except PolyNonlinearError as err:
                 raise NonlinearError(str(err)) from err
 

@@ -1534,9 +1534,12 @@ def test_linsolve():
     # linsolve fully expands expressions, so removable singularities
     # and other nonlinearity does not raise an error
     assert linsolve([Eq(x, x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(1/x, 1/x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(y/x, y/x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(x*(x + 1), x**2 + y)], [x, y]) == {(y, y)}
+    raises(NonlinearError, lambda: linsolve(
+        [Eq(1/x, 1/x + y)], [x, y]))
+    raises(NonlinearError, lambda: linsolve(
+        [Eq(y/x, y/x + y)], [x, y]))
+    raises(NonlinearError, lambda: linsolve(
+        [Eq(x*(x + 1), x**2 + y)], [x, y]))
 
     # corner cases
     #

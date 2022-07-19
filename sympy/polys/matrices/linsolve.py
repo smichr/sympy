@@ -29,7 +29,6 @@
 from collections import defaultdict
 
 from sympy.core.add import Add
-from sympy.core.function import _mexpand
 from sympy.core.mul import Mul
 from sympy.core.singleton import S
 
@@ -45,7 +44,7 @@ from .sdm import (
 from sympy.utilities.misc import filldedent
 
 
-def _linsolve(eqs, syms, strict=True, _expand=True):
+def _linsolve(eqs, syms, strict=True):
     """Solve a linear system of equations.
 
     Examples
@@ -71,7 +70,7 @@ def _linsolve(eqs, syms, strict=True, _expand=True):
     nsyms = len(syms)
 
     # Convert to sparse augmented matrix (len(eqs) x (nsyms+1))
-    eqsdict, rhs = _linear_eq_to_dict(eqs, syms, strict, _expand)
+    eqsdict, rhs = _linear_eq_to_dict(eqs, syms, strict)
     Aaug = sympy_dict_to_dm(eqsdict, rhs, syms)
     K = Aaug.domain
 
@@ -135,7 +134,7 @@ def sympy_dict_to_dm(eqs_coeffs, eqs_rhs, syms):
     return sdm_aug
 
 
-def _linear_eq_to_dict(eqs, syms, strict, _expand):
+def _linear_eq_to_dict(eqs, syms, strict):
     """Convert a system Expr/Eq equations into dict form, returning
     the coefficient dictionaries and a list of syms-independent terms
     from each expression in ``eqs```. When ``strict`` is False,
@@ -151,30 +150,29 @@ def _linear_eq_to_dict(eqs, syms, strict, _expand):
     >>> F([2*x + 3], {x}, True, False)
     ([{x: 2}], [3])
     """
-    # convert Eqs to expressions else they will raise NonlinearError;
-    # do so with evaluate=_expand so (when False) nonlinearity will
-    # not cancel without alerting calling routine
-    eqs = [i.rewrite(Add, evaluate=_expand) if i.is_Equality else i
-        for i in eqs]
-
-    try:
-        return _linear_eq_to_dict_inner(eqs, syms, strict)
-    except PolyNonlinearError as err:
-        if not _expand:
-            raise err
-        # XXX: This should be deprecated:
-        eqs = [_mexpand(i, recursive=True) for i in eqs]
-        return _linear_eq_to_dict_inner(eqs, syms, strict)
-
-
-def _linear_eq_to_dict_inner(eqs, syms, strict):
-    syms = set(syms)
-    eqsdict, ind = [], []
-    for eq in eqs:
-        c, eqdict = _lin_eq2dict(eq, syms, strict)
-        eqsdict.append(eqdict)
+    # convert Eqs to expressions
+    coeffs = []
+    ind = []
+    symset = set(syms)
+    for i, e in enumerate(eqs):
+        if e.is_Equality:
+            (c, d), (cR, dR) = [_lin_eq2dict(a, symset, strict)
+                for a in e.args]
+            # there were no nonlinear errors so now
+            # cancellation is allowed
+            c -= cR
+            for k, v in dR.items():
+                if k in d:
+                    d[k] -= v
+                else:
+                    d[k] = v
+            # don't store coefficients of 0, however
+            d = {k: v for k, v in d.items() if v}
+        else:
+            c, d = _lin_eq2dict(e, symset, strict)
+        coeffs.append(d)
         ind.append(c)
-    return eqsdict, ind
+    return coeffs, ind
 
 
 def _lin_eq2dict(a, symset, strict=True):
@@ -184,8 +182,7 @@ def _lin_eq2dict(a, symset, strict=True):
     is detected. To allow cross-terms involving object containing (but not
     equal to) a symbol, use ``strict=False``
 
-    The values in the dictionary will be non-zero if the original expression was expanded
-    but may contain expressions which will simplify to zero, otherwise.
+    The values in the dictionary will be non-zero.
 
     Examples
     ========
@@ -194,15 +191,6 @@ def _lin_eq2dict(a, symset, strict=True):
     >>> from sympy.abc import x, y
     >>> _lin_eq2dict(x + 2*y + 3, {x, y})
     (3, {x: 1, y: 2})
-
-    Use results with caution if the equation was not fully expanded since
-    the coefficients may contain expressions that would simplify to 0.
-    For example, the following does not depend on ``x`` or ``y``:
-
-    >>> _lin_eq2dict(x*(y + 1)*(y - 1) - x*y**2 + x + 2, {x})
-    (2, {x: -y**2 + (y - 1)*(y + 1) + 1})
-    >>> c, d = _; d[x].simplify() == 0
-    True
 
     The following does not raise an error because ``x**2`` does not appear in
     ``x``:
