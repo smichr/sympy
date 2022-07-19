@@ -151,27 +151,33 @@ def _linear_eq_to_dict(eqs, syms, strict, _expand):
     >>> F([2*x + 3], {x}, True, False)
     ([{x: 2}], [3])
     """
+    # convert Eqs to expressions else they will raise NonlinearError;
+    # do so with evaluate=_expand so (when False) nonlinearity will
+    # not cancel without alerting calling routine
+    eqs = [i.rewrite(Add, evaluate=_expand) if i.is_Equality else i
+        for i in eqs]
+
     try:
-        return _linear_eq_to_dict_inner(eqs, syms, strict, _expand)
+        return _linear_eq_to_dict_inner(eqs, syms, strict)
     except PolyNonlinearError as err:
         if not _expand:
             raise err
         # XXX: This should be deprecated:
         eqs = [_mexpand(i, recursive=True) for i in eqs]
-        return _linear_eq_to_dict_inner(eqs, syms, strict, _expand)
+        return _linear_eq_to_dict_inner(eqs, syms, strict)
 
 
-def _linear_eq_to_dict_inner(eqs, syms, strict, _expand):
+def _linear_eq_to_dict_inner(eqs, syms, strict):
     syms = set(syms)
     eqsdict, ind = [], []
     for eq in eqs:
-        c, eqdict = _lin_eq2dict(eq, syms, strict, _expand)
+        c, eqdict = _lin_eq2dict(eq, syms, strict)
         eqsdict.append(eqdict)
         ind.append(c)
     return eqsdict, ind
 
 
-def _lin_eq2dict(a, symset, strict=True, _expand=True):
+def _lin_eq2dict(a, symset, strict=True):
     """return (c, d) where c is the sym-independent part of ``a`` and
     ``d`` is an efficiently calculated dictionary mapping symbols to
     their coefficients. A PolyNonlinearError is raised if non-linearity
@@ -244,11 +250,6 @@ def _lin_eq2dict(a, symset, strict=True, _expand=True):
         else:
             terms = {sym: coeff * c for sym, c in terms.items()}
             return  coeff * terms_coeff, terms
-    elif a.is_Equality:
-        # don't allow nonlinear terms to cancel
-        c, d = _lin_eq2dict(a.rewrite(Add, evaluate=_expand), symset, strict)
-        # but don't include any keys that ended up having cancelling terms
-        return c, {k: v for k, v in d.items() if v}
     elif not a.has_free_arg(symset) or not strict:
         return a, {}
     else:

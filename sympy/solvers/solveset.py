@@ -2677,12 +2677,6 @@ def linear_eq_to_matrix(equations, *symbols, strict=True, fmt=''):
             Eq or Matrix.
             '''))
 
-    # convert Eq now because _linear_eq_to_dict will allow cancellation
-    # of nonlinear terms -- this can be removed when the XFAIL for this
-    # passes
-    equations = [i.rewrite(Add, evaluate=False) if isinstance(i, Eq)
-        else i for i in equations]
-
     # construct the dictionaries
     try:
         eq, c = _linear_eq_to_dict(equations, symbols, strict=strict, _expand=False)

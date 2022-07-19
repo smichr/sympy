@@ -1603,7 +1603,7 @@ def test_solve_decomposition():
     assert solve_decomposition(f7, x, S.Reals) == S.EmptySet
     assert solve_decomposition(x, x, Interval(1, 2)) == S.EmptySet
 
-# nonlinsolve testcases
+
 def test_nonlinsolve_basic():
     assert nonlinsolve([],[]) == S.EmptySet
     assert nonlinsolve([],[x, y]) == S.EmptySet
@@ -1809,6 +1809,7 @@ def test_nonlinsolve_inexact():
             0.460812006002492 + 0.539199997693599*I)]
     assert all(abs(res.args[i][j] - sol[i][j]) < 1e-9
                for i in range(5) for j in range(2))
+
 
 @XFAIL
 def test_solve_nonlinear_trans():
@@ -2744,6 +2745,7 @@ def test_logarithmic():
     assert solveset_real(
         log(3*x) - log(-x + 1) - log(4*x + 1), x) == FiniteSet(Rational(-1, 2), S.Half)
     assert solveset(log(x**y) - y*log(x), x, S.Reals) == S.Reals
+
 
 @XFAIL
 def test_uselogcombine_2():
