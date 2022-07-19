@@ -147,29 +147,14 @@ def _linear_eq_to_dict(eqs, syms, strict):
 
     >>> from sympy.polys.matrices.linsolve import _linear_eq_to_dict as F
     >>> from sympy.abc import x
-    >>> F([2*x + 3], {x}, True, False)
+    >>> F([2*x + 3], {x}, True)
     ([{x: 2}], [3])
     """
-    # convert Eqs to expressions
     coeffs = []
     ind = []
     symset = set(syms)
     for i, e in enumerate(eqs):
-        if e.is_Equality:
-            (c, d), (cR, dR) = [_lin_eq2dict(a, symset, strict)
-                for a in e.args]
-            # there were no nonlinear errors so now
-            # cancellation is allowed
-            c -= cR
-            for k, v in dR.items():
-                if k in d:
-                    d[k] -= v
-                else:
-                    d[k] = v
-            # don't store coefficients of 0, however
-            d = {k: v for k, v in d.items() if v}
-        else:
-            c, d = _lin_eq2dict(e, symset, strict)
+        c, d = _lin_eq2dict(e, symset, strict)
         coeffs.append(d)
         ind.append(c)
     return coeffs, ind
@@ -231,7 +216,13 @@ def _lin_eq2dict(a, symset, strict=True):
                 terms = ti
                 terms_coeff = ci
             else:
-                raise PolyNonlinearError('nonlinear cross-terms encountered')
+                if ai.has_free_arg(symset):
+                    raise PolyNonlinearError(filldedent('''
+                        symbol-dependent cross-terms encountered'''))
+                else:
+                    raise PolyNonlinearError(filldedent('''
+                        symbol-dependent factor can be ignored
+                        using `strict=False`'''))
         coeff = Mul._from_args(coeff_list)
         if terms is None:
             return coeff, {}
@@ -240,7 +231,21 @@ def _lin_eq2dict(a, symset, strict=True):
             return  coeff * terms_coeff, terms
     elif not a.has_free_arg(symset) or not strict:
         return a, {}
+    elif a.is_Equality:
+        (coeff, terms), (cR, tR) = [_lin_eq2dict(ai, symset, strict)
+            for ai in a.args]
+        # there were no nonlinear errors so now
+        # cancellation is allowed
+        coeff -= cR
+        for k, v in tR.items():
+            if k in terms:
+                terms[k] -= v
+            else:
+                terms[k] = v
+        # don't store coefficients of 0, however
+        terms = {k: v for k, v in terms.items() if v}
+        return coeff, terms
     else:
         raise PolyNonlinearError(filldedent('''
-            symbol-dependent term can be ignored using `strict=False`
-            '''))
+            symbol-dependent term can be ignored
+            using `strict=False`'''))

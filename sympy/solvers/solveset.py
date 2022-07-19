@@ -2462,12 +2462,14 @@ def linear_coeffs(eq, *syms, dict=False, strict=True, first=True):
         >>> linear_coeffs(eq, x)
         Traceback (most recent call last):
         ...
-        NonlinearError: symbol-dependent term can be ignored using `strict=False`
+        NonlinearError:
+        symbol-dependent term can be ignored using `strict=False`
 
         >>> linear_coeffs(x*(y + 1) + 3, x, y)
         Traceback (most recent call last):
         ...
-        NonlinearError: nonlinear cross-terms encountered
+        NonlinearError:
+        symbol-dependent cross-terms encountered
 
     An error is not raised when dependent symbols are passed, however:
 
@@ -2477,12 +2479,13 @@ def linear_coeffs(eq, *syms, dict=False, strict=True, first=True):
     To allow coefficients to contain symbol-dependent factors which are
     not strictly one of the symbols, use keyword `strict=False`.
     A NonlinearError will still be reported if a term contains two
-    literal symbols as factors:
+    literal symbols as factors, however:
 
         >>> linear_coeffs(x*(y**2 + 1) + x*y, x, y, strict=False)
         Traceback (most recent call last):
         ...
-        NonlinearError: nonlinear cross-terms encountered
+        NonlinearError:
+        symbol-dependent cross-terms encountered
 
     But the error will no longer raise if the unexpanded expression
     does not contain such a term:
@@ -2606,7 +2609,8 @@ def linear_eq_to_matrix(equations, *symbols, strict=True, fmt=''):
             >>> linear_eq_to_matrix(eqns, [x, y])
             Traceback (most recent call last):
             ...
-            NonlinearError: symbol-dependent term can be ignored using `strict=False`
+            NonlinearError:
+            symbol-dependent term can be ignored using `strict=False`
 
         Simplifying these equations will discard the removable singularity
         in the first and reveal the linear structure of the second:
@@ -2645,7 +2649,8 @@ def linear_eq_to_matrix(equations, *symbols, strict=True, fmt=''):
             >>> linear_eq_to_matrix([x + y + y*(x + 1)], [x, y], strict=False)
             Traceback (most recent call last):
             ...
-            NonlinearError: nonlinear term: nonlinear cross-terms encountered
+            NonlinearError:
+            symbol-dependent cross-terms encountered
     """
     if not symbols:
         raise ValueError(filldedent('''
@@ -2866,18 +2871,34 @@ def linsolve(system, *symbols, strict=True):
     EmptySet
 
     * An error is raised if, after expansion, any nonlinearity
-      is detected:
-
-    >>> linsolve([x*(1/x - 1), (y - 1)**2 - y**2 + 1], x, y)
-    {(1, 1)}
+      is detected.
 
     >>> linsolve([x*(x + 1) - 1], x)
     Traceback (most recent call last):
     ...
-    NonlinearError: symbol-dependent term can be ignored using `strict=False`
+    NonlinearError:
+    symbol-dependent cross-terms encountered
 
-    >>> linsolve([x*(x + 1) - 1], x, strict=False)
-    {(1 - x**2,)}
+    In some cases the message will indicate that using ``strict=False``
+    might be able to ignore the factor:
+
+    >>> xyeqs = [x*(1/x - 1), (y - 1)**2 - y**2 + 1]
+    >>> linsolve(xyeqs, x, y)
+    Traceback (most recent call last):
+    ...
+    NonlinearError:
+    symbol-dependent term can be ignored using `strict=False`
+
+    But use ``strict=False`` with caution since the results may need
+    nuanced interpretation:
+
+    >>> linsolve(xyeqs, x, y, strict=False)
+    EmptySet
+    >>> e1, e2 = xyeqs
+    >>> linsolve([e1, e2.expand()], x, y, strict=False)
+    {(0, 1)}
+    >>> linsolve([e1.expand(), e2.expand()], x, y, strict=False)
+    {(1, 1)}
     """
     if not system:
         return S.EmptySet
