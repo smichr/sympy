@@ -722,6 +722,14 @@ def test_solve_undetermined_coeffs():
     assert solve_undetermined_coeffs(((c + 1)*a*x**2 + (c + 1)*b*x**2 +
     (c + 1)*b*x + (c + 1)*2*c*x + (c + 1)**2)/(c + 1), [a, b, c], x) == \
         {a: -2, b: 2, c: -1}
+    # test that dict and set flags are ignored
+    assert solve_undetermined_coeffs(a*x - x, [a], x, set=True) == {a: 1}
+    assert solve_undetermined_coeffs(a*x - x, [a], x, dict=True) == {a: 1}
+    # test that the dict gives all values
+    assert solve_undetermined_coeffs(a*x - x, [a, b], x, dict=True) == {a: 1, b: b}
+    # test that it returns None for nonlinear systems
+    assert solve_undetermined_coeffs(a**2*x + b - 2*x -3, (a, b), x,
+        ) is None
 
 
 def test_solve_inequalities():
