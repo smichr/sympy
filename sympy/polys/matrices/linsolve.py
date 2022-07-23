@@ -128,7 +128,7 @@ def sympy_dict_to_dm(eqs_coeffs, eqs_rhs, syms):
     eqsdict = []
     for eq, rhs in zip(eqs_coeffs, eqs_rhs):
         eqdict = {sym2index[s]: elem_map[c] for s, c in eq.items()}
-        if const:
+        if rhs:
             eqdict[nsyms] = -elem_map[rhs]
         if eqdict:
             eqsdict.append(eqdict)

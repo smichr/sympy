@@ -31,6 +31,7 @@ from sympy.polys.partfrac import apart
 from sympy.polys.polytools import factor, cancel, Poly
 from sympy.polys.rationaltools import together
 from sympy.series.order import O
+from sympy.sets.sets import FiniteSet
 from sympy.simplify.combsimp import combsimp
 from sympy.simplify.gammasimp import gammasimp
 from sympy.simplify.powsimp import powsimp

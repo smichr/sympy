@@ -12,7 +12,7 @@ This module contains functions to:
 """
 from sympy.core.sympify import sympify
 from sympy.core import (S, Pow, Dummy, pi, Expr, Wild, Mul, Equality,
-                        Add)
+                        Add, Basic)
 from sympy.core.containers import Tuple
 from sympy.core.function import (Lambda, expand_complex, AppliedUndef,
                                 expand_log, _mexpand, expand_trig, nfloat)
@@ -58,7 +58,6 @@ from sympy.utilities.iterables import (numbered_symbols, has_dups,
 from sympy.calculus.util import periodicity, continuous_domain, function_range
 
 from types import GeneratorType
-from collections import defaultdict
 
 
 class NonlinearError(ValueError):
