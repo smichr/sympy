@@ -1502,12 +1502,11 @@ def test_linsolve():
     assert linsolve(Eqns, x, y) == {
             (kilo*newton*Rational(-28, 3), kN*Rational(4, 3))}
 
-    # linsolve fully expands expressions, so removable singularities
-    # and other nonlinearity does not raise an error
+    # linsolve does not allow expansion (real or implemented)
+    # to remove singularities, but it will cancel linear terms
     assert linsolve([Eq(x, x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(1/x, 1/x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(y/x, y/x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(x*(x + 1), x**2 + y)], [x, y]) == {(y, y)}
+    raises(NonlinearError, lambda:
+        linsolve([Eq(x**2, x**2 + y)], [x, y]))
 
     # corner cases
     #
