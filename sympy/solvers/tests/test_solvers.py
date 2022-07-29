@@ -151,19 +151,16 @@ def test_solve_io():
         [[(y, 0)],
         [{x: 0}],
         ([y, x], {(y, 0)})]
-        #([x, y], {(0, y)})]master
     assert [solve([e], y, x, **f) for f in flags] == [
-        {x: 0},
+        [(y, 0)], #{x: 0}
         [{x: 0}],
         ([y, x], {(y, 0)})]
-        #([x], {(0,)})]#master
     assert [solve(e, {y, x}, **f) for f in flags] == \
         [[{x: 0}],
         [{x: 0}],
         ([x], {(0,)})]
     assert [solve([e], {y, x}, **f) for f in flags] == [
-        #[{x: 0}],
-        {x: 0},#master
+        [{x: 0}], #{x: 0}
         [{x: 0}],
         ([x], {(0,)})]
     assert [solve(e, y, **f) for f in flags] == \
@@ -233,7 +230,7 @@ def test_solve_io():
         [{x: y - 1}],
         ([x], {(y - 1,)})],[solve(e, **f) for f in flags]
     assert [solve([e], **f) for f in flags] == [
-        {x: y - 1}, #[{x: y - 1}],
+        [{x: y - 1}], # {x: y - 1},
         [{x: y - 1}],
         ([x], {(y - 1,)})]
     assert [solve(e, x, **f) for f in flags] == \
@@ -257,7 +254,7 @@ def test_solve_io():
         [{x: y - 1}],
         ([x, y], {(y - 1, y)})]
     assert [solve([e], x, y, **f) for f in flags] == [
-        {x: y - 1},
+        [(y - 1, y)], #{x: y - 1},
         [{x: y - 1}],
         ([x, y], {(y - 1, y)})]
     assert [solve(e, y, x, **f) for f in flags] == \
@@ -265,7 +262,7 @@ def test_solve_io():
         [{y: x + 1}],
         ([y, x], {(x + 1, x)})]
     assert [solve([e], y, x, **f) for f in flags] == [
-        {y: x + 1}, #[(x + 1, x)],
+        [(x + 1, x)],  # {y: x + 1},
         [{y: x + 1}],
         ([y, x], {(x + 1, x)})]
     assert [solve(e, {y, x}, **f) for f in flags] == \
@@ -273,7 +270,7 @@ def test_solve_io():
         [{x: y - 1}],
         ([x], {(y - 1,)})]
     assert [solve([e], {y, x}, **f) for f in flags] == [
-        {x: y - 1}, #[{x: y - 1}],
+        [{x: y - 1}],  #{x: y - 1},
         [{x: y - 1}],
         ([x], {(y - 1,)})]
     assert [solve(e, x, z, y, **f) for f in flags] == \
@@ -281,7 +278,7 @@ def test_solve_io():
         [{x: y - 1}],
         ([x, z, y], {(y - 1, z, y)})]
     assert [solve([e], x, z, y, **f) for f in flags] == [
-        {x: y - 1}, #[(y - 1, z, y)],
+        [(y - 1, z, y)], #{x: y - 1},
         [{x: y - 1}],
         ([x, z, y], {(y - 1, z, y)})]
     e = lxny
@@ -512,7 +509,7 @@ def test_solve_io():
     assert solve((exp(x) - 1, y - 2)) == {x: 0, y: 2}
     e = lx, nxly
     assert [solve([*e], **f) for f in flags] == \
-        [[{x: 0, y: 1}], # {x: 0, y: 1},
+        [{x: 0, y: 1}, #[{x: 0, y: 1}],
         [{x: 0, y: 1}],
         ([x, y], {(0, 1)})]
     assert [solve([*e], x, **f) for f in flags] == \
@@ -524,15 +521,15 @@ def test_solve_io():
         [],
         ([x], set())]
     assert [solve([*e], x, y, **f) for f in flags] == \
-        [[(0, 1)], #{x: 0, y: 1},
+        [{x: 0, y: 1}, #[(0, 1)],
         [{x: 0, y: 1}],
         ([x, y], {(0, 1)})]
     assert [solve([*e], y, x, **f) for f in flags] == \
-        [[(1, 0)], # {x: 0, y: 1},
+        [{x: 0, y: 1},  #[(1, 0)],
         [{y: 1, x: 0}],
         ([y, x], {(1, 0)})]
     assert [solve([*e], {y, x}, **f) for f in flags] == \
-        [[{x: 0, y: 1}], #{x: 0, y: 1},
+        [{x: 0, y: 1}, # [{x: 0, y: 1}],
         [{x: 0, y: 1}],
         ([x, y], {(0, 1)})]
     assert [solve([*e], x, z, y, **f) for f in flags] == \
@@ -549,7 +546,7 @@ def test_solve_io():
         [{a: 2, b: y}],
         ([a, b], {(2, y)})]
     assert [solve(e - b + b**2, a, b, **f) for f in flags] == [
-        [((-b**2 + 2*x + y)/x, b)], # master solved as nonlinear coeff sys
+        [((-b**2 + 2*x + y)/x, b)],
         [{a: (-b**2 + 2*x + y)/x}],
         ([a, b], {((-b**2 + 2*x + y)/x, b)})]
 
@@ -629,7 +626,7 @@ def test_solve_args():
     # - nonlinear
     assert solve([(x + y)**2 - 4, x + y - 2]) == [{x: -y + 2}]
     # - linear
-    assert solve((x + y - 2, 2*x + 2*y - 4)) == {x: -y + 2}
+    assert solve((x + y - 2, 2*x + 2*y - 4)) == [{x: -y + 2}]
     # When one or more args are Boolean
     assert solve(Eq(x**2, 0.0)) == [0]  # issue 19048
     assert solve([True, Eq(x, 0)], [x], dict=True) == [{x: 0}]
@@ -643,8 +640,8 @@ def test_solve_args():
         set=True, check=False) == ([x, y], {(1 - y, y), (x, 0)})
     # ordering should be canonical, fastest to order by keys instead
     # of by size
-    assert list(solve((y - 1, x - sqrt(3)*z)).keys()) == [x, y]
-    # as set always returns as symbols, set even if no solution
+    assert list(solve((y - 1, x - sqrt(3)*z), dict=True)[0].keys()) == [x, y]
+    # as set always returns tuple (symbols, set) even if no solution
     assert solve([x - 1, x], (y, x), set=True) == ([y, x], set())
     assert solve([x - 1, x], {y, x}, set=True) == ([x, y], set())
 
@@ -2178,7 +2175,7 @@ def test_issues_6819_6820_6821_6248_8692():
     # issue 6821
     x, y = symbols('x y', real=True)
     assert solve(abs(x + 3) - 2*abs(x - 3)) == [1, 9]
-    assert solve([abs(x) - 2, arg(x) - pi], x) == [(-2,)]
+    assert solve([abs(x) - 2, arg(x) - pi], x) == {x: -2}  #[(-2,)]
     assert set(solve(abs(x - 7) - 8)) == {-S.One, S(15)}
 
     # issue 8692
