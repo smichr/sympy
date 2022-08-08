@@ -154,8 +154,8 @@ def _linear_eq_to_dict(eqs, syms):
     symset = set(syms)
     for i, e in enumerate(eqs):
         if e.is_Equality:
-            (coeff, terms), (cR, tR) = [_lin_eq2dict(ai, symset)
-                for ai in e.args]
+            coeff, terms = _lin_eq2dict(e.lhs, symset)
+            cR, tR = _lin_eq2dict(e.rhs, symset)
             # there were no nonlinear errors so now
             # cancellation is allowed
             coeff -= cR
@@ -163,7 +163,7 @@ def _linear_eq_to_dict(eqs, syms):
                 if k in terms:
                     terms[k] -= v
                 else:
-                    terms[k] = v
+                    terms[k] = -v
             # don't store coefficients of 0, however
             terms = {k: v for k, v in terms.items() if v}
             c, d = coeff, terms
@@ -224,6 +224,7 @@ def _lin_eq2dict(a, symset):
         else:
             terms = {sym: coeff * c for sym, c in terms.items()}
             return  coeff * terms_coeff, terms
-    if not a.has_xfree(symset):
+    elif not a.has_xfree(symset):
         return a, {}
-    raise PolyNonlinearError('nonlinear term: %s' % a)
+    else:
+        raise PolyNonlinearError('nonlinear term: %s' % a)
