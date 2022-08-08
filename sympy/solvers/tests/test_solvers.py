@@ -187,11 +187,7 @@ def test_solve_args():
     assert solve(
         (exp(x) - x, exp(y) - y)) == [{x: -LambertW(-1), y: -LambertW(-1)}]
     # --  when symbols given
-<<<<<<< HEAD
-    assert solve([y, exp(x) + x], x, y) == {x: -LambertW(1), y: 0}
-=======
     assert solve([y, exp(x) + x], x, y) == [(-LambertW(1), 0)]
->>>>>>> s5
     # symbol is a number
     assert solve(x**2 - pi, pi) == [x**2]
     # no equations
@@ -1429,19 +1425,15 @@ def test_issue_5849():
     )
 
     v = I1, I4, Q2, Q4, dI1, dI4, dQ2, dQ4
-<<<<<<< HEAD
     # the following solution will make most expressions 0 but leave
     # to entries that are only zero if I3 = I6...but if that is
     # true then the other expressions will not be 0
-    assert solve(e, *v, manual=True, check=False, dict=True) == [
-        {I1: I2 + I3, I4: I3 - I5, Q2: 2*I3 + 2*I5 + 3*I6, Q4:
+    ans = [{I1: I2 + I3, I4: I3 - I5, Q2: 2*I3 + 2*I5 + 3*I6, Q4:
         -I3/2 + 3*I5/2 - dI4/2, dI1: -4*I2 - 8*I3 - 4*I5 - 6*I6 + 24,
         dQ2: I2, dQ4: I3 - I5}]
-=======
     assert solve(e, *v, manual=True, check=False, dict=True) == ans
     assert solve(e, *v, manual=True, check=False) == [
         tuple([a.get(i, i) for i in v]) for a in ans]
->>>>>>> s5
     assert solve(e, *v, manual=True) == []
     assert solve(e, *v) == []
 
@@ -2522,21 +2514,12 @@ def test_issue_21034s():
     # re-written and the solution is then ugly if not simplified; is
     # there a smarter way to limit when rewriting is used?
     system = [x - cosh(cos(4)), y - sinh(cos(a)), z - tanh(x)]
-<<<<<<< HEAD
-    ans = [(cosh(cos(4)), sinh(cos(a)), tanh(cosh(cos(4))))]
-    assert solve(system, x, y, z) == dict(zip((x, y, z), ans[0]))  # solved as linear system
-    assert solve(system, x, y, z, simplify=False) != ans  # but could be if rewriting was smarter
-    # here, yes, do rewriting to solve:
-    newsystem = [exp(x) - exp(-x) - tanh(x)*(exp(x) + exp(-x)) + x - 5]
-    assert solve(newsystem) == {x: 5}
-=======
     assert solve(system, x, y, z) == [(cosh(cos(4)), sinh(cos(a)), tanh(cosh(cos(4))))]
     # constants inside hyperbolic functions should not be rewritten
     # in terms of exp; rewriting should only happen with hyperbolics
-    # containing a symbol if interest
+    # containing a symbol if interest, so here, yes, do rewriting to solve:
     newsystem = [(exp(x) - exp(-x)) - tanh(x)*(exp(x) + exp(-x)) + x - 5]
     assert solve(newsystem, x) == {x: 5}
->>>>>>> s5
 
 
 def test_issue_4886():

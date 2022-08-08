@@ -2818,11 +2818,7 @@ def minsolve_linear_system(system, *symbols, **flags):
                 determined[x] = S.Zero
             else:
                 val = _vsolve(k, x, check=False)[0]
-<<<<<<< HEAD
-                if val == 0 and all(v.subs(x, val) == 0 for v in s.values()):
-=======
                 if not val and not any(v.subs(x, val) for v in s.values()):
->>>>>>> s5
                     determined[x] = S.One
                 else:
                     determined[x] = val
@@ -3150,10 +3146,7 @@ multi_inverses = {
 
 
 def _vsolve(e, s, **flags):
-<<<<<<< HEAD
-=======
     """return list of scalar values for the solution of e for symbol s"""
->>>>>>> s5
     return [i[s] for i in _solve(e, s, **flags)]
 
 
@@ -3344,14 +3337,7 @@ def _tsolve(eq, sym, **flags):
             if not ueq.has_free(sym):
                 sol = _vsolve(ueq, u, **flags)
                 inv = _vsolve(p - u, sym)
-<<<<<<< HEAD
-                rv = []
-                for i in inv:
-                    rv.extend([i.subs(u, s) for s in sol])
-                return rv
-=======
                 return [i.subs(u, s) for i in inv for s in sol]
->>>>>>> s5
 
         g = _filtered_gens(eq.as_poly(), sym)
         up_or_log = set()
