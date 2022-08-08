@@ -1629,11 +1629,11 @@ def test_has_free():
     assert (x + 1 + y).has_free(x + 1)
     assert not (x + 2 + y).has_free(x + 1)
     assert (2 + 3*x*y).has_free(3*x)
+    raises(TypeError, lambda: x.has_free({x, y}))
     s = FiniteSet(1, 2)
     assert Piecewise((s, x > 3), (4, True)).has_free(s)
     assert not Piecewise((1, x > 3), (4, True)).has_free(s)
-    # bad input
-    raises(TypeError, lambda: x.has_free({x, y}))
+    # can't make set of these, but fallback will handle
     raises(TypeError, lambda: x.has_free(y, []))
 
 
