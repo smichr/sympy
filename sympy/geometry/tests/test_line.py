@@ -798,7 +798,7 @@ def test_ray_generation():
 def test_issue_7814():
     circle = Circle(Point(x, 0), y)
     line = Line(Point(k, z), slope=0)
-    _s = sqrt((y - z)*(y + z))
+    _s = sqrt(y**2 - z**2)
     assert line.intersection(circle) == [Point2D(x + _s, z), Point2D(x - _s, z)]
 
 

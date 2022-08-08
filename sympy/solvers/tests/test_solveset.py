@@ -1361,6 +1361,10 @@ def test_abs_invert_solvify():
 
 
 def test_linear_eq_to_matrix():
+    assert linear_eq_to_matrix(0, x) == (Matrix([[0]]), Matrix([[0]]))
+    assert linear_eq_to_matrix(1, x) == (Matrix([[0]]), Matrix([[-1]]))
+
+    # integer coefficients
     eqns1 = [2*x + y - 2*z - 3, x - y - z, x + y + 3*z - 12]
     eqns2 = [Eq(3*x + 2*y - z, 1), Eq(2*x - 2*y + 4*z, -2), -2*x + y - 2*z]
 
@@ -1378,17 +1382,24 @@ def test_linear_eq_to_matrix():
     assert A == Matrix([[a*b, b, c], [d + e, f, g], [i, j, k]])
     assert B == Matrix([[d], [h], [l]])
 
-    # raise ValueError if
+    # raise Errors if
     # 1) no symbols are given
     raises(ValueError, lambda: linear_eq_to_matrix(eqns3))
     # 2) there are duplicates
     raises(ValueError, lambda: linear_eq_to_matrix(eqns3, [x, x, y]))
-    # 3) there are non-symbols
-    raises(ValueError, lambda: linear_eq_to_matrix(eqns3, [x, 1/a, y]))
-    # 4) a nonlinear term is detected in the original expression
+    # 3) a nonlinear term is detected in the original expression
     raises(NonlinearError, lambda: linear_eq_to_matrix(Eq(1/x + x, 1/x), [x]))
+    raises(NonlinearError, lambda: linear_eq_to_matrix([x**2], [x]))
+    raises(NonlinearError, lambda: linear_eq_to_matrix([x*y], [x, y]))
+    # 4) Eq being used to represent equations autoevaluates
+    # (use unevaluated Eq instead)
+    raises(ValueError, lambda: linear_eq_to_matrix(Eq(x, x), x))
+    raises(ValueError, lambda: linear_eq_to_matrix(Eq(x, x + 1), x))
 
-    assert linear_eq_to_matrix(1, x) == (Matrix([[0]]), Matrix([[-1]]))
+
+    # if non-symbols are passed, the user is responsible for interpreting
+    assert linear_eq_to_matrix([x], [1/x]) == (Matrix([[0]]), Matrix([[-x]]))
+
     # issue 15195
     assert linear_eq_to_matrix(x + y*(z*(3*x + 2) + 3), x) == (
         Matrix([[3*y*z + 1]]), Matrix([[-y*(2*z + 3)]]))
@@ -1503,12 +1514,11 @@ def test_linsolve():
     assert linsolve(Eqns, x, y) == {
             (kilo*newton*Rational(-28, 3), kN*Rational(4, 3))}
 
-    # linsolve fully expands expressions, so removable singularities
-    # and other nonlinearity does not raise an error
+    # linsolve does not allow expansion (real or implemented)
+    # to remove singularities, but it will cancel linear terms
     assert linsolve([Eq(x, x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(1/x, 1/x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(y/x, y/x + y)], [x, y]) == {(x, 0)}
-    assert linsolve([Eq(x*(x + 1), x**2 + y)], [x, y]) == {(y, y)}
+    raises(NonlinearError, lambda:
+        linsolve([Eq(x**2, x**2 + y)], [x, y]))
 
     # corner cases
     #
@@ -2786,8 +2796,11 @@ def test_linear_coeffs():
         linear_coeffs(x, x, x))
     assert linear_coeffs(a*(x + y), x, y) == [a, a, 0]
     assert linear_coeffs(1.0, x, y) == [0, 0, 1.0]
+    # don't include coefficients of 0
+    assert linear_coeffs(Eq(x, x + y), x, y, dict=True) == {y: 1}
+    assert linear_coeffs(0, x, y, dict=True) == {}
 
-# modular tests
+
 def test_is_modular():
     assert _is_modular(y, x) is False
     assert _is_modular(Mod(x, 3) - 1, x) is True
@@ -3000,23 +3013,25 @@ def test_issue_18208():
            y0 - 12,
            y1 - 20]
 
-    expected = [38 - x3, x3 - 10, 23 - x3, x3, 12 - x7, x7 + 6, 16 - x7, x7,
-                8, 20, 2, 5, 1, 6, 1, 21, 12, 20, -y11 + y9 + 2, y11 - y9 + 21,
-                -y11 - y7 + y9 + 24, y11 + y7 - y9 - 3, 33 - y7, y7, 27 - y9, y9,
-                27 - y11, y11]
+    expected = [38 - x3, x3 - 10, 2, 5, 1, 6, 1, 21, 23 - x3,
+        12 - x7, x7 + 6, 16 - x7, 8, 20, 12, 20, -y5 + y7 - y9 + 24,
+        y5 - y7 + y9 + 3, -y5 + y7 - 1, y5 - y7 + 24, 21 - y5, 33 - y7,
+        27 - y9]
+    syms = [x0, x1, x10, x11, x12, x13, x14, x15, x2, x4, x5, x6, x8,
+        x9, y0, y1, y10, y11, y2, y3, y4, y6, y8]
 
-    A, b = linear_eq_to_matrix(eqs, variables)
+    A, b = linear_eq_to_matrix(eqs, syms)
 
     # solve
-    solve_expected = {v:eq for v, eq in zip(variables, expected) if v != eq}
+    solve_expected = {v:eq for v, eq in zip(syms, expected)}
 
     assert solve(eqs, variables) == solve_expected
 
     # linsolve
     linsolve_expected = FiniteSet(Tuple(*expected))
 
-    assert linsolve(eqs, variables) == linsolve_expected
-    assert linsolve((A, b), variables) == linsolve_expected
+    assert linsolve(eqs, syms) == linsolve_expected
+    assert linsolve((A, b), syms) == linsolve_expected
 
     # gauss_jordan_solve
     gj_solve, new_vars = A.gauss_jordan_solve(b)
