@@ -192,7 +192,7 @@ def _lin_eq2dict(a, symset):
     """
     if a in symset:
         return S.Zero, {a: S.One}
-    elif a.is_Add:
+    if a.is_Add:
         terms_list = defaultdict(list)
         coeff_list = []
         for ai in a.args:
@@ -203,7 +203,7 @@ def _lin_eq2dict(a, symset):
         coeff = Add(*coeff_list)
         terms = {sym: Add(*coeffs) for sym, coeffs in terms_list.items()}
         return coeff, terms
-    elif a.is_Mul:
+    if a.is_Mul:
         terms = terms_coeff = None
         coeff_list = []
         for ai in a.args:

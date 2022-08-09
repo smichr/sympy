@@ -3015,23 +3015,25 @@ def test_issue_18208():
            y0 - 12,
            y1 - 20]
 
-    expected = [38 - x3, x3 - 10, 23 - x3, x3, 12 - x7, x7 + 6, 16 - x7, x7,
-                8, 20, 2, 5, 1, 6, 1, 21, 12, 20, -y11 + y9 + 2, y11 - y9 + 21,
-                -y11 - y7 + y9 + 24, y11 + y7 - y9 - 3, 33 - y7, y7, 27 - y9, y9,
-                27 - y11, y11]
+    expected = [38 - x3, x3 - 10, 2, 5, 1, 6, 1, 21, 23 - x3,
+        12 - x7, x7 + 6, 16 - x7, 8, 20, 12, 20, -y5 + y7 - y9 + 24,
+        y5 - y7 + y9 + 3, -y5 + y7 - 1, y5 - y7 + 24, 21 - y5, 33 - y7,
+        27 - y9]
+    syms = [x0, x1, x10, x11, x12, x13, x14, x15, x2, x4, x5, x6, x8,
+        x9, y0, y1, y10, y11, y2, y3, y4, y6, y8]
 
-    A, b = linear_eq_to_matrix(eqs, variables)
+    A, b = linear_eq_to_matrix(eqs, syms)
 
     # solve
-    solve_expected = {v:eq for v, eq in zip(variables, expected) if v != eq}
+    solve_expected = {v:eq for v, eq in zip(syms, expected)}
 
     assert solve(eqs, variables) == solve_expected
 
     # linsolve
     linsolve_expected = FiniteSet(Tuple(*expected))
 
-    assert linsolve(eqs, variables) == linsolve_expected
-    assert linsolve((A, b), variables) == linsolve_expected
+    assert linsolve(eqs, syms) == linsolve_expected
+    assert linsolve((A, b), syms) == linsolve_expected
 
     # gauss_jordan_solve
     gj_solve, new_vars = A.gauss_jordan_solve(b)

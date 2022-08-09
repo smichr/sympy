@@ -1600,8 +1600,8 @@ class HomogeneousCoeffSubsIndepDivDep(SinglePatternODESolver):
                 f(x)
                   /
                  |
-                 |       -g(u1)
-                 |  ---------------- d(u1)
+                 |       g(u1)
+               - |  ---------------- d(u1)
                  |  u1*g(u1) + h(u1)
                  |
                 /

@@ -20,7 +20,8 @@ from sympy.core.function import (expand_mul, expand_log, Derivative,
                                  Function, expand_power_exp, _mexpand, expand,
                                  expand_func)
 from sympy.core.logic import fuzzy_not
-from sympy.core.numbers import ilcm, Float, Rational, _illegal
+from sympy.core.numbers import ilcm, Float, Rational
+_illegal = (S.NaN, S.Infinity, S.NegativeInfinity, S.ComplexInfinity)
 from sympy.core.power import integer_log, Pow
 from sympy.core.relational import Eq, Ne
 from sympy.core.sorting import ordered, default_sort_key
@@ -36,20 +37,21 @@ from sympy.functions.elementary.piecewise import piecewise_fold, Piecewise
 from sympy.functions.elementary.trigonometric import TrigonometricFunction
 from sympy.integrals.integrals import Integral
 from sympy.ntheory.factor_ import divisors
-from sympy.simplify import (simplify, collect, powsimp, posify,  # type: ignore
+from sympy.simplify import (simplify, powsimp, posify,  # type: ignore
     powdenest, nsimplify, denom, logcombine, sqrtdenest, fraction,
-    separatevars)
+    separatevars, collect)
 from sympy.simplify.sqrtdenest import sqrt_depth
 from sympy.simplify.fu import TR1, TR2i
 from sympy.matrices.common import NonInvertibleMatrixError
 from sympy.matrices import Matrix, zeros
 from sympy.polys import roots, cancel, factor, Poly
 from sympy.polys.polyerrors import GeneratorsNeeded, PolynomialError
+from sympy.polys.polytools import gcd, div
 from sympy.polys.solvers import sympy_eqs_to_ring, solve_lin_sys
 from sympy.utilities.lambdify import lambdify
 from sympy.utilities.misc import filldedent, debug
 from sympy.utilities.iterables import (connected_components,
-    generate_bell, uniq, iterable, is_sequence, subsets, flatten)
+    generate_bell, uniq, iterable, is_sequence, subsets)
 from sympy.utilities.decorator import conserve_mpmath_dps
 
 from mpmath import findroot
@@ -59,6 +61,7 @@ from sympy.solvers.polysys import solve_poly_system
 from types import GeneratorType
 from collections import defaultdict
 from itertools import combinations, product
+from functools import reduce
 
 import warnings
 
@@ -389,7 +392,7 @@ def solve(f, *symbols, **flags):
     The output varies according to the input and can be seen by example:
 
         >>> from sympy import solve, Poly, Eq, Function, exp
-        >>> from sympy.abc import x, y, z, a, b
+        >>> from sympy.abc import x, y, z, a, b, c
         >>> f = Function('f')
 
     Boolean or univariate Relational:
@@ -398,24 +401,39 @@ def solve(f, *symbols, **flags):
         (-oo < x) & (x < 3)
 
 
-    To always get a list of solution mappings, use flag dict=True:
+    Before showing the variety of output that arises for different
+    inputs involving expressions, it is good to keep in mind a few
+    things:
 
-        >>> solve(x - 3, dict=True)
-        [{x: 3}]
-        >>> sol = solve([x - 3, y - 1], dict=True)
-        >>> sol
-        [{x: 3, y: 1}]
-        >>> sol[0][x]
-        3
-        >>> sol[0][y]
-        1
+        1) If no solution is found then an empty list is returned.
+        2) A consistent output can be obtained by using one of two flags:
 
+        * to always get a list of solution mappings, use flag
+          dict=True:
 
-    To get a list of *symbols* and set of solution(s) use flag set=True:
+            >>> solve(x - 3, dict=True)
+            [{x: 3}]
+            >>> solve([x - 3, y - 1], dict=True)
+            [{x: 3, y: 1}]
 
-        >>> solve([x**2 - 3, y - 1], set=True)
-        ([x, y], {(-sqrt(3), 1), (sqrt(3), 1)})
+        * to always get a list of *symbols* and set of solution(s) use flag
+          set=True:
 
+            >>> solve([x**2 - 3, y - 1], set=True)
+            ([x, y], {(-sqrt(3), 1), (sqrt(3), 1)})
+
+        3) As the above examples show, it is not necessary to provide symbols.
+        If you don't, then a solution for one or more of the symbols present
+        in the equations that have been provided will be sought. The output
+        will depend on whether a single expression is passed (and whether it
+        is univariate) or whether a list of one or more expressions is passed.
+        If symbols are provided, a result for a subset of the symbols will be
+        returned and how it is returned will depend on the how the equations
+        were passed and how the symbols are passed. The current return types are
+        a single dictionary, list of values, list of tuples and list of
+        dictionaries. Such a variety of output makes sense only in an interactive
+        session.  In all other cases it is strongly recommended that you use
+        one of the flags to give consistent output.
 
     Single expression and single symbol that is in the expression:
 
@@ -496,7 +514,7 @@ def solve(f, *symbols, **flags):
 
             >>> eqs = (x*y + 3*y + sqrt(3), x + 4 + y)
             >>> solve(eqs, y, x + 2)
-            {y: -sqrt(3)/(x + 3), x + 2: -2*x/(x + 3) - 6/(x + 3) + sqrt(3)/(x + 3)}
+            {y: -sqrt(3)/(x + 3), x + 2: (-2*x - 6 + sqrt(3))/(x + 3)}
             >>> solve(eqs, y*x, x)
             {x: -y - 4, x*y: -3*y - sqrt(3)}
 
@@ -513,26 +531,56 @@ def solve(f, *symbols, **flags):
 
         * To solve for a function within a derivative, use ``dsolve``.
 
-    Single expression and more than one symbol:
+    Single expression and more than one symbol.
 
-        * When there is a linear solution:
+        Some care must be taken here since, currently, SymPy might try
+        to treat this as an attempt to match coefficients instead of
+        as a request to give solutions for as many of the symbols as
+        possible.
+
+        You will know when the case of undetermined coefficients has been
+        identified by Sympy because a singe dictionary will be returned.
+        Here, it might be obvious that one is trying to match coefficients.
+
+            >>> eq_ab = Eq(a*x + b, 2*x - 3)
+            >>> solve(eq_ab, a, b)
+            {a: 2, b: -3}
+
+        But that might not be what you wanted. To disable that behavior,
+        set the flag ``undetermined=False``. In the future, the only
+        way to get this behavior will be to call directly the currently
+        available function, `solve_undetermined_coeffs`.
+
+            >>> solve(eq_ab, a, b, undetermined=False)
+            [(a, -a*x + 2*x - 3)]
+
+        If the request is not recognized as involving undetermined coefficients,
+        then the solutions are returned as tuples for the symbols passed (if they
+        were not passed as a set):
+
+            >>> eq = a*b*c - a*c*y - b*c*x + c*x*y  # = c*(x - a)*(y - b)
+            >>> solve(eq, a, b)
+            [(x, b), (a, y)]
+
+        If the symbols are passed as set then the ordering of solutions in the
+        tuples would be ambiguous so a list of dictionaries is returned:
+
+            >>> solve(eq, {a, b})
+            [{a: x}, {b: y}]
+
+        When given the choice, SymPy will prefer to return solutions
+        for variables that appear linearly.
 
             >>> solve(x - y**2, x, y)
             [(y**2, y)]
-            >>> solve(x**2 - y, x, y)
-            [(x, x**2)]
             >>> solve(x**2 - y, x, y, dict=True)
             [{y: x**2}]
 
         * If there is no linear solution, then the first successful
           attempt for a nonlinear solution will be returned:
 
-            >>> solve(x**2 - y**2, x, y, dict=True)
-            [{x: -y}, {x: y}]
-            >>> solve(x**2 - y**2/exp(x), x, y, dict=True)
-            [{x: 2*LambertW(-y/2)}, {x: 2*LambertW(y/2)}]
-            >>> solve(x**2 - y**2/exp(x), y, x)
-            [(-x*sqrt(exp(x)), x), (x*sqrt(exp(x)), x)]
+            >>> solve([eq], a, b)
+            {a: b*(1 - x)/x - 2/x}
 
         * When undetermined coefficients are identified:
 
@@ -565,9 +613,11 @@ def solve(f, *symbols, **flags):
             >>> solve([x > 3, x - 2])
             False
 
-        * When the system is linear:
+        * When the system is linear in the symbols provided:
 
-            * With a solution:
+            * if there is a solution, it will be returned as a
+              dictionary which will have as keys the symbols for
+              which the values were determined:
 
                 >>> solve([x - 3], x)
                 {x: 3}
@@ -575,26 +625,26 @@ def solve(f, *symbols, **flags):
                 {x: -3, y: 1}
                 >>> solve((x + 5*y - 2, -3*x + 6*y - 15), x, y, z)
                 {x: -3, y: 1}
-                >>> solve((x + 5*y - 2, -3*x + 6*y - z), z, x, y)
-                {x: 2 - 5*y, z: 21*y - 6}
 
-            * Without a solution:
+            * if there is no solution, an empty list (not dict) is
+              returned:
 
                 >>> solve([x + 3, x - 3])
                 []
 
-        * When the system is not linear:
+        * When the system is not linear, a list of tuples is returned,
+          each element corresponding to a symbol provided:
 
-            >>> solve([x**2 + y -2, y**2 - 4], x, y, set=True)
-            ([x, y], {(-2, -2), (0, 2), (2, -2)})
+            >>> solve([x**2 + y - 2, y**2 - 4], x, y)
+            [(-2, -2), (0, 2), (2, -2)]
 
-        * If no *symbols* are given, all free *symbols* will be selected and a
-          list of mappings returned:
+        * If no symbols are given (or if they are given in an unordered
+          container) then a list of mappings is returned:
 
             >>> solve([x - 2, x**2 + y])
-            [{x: 2, y: -4}]
+            {x: 2, y: -4}
             >>> solve([x - 2, x**2 + f(x)], {f(x), x})
-            [{x: 2, f(x): -4}]
+            {x: 2, f(x): -4}
 
         * If any equation does not depend on the symbol(s) given, it will be
           eliminated from the equation set and an answer may be given
@@ -658,12 +708,12 @@ def solve(f, *symbols, **flags):
     instances will be returned instead:
 
         >>> solve(x**3 - x + 1)
-        [-1/((-1/2 - sqrt(3)*I/2)*(3*sqrt(69)/2 + 27/2)**(1/3)) -
-        (-1/2 - sqrt(3)*I/2)*(3*sqrt(69)/2 + 27/2)**(1/3)/3,
-        -(-1/2 + sqrt(3)*I/2)*(3*sqrt(69)/2 + 27/2)**(1/3)/3 -
-        1/((-1/2 + sqrt(3)*I/2)*(3*sqrt(69)/2 + 27/2)**(1/3)),
-        -(3*sqrt(69)/2 + 27/2)**(1/3)/3 -
-        1/(3*sqrt(69)/2 + 27/2)**(1/3)]
+        [(-12**(1/3)*(sqrt(69) + 9)**(2/3) - 2*18**(1/3))/(6*(sqrt(69) +
+            9)**(1/3)),
+        3**(2/3)*(2*2**(1/3)/3 + (1 - sqrt(3)*I)**2*(6*sqrt(69) +
+            54)**(2/3)/36)/((1 - sqrt(3)*I)*(sqrt(69) + 9)**(1/3)),
+        3**(2/3)*(2*2**(1/3)/3 + (1 + sqrt(3)*I)**2*(6*sqrt(69) +
+            54)**(2/3)/36)/((1 + sqrt(3)*I)*(sqrt(69) + 9)**(1/3))]
         >>> solve(x**3 - x + 1, cubics=False)
         [CRootOf(x**3 - x + 1, 0),
          CRootOf(x**3 - x + 1, 1),
@@ -753,6 +803,20 @@ def solve(f, *symbols, **flags):
         >>> [xi.n(chop=1e-9) for xi in xvals if abs(z1.subs(x, xi).n()) < 1e-9]
         [-3.0]
 
+    ** Automatic detection of undetermined coefficients**
+
+    When solving a single equation (not passed in a list) and
+    passing more than 1 variable for which to solve, a check is made
+    to see whether a solution for the variables based on matching
+    coefficients on expressions involving symbols not passed
+    can be found. This behavior will be deprecated in the
+    future; to disable it now, use the keyword `undetermined=False`.
+
+        >>> solve(Eq(a*x - b, 2*x + 3), (a, b))
+        {a: 2, b: -3}
+        >>> solve(Eq(a*x - b, 2*x + 3), (a, b), undetermined=False)
+        [(a, a*x - 2*x - 3)]
+
     Parameters
     ==========
 
@@ -829,6 +893,12 @@ def solve(f, *symbols, **flags):
         quintics=True (default)
             Return explicit solutions (if possible) when quintic expressions
             are encountered.
+        undetermined=True (default)
+            check to see if specific values for the symbols passed can
+            be determined through the method of undetermined coefficients
+            and, if so, return the solution dictionary. When False, an
+            attempt will be made to isolate one or more of the symbols
+            algebraically.
 
     See Also
     ========
@@ -837,6 +907,7 @@ def solve(f, *symbols, **flags):
     dsolve: For solving differential equations
 
     """
+    # XXXremove from sympy.solvers.inequalities import reduce_inequalities
     from .inequalities import reduce_inequalities
 
     # checking/recording flags
@@ -1145,6 +1216,8 @@ def solve(f, *symbols, **flags):
     #
     # try to get a solution
     ###########################################################################
+    as_dict = flags.get('dict', False)
+    as_tuple = lambda s: [tuple([i.get(x, x) for x in symbols]) for i in s]
     if bare_f:
         solution = None
         if len(symbols) != 1:
@@ -1155,6 +1228,7 @@ def solve(f, *symbols, **flags):
         linear, solution = _solve_system(f, symbols, **flags)
     assert type(solution) is list
     assert not solution or type(solution[0]) is dict, solution
+
     #
     # postprocessing
     ###########################################################################
@@ -1198,7 +1272,8 @@ def solve(f, *symbols, **flags):
     #   - the single univariate equation case
     #     since the symbol will have been removed from the solution;
     #   - the nonlinear poly_system since that only supports zero-dimensional
-    #     systems and those results come back as a list
+    #     systems and those results come back as a list of tuples containing
+    #     values
     #
     # ** unless there were Derivatives with the symbols, but those were handled
     #    above.
@@ -1305,10 +1380,26 @@ def _solve(f, *symbols, **flags):
     will be raised. In the case that conversion of an expression to a Poly
     gives None a ValueError will be raised.
     """
+    # checking will be done unless it is turned off before making a
+    # recursive call; the variables `checkdens` and `check` are
+    # captured here (for reference below) in case flag value changes
+    flags['check'] = checkdens = check = flags.pop('check', True)
 
     not_impl_msg = "No algorithms are implemented to solve equation %s"
 
     if len(symbols) != 1:
+        # `_manual_solve` routine can handle separation of
+        # f into factors and selection of symbols
+        result = _manual_solve([f], symbols, **flags)
+        if check and result:
+            # all solutions have been checked but now we must
+            # check that the solutions do not set denominators
+            # in any factor to zero
+            dens = flags.get('_denominators', _simple_dens(f, symbols))
+            return [s for s in result if
+                not any(checksol(den, s, **flags) for den in
+                        dens)]
+
         # look for solutions for desired symbols that are independent
         # of symbols already solved for, e.g. if we solve for x = y
         # then no symbol having x in its solution will be returned.
@@ -1367,11 +1458,6 @@ def _solve(f, *symbols, **flags):
     # expand binomials only if it has the unknown symbol
     f = f.replace(lambda e: isinstance(e, binomial) and e.has(symbol),
         lambda e: expand_func(e))
-
-    # checking will be done unless it is turned off before making a
-    # recursive call; the variables `checkdens` and `check` are
-    # captured here (for reference below) in case flag value changes
-    flags['check'] = checkdens = check = flags.pop('check', True)
 
     # build up solutions if f is a Mul
     if f.is_Mul:
@@ -1758,13 +1844,336 @@ def _solve_system(exprs, symbols, **flags):
                 if not isinstance(subsol, list):
                     subsol = [subsol]
                 subsols.append(subsol)
+=======
+
+    # capture denominators for checking
+    checkdens = check = flags.get('check', True)
+    if checkdens:
+        dens = set()
+        for i in exprs:
+            dens.update(_simple_dens(i, symbols))
+
+    e2check = exprs
+
+    # here, recursively remove linear, univariate expressions and
+    # apply inversion to make expressions canonical
+    linear, lsol, exprs = _remove_invertible_univariates(exprs)
+    if not exprs:
+        return linear, [{k: v for k, v in lsol.items() if k in symbols}]
+    linear = True
+    symbols = set(symbols) - set(lsol)
+
+    # any gcd will make an independent solution, e.g.
+    # [x*(x - y), x*(x + y - 2)] will have a solution of {x: 0}
+    # and a solution from [x - y, x + y - 2] of {x: 1, y: 1}
+    try:
+        g = reduce(gcd, exprs) if len(exprs) > 1 else 1
+    except PolynomialError:
+        g = 1  # e.g. if one is a Piecewise XXX how to handle?
+    if g != 1:
+        _, solution = _solve_system([g], symbols, **flags)
+        for i in range(len(solution)):
+            solution[i].update(lsol)
+        exprs = [cancel(i/g) for i in exprs]
+        exprs = [i.simplify() if i.is_number else i for i in exprs]
+        if any(i.is_number and i.is_zero is False for i in exprs):
+            return all(i.is_number and
+                i.is_zero is False for i in exprs), solution
+        # it's not linear; continue with known solution for g
+        linear = False
+    else:
+        solution = []
+
+    # work only with numerators
+    numer = [i.as_numer_denom()[0] for i in exprs]
+    # solve sets of equations with splitting on each factor, e.g.
+    # given [(x - 1)*(y + x), 1/x - 1/y + z] solve this as
+    # two systems: [x - 1, 1/x - 1/y + z] and [y + x, 1/x - 1/y + z]
+    # XXX handle univariates before here, though
+
+    # if there are disconnected parts, we will check
+    # whether it is linear or not (see test for issue 5849)
+    multi = False
+
+    for P in product(*[Mul.make_args(factor(i).as_independent(
+            *symbols, as_Add=False)[1]) if len(i.free_symbols) - 1 else
+            [i] for i in numer]):
+        exprsyms, subexprs = _connected_exprs(list(set(P)), symbols)
+        if not multi:
+            multi = len(subexprs) > 1
+        subsols = []
+        for subexpr in subexprs:
+            subsyms = set()
+            for e in subexpr:
+                subsyms |= exprsyms[e]
+            subsyms = list(ordered(subsyms))
+            _linear, sol = _solve_connected(subexpr, subsyms, **flags)
+            if linear and not _linear:
+                linear = False
+            if not sol:
+                break
+            subsols.append(sol)
+        else:
+>>>>>>> 07b4bede1a... wip
             # Full solution is cartesion product of subsystems
             sols = []
             for soldicts in product(*subsols):
                 sols.append(dict(item for sd in soldicts
                     for item in sd.items()))
+<<<<<<< HEAD
             return linear, sols
+=======
+                sols[-1].update(lsol)
+            solution.extend(sols)
 
+    # remove redundancy
+    d = solution
+    d.sort(key=len)
+    for i in range(len(d)):
+        if not d[i]:
+            continue
+        for j in range(i + 1, len(d)):
+            if not d[j]:
+                continue
+            di = {k: v.xreplace(d[j]) for k, v in d[i].items()}
+            if all(d[j].get(k, None) == di[k] for k in di):
+                # d[j] is a particular example of di and
+                # is redundant
+                d[j] = None
+
+    result = list(filter(None, d))
+    if  flags.get('simplify'):
+        for r in result:
+            for k in r:
+                r[k] = simplify(r[k])
+        flags['simplify'] = False  # don't need to do so in checksol now
+
+    if checkdens:
+        result = [r for r in result
+            if not any(checksol(d, r, **flags) for d in dens)]
+
+    if check and (not linear or multi):
+        result = [r for r in result
+            if not any(checksol(e, r, **flags) is False for e in e2check)]
+
+    return linear, result
+
+
+def _connected_exprs(exprs, symbols):
+    # Split the system into connected components
+    V = list(ordered(exprs))
+    symsset = set(symbols)
+    exprsyms = {e: e.free_symbols & symsset for e in V}
+    E = []
+    for n, e1 in enumerate(V):
+        for e2 in V[:n]:
+            # Equations are connected if they share a symbol
+            if exprsyms[e1] & exprsyms[e2]:
+                E.append((e1, e2))
+    G = V, E
+    return exprsyms, connected_components(G)
+
+
+def _remove_invertible_univariates(exprs):
+    """return the tuple ``(b, d, l)`` where ``d`` is a dictionary of
+    monotonic solutions to univariate expressions identified
+    recursively in ``exprs`` and if ``b`` is True then ``l`` is a list
+    of remaining expressions with these substitutions having been made,
+    else ``b`` is False and ``l`` is the first pair of conflicting
+    expressions.
+
+    Examples
+    ========
+
+    >>> from sympy.solvers.solvers import _remove_invertible_univariates
+    >>> from sympy.abc import x, y, z
+    >>> _remove_invertible_univariates((x - 1, y - x, z**2 + x + y))
+    (True, {x: 1, y: 1}, [z**2 + 2])
+    >>> _remove_invertible_univariates((x - 1, y - x, x + y))
+    (False, {x: 1, y: 1}, [y - 1, y + 1])
+    """
+    lsol = {}
+    exprs = [i.as_independent(*i.free_symbols, as_Add=False)[1] for i in exprs]
+    free = [i.free_symbols for i in exprs]
+    free, exprs = map(list, zip(*sorted(zip(free, exprs), key=lambda x: len(x[0]))))
+    def solve_monotonic(eq, _):
+        for x in ordered(eq.free_symbols):
+            i, d = _invert(eq, x)
+            if d == x:
+                break
+        return d, i
+    linear = None
+    for solver in (solve_linear, solve_monotonic):
+        while 1:
+            hit = 0
+            # updated in place below, so don't enumerate exprs
+            for i in range(len(exprs)):
+                eq = exprs[i].as_independent(*free[i])[1] if exprs[i].is_Mul else exprs[i]
+                if eq.is_Mul:
+                    continue
+                x = free[i]
+                if len(x) == 1:
+                    x = x.pop()
+                    v = solver(eq, 0)
+                    if v[0] != x:
+                        free[i].add(x)
+                        continue
+                    linear = solver == solve_linear
+                    v = v[1]
+                    lsol[x] = v
+                    free[i] -= {x}
+                    hit = True
+                    exprs[i] = S.Zero
+                    for _, e in enumerate(exprs):
+                        if x in free[_]:
+                            _e = exprs[_] = e.xreplace({x: v})
+                            free[_] = _e.free_symbols
+                            if not free[_]:
+                                # if e is not zero it represents
+                                # an inconsistency
+                                ok = checksol(x, x, _e)
+                                if ok == False:
+                                    return False, lsol, [eq, e]
+                                assert ok  # if None, what should be done?
+                                exprs[_] = S.Zero
+            if not hit:
+                if lsol:
+                    exprs = list(filter(None, exprs))
+                break
+
+    return linear, lsol, list(exprs)
+
+
+def _solve_connected(exprs, symbols, **flags):
+    """solve a system of connected equations, i.e. every equation has 1
+    or more symbols of interest that appear in other equations."""
+    # A connected system of equations is not the same as a
+    # system which must be solved simultaneously, e.g. the system
+    # (x - 1, x + y - 2) is weakly connected because the first
+    # expression does not depend on the second. So the
+    # non-simultaneous equations should be separated from the
+    # simultaneous. In addition, equations which are univariate
+    # in symbols of interest (and recursively so) can be eliminated
+    # from the system, too, e.g. for [x - 1, y - x, v + x + y + z + 1,
+    # v**2 + z + y], the first equation gives x=1 and this allows the
+    # second to give y=1 so the simultaneous equations are
+    # [v + z + 3, v**2 + z + 1]
+    #
+    compact = flags.get('compact', False)
+    syms = set(symbols)
+    uni = {}
+    free = [i.free_symbols & syms for i in exprs]
+    for i in range(len(exprs)):
+        if len(free[i]) == 1:
+            syms -= free[i]
+            x = free[i].pop()
+            uni[x] = _solve(exprs[i], x, **flags)
+            if not uni[x]:
+                return False, []
+            free[i] = set()
+    if uni:
+        mv = [exprs[i] for i in range(len(exprs)) if free[i]]
+        linear = all(len(i) == 1 for i in uni.values())
+        if not mv:
+            x = list(uni)
+            if not compact:
+                sol = [dict(zip(x, v)) for v in product(*uni.values())]
+            else:
+                sol = [uni]
+            return linear, sol
+        # known values may make a set of equations solvable which
+        # would otherwise not be solvable (see test for #12476)
+        solve_without_backsubs = True
+        ds = rv = []
+        if solve_without_backsubs or compact:
+            b, ds = _solve_connected(mv, syms, **flags)
+            if ds:
+                linear = linear & b
+                if compact:
+                    for d in ds:
+                        r = uni.copy()
+                        r.update(d)
+                        rv.append(r)
+                    return linear, rv
+        # we get here if not compact or not solve_without_backsubs
+        if not ds:
+            solve_without_backsubs = False
+        _x = Dummy()
+        for u in product(*uni.values()):
+            r = dict(zip(list(uni), u))
+            if not solve_without_backsubs:
+                mvi = [i.xreplace(r) for i in mv]
+                if not syms:
+                    if all(checksol(_x, _x, i) for i in mvi):
+                        rv.append(dict(zip(uni, u)))
+                        continue  # see test for #23110
+                b, ds = _solve_connected(mvi, syms, **flags)
+                linear = linear and b
+            for i in range(len(ds)):
+                if solve_without_backsubs:
+                    d = r.copy()
+                    d.update({k: v.xreplace(r) for k, v in ds[i].items()})
+                else:
+                    d = r.copy()
+                    d.update(ds[i])
+                rv.append(d)
+        return linear, rv
+    return _solve_simultaneous(exprs, symbols, **flags)
+
+
+def isol(d):
+    """yield fully back-substituted solutions from a compact solution
+    dictionary whose keys are the variables and whose values are list
+    corresponding to solutions for those variables.
+
+    Examples
+    ========
+>>>>>>> 07b4bede1a... wip
+
+    >>> from sympy import Tuple as T
+    >>> from sympy.solvers.solvers import isol
+    >>> from sympy.abc import x, y, z
+    >>> list(isol({x: T(1), y: T(2, 3)}))
+    [{x: 1, y: 2}, {x: 1, y: 3}]
+    >>> dicts = list(isol({x: T(1), y: T(2, x), z: T(x + 1, y - 1)}))
+    >>> dicts[0]
+    {x: 1, y: 2, z: 2}
+    >>> [tuple(i.values()) for i in dicts]
+    [(1, 2, 2), (1, 2, 1), (1, 1, 2), (1, 1, 0)]
+
+    >>> list(isol({x: [y], y: [x]}))
+    Traceback (most recent call last):
+    ...
+    ValueError: invalid solution dictionary
+    """
+    from sympy.utilities.iterables import sift
+    def idict(d):
+        x = list(d)
+        for v in product(*d.values()):
+            yield dict(zip(x, v))
+    x = set(d)
+    dep, ind = sift(d.keys(), lambda i: any(y.has_free(*x) for y in d[i]), binary=True)
+    if not dep:
+        yield from idict(d)
+    elif not ind:
+        # there are circular references that a solver should have
+        # resolved
+        raise ValueError('invalid solution dictionary')
+    else:
+        D = {k: d[k] for k in dep}
+        x = list(ind)
+        for i in idict({k: d[k] for k in ind}) or {}:
+            for di in isol(D):
+                d = i.copy()
+                d.update({k: v.xreplace(i) for k, v in di.items()})
+                yield d
+
+
+def _solve_simultaneous(exprs, symbols, **flags):
+    """return b, L where L is a list of dictionaries (each a solution)
+    and b, a boolean that is True if the system was linear.
+    """
+    from sympy.polys.polyerrors import UnsolvableFactorError
     polys = []
     dens = set()
     failed = []
@@ -1772,9 +2181,11 @@ def _solve_system(exprs, symbols, **flags):
     solved_syms = []
     linear = True
     manual = flags.get('manual', False)
-    checkdens = check = flags.get('check', True)
+    # poly solution will depend on order of generators
+    symbols = list(ordered(symbols))
 
     for j, g in enumerate(exprs):
+<<<<<<< HEAD
         dens.update(_simple_dens(g, symbols))
         i, d = _invert(g, *symbols)
         if d in symbols:
@@ -1782,12 +2193,14 @@ def _solve_system(exprs, symbols, **flags):
                 linear = solve_linear(g, 0, [d])[0] == d
         g = d - i
         g = g.as_numer_denom()[0]
+=======
+        assert not g.as_numer_denom()[1].has_free(*symbols)
+>>>>>>> 07b4bede1a... wip
         if manual:
             failed.append(g)
             continue
 
         poly = g.as_poly(*symbols, extension=True)
-
         if poly is not None:
             polys.append(poly)
         else:
@@ -1799,15 +2212,16 @@ def _solve_system(exprs, symbols, **flags):
             matrix = zeros(n, m + 1)
 
             for i, poly in enumerate(polys):
+
                 for monom, coeff in poly.terms():
                     try:
                         j = monom.index(1)
                         matrix[i, j] = coeff
-                    except ValueError:
+                    except (IndexError, ValueError):
                         matrix[i, m] = -coeff
 
             # returns a dictionary ({symbols: values}) or None
-            if flags.pop('particular', False):
+            if flags.get('particular', False):
                 result = minsolve_linear_system(matrix, *symbols, **flags)
             else:
                 result = solve_linear_system(matrix, *symbols, **flags)
@@ -1817,11 +2231,15 @@ def _solve_system(exprs, symbols, **flags):
                     solved_syms = list(result[0].keys())  # there is only one result dict
                 else:
                     solved_syms = []
+<<<<<<< HEAD
             # linear doesn't change
+=======
+            else:
+                linear = True
+>>>>>>> 07b4bede1a... wip
         else:
             linear = False
             if len(symbols) > len(polys):
-
                 free = set().union(*[p.free_symbols for p in polys])
                 free = list(ordered(free.intersection(symbols)))
                 got_s = set()
@@ -1849,6 +2267,9 @@ def _solve_system(exprs, symbols, **flags):
                 else:
                     raise NotImplementedError('no valid subset found')
             else:
+                free = symbols
+            result = []
+            for syms in subsets(free, len(polys)):
                 try:
                     result = solve_poly_system(polys, *symbols)
                     if result:
@@ -1862,6 +2283,7 @@ def _solve_system(exprs, symbols, **flags):
     result = result or [{}]
 
     if failed:
+<<<<<<< HEAD
         linear = False
         # For each failed equation, see if we can solve for one of the
         # remaining symbols from that equation. If so, we update the
@@ -1875,6 +2297,37 @@ def _solve_system(exprs, symbols, **flags):
             # Ideally we want to solve firstly for symbols that appear linearly
             # with rational coefficients e.g. if e = x*y + z then we should
             # solve for z first.
+=======
+        if not result:
+            result = _manual_solve(failed, symbols, **flags)
+        else:
+            _ = []
+            syms = set(symbols)
+            new = failed
+            for r in result:
+                new = [i.xreplace(r) for i in new]
+                fsol = _manual_solve(new, syms - set(r), **flags)
+                for d in fsol:
+                    ur = {k: v.xreplace(d) for k, v in r.items()}
+                    ur.update(d)
+                    _.append(ur)
+            result = _
+
+    return linear, [r for r in result if r]
+
+
+def _manual_solve(eqs, syms, **flags):
+    """return a list of dictionaries giving solutions for the equations"""
+    from sympy.solvers.solvers import _solve
+    from sympy.core.containers import Dict
+    def ordered_free_syms(e, want, key=None):
+        # Solve first for symbols that have lower degree in the equation.
+        # Ideally we want to solve firstly for symbols that appear linearly
+        # with rational coefficients e.g. if e = x*y + z then we should
+        # solve for z first.
+        rv = e.free_symbols & want
+        if key is None:
+>>>>>>> 07b4bede1a... wip
             def key(sym):
                 ep = e.as_poly(sym)
                 if ep is None:
@@ -1883,7 +2336,9 @@ def _solve_system(exprs, symbols, **flags):
                     coeff_syms = ep.LC().free_symbols
                     complexity = (ep.degree(), len(coeff_syms & rv), len(coeff_syms))
                 return complexity + (default_sort_key(sym),)
+        return sorted(rv, key=key)
 
+<<<<<<< HEAD
             if sort:
                 rv = sorted(rv, key=key)
             return rv
@@ -1977,13 +2432,193 @@ def _solve_system(exprs, symbols, **flags):
     if checkdens:
         result = [r for r in result
             if not any(checksol(d, r, **flags) for d in dens)]
+=======
+    syms = set(syms)
+    if len(eqs) == 1:
+        # look for solutions for desired symbols that are independent
+        # of symbols already solved for, e.g. if we solve for x = y
+        # then no symbol having x in its solution will be returned.
+        # First solve for linear symbols (since that is easier and limits
+        # solution size) and then proceed with symbols appearing
+        # in a non-linear fashion. Ideally, if one is solving a single
+        # expression for several symbols, they would have to be
+        # appear in factors of an expression, but we do not here
+        # attempt factorization.  XXX perhaps handling a Mul
+        # should come first in this routine whether there is
+        # one or several symbols.
+        not_impl_msg = "No algorithms are implemented to solve equation %s"
+        f = eqs[0]
+        nonlin_s = []
+        got_s = set()
+        result = []
+        for s in ordered_free_syms(f, syms):  #XXX merge with solve_changes remove-linear-factors logic
+            xi, v = solve_linear(f, symbols=[s])
+            # prefer non-symbolic denominator
+            vfree = v.free_symbols & syms
+            if len(vfree) > 1:
+                dfree = v.as_numer_denom()[1].free_symbols
+                if dfree and vfree - dfree:
+                    for s2 in ordered(vfree - dfree):
+                        xi2, v2 = solve_linear(f, symbols=[s2])
+                        if xi2 == s2 and v2.as_numer_denom()[1].is_number:
+                            xi = xi2
+                            v = v2
+                            s = s2
+                            break
+            if xi == s:
+                # no need to check but we should simplify if desired
+                if flags.get('simplify', True):
+                    v = simplify(v)
+                got_s.add(xi)
+                result.append({xi: v})
+                # check to see if this was a factor of f
+                try:
+                    ni, di = (xi - v).as_numer_denom()
+                    w, r = div(f*di, ni)
+                except PolynomialError:
+                    w, r = 1, 1
+                if not r:
+                    f = w
+                elif not w:
+                    # it is not a factor so any other solutions will
+                    # just be a re-arrangement of this relationship
+                    break
+            elif xi:  # there might be a non-linear solution if xi is not 0
+                nonlin_s.append(s)
+        if not nonlin_s:
+            return result
+        dflag = flags.get('dict')
+        flags['dict'] = True
+        # need to factor so we know if we didn't solve a factor
+        # for which we had a symbol requested
+        f = factor(f)
+        need = set(nonlin_s)
+        for fi in Mul.make_args(f):
+            free = fi.free_symbols & need
+            if not free:
+                continue
+            ok = False
+            for s in [i for i in nonlin_s if i in free]:
+                try:
+                    result.extend(solve(fi, s, **flags))
+                    ok = True
+                    break
+                except NotImplementedError:
+                    pass
+            if not ok:
+                raise NotImplementedError(not_impl_msg % fi)
+        flags['dict'] = dflag
+        return result
 
-    if check and not linear:
-        result = [r for r in result
-            if not any(checksol(e, r, **flags) is False for e in exprs)]
+    sols = set()
+    eqs = list(ordered(eqs))
 
+    # handle purely linear equations first since these are the only
+    # values that the variables may have (except for factors containing
+    # the same variables) and they don't make other equations more
+    # complex upon substitution
+    islin = lambda e, x: not e.diff(x).expand().free_symbols & syms
+    lsol = {}
+    for i, e in enumerate(eqs):
+        free = e.free_symbols & syms
+        if not free:
+            continue
+        if all(islin(e, _) for _ in free):
+            x, s = solve_linear(e, 0, free)
+            lsol = {k: v.xreplace({x: s}) for k, v in lsol.items()}
+            for j in range(i + 1, len(eqs)):
+                eqs[j] = eqs[j].xreplace({x: s}).expand()
+            lsol.update({x: s})
+            # don't discard x from syms in case there are nonlinear
+            # factors in x
+            eqs[i] = None
+
+    # remove those already solved
+    eqs = list(filter(None, eqs))
+    if not eqs:
+        return [lsol]
+
+    # check for equations without symbols of interest now
+    x = Dummy()
+    if any(checksol(x, x, i) is False for i in eqs if not i.has_free(*syms)):
+        return []
+>>>>>>> 07b4bede1a... wip
+
+    # solve for non-linear symbols
+
+    def solution(dep, new):
+        # helper to create full solution dictionary
+        this = {k: v.xreplace(dep) for k, v in lsol.items()}
+        this.update(dep)
+        this = {k: v.xreplace(new) for k, v in this.items()}
+        this.update(new)
+        return this
+
+    eqs = [i.as_independent(*syms, as_Add=False)[1] for i in eqs]
+    eqs = list(ordered(eqs))
+    # split system into first and rest of equations, building a full
+    # solution from the solutions for the first equation and the rest
+    # of the equations
+    e = factor(eqs.pop(0))  # issue 21882
+    if e.is_Mul:
+        # this equation permits solutions for multiple symbols, a
+        # solution from each factor for a symbol in that factor
+        eqs.append(None)  # the factors of e will go here
+        for ei in e.args:
+            eqs[-1] = ei
+            sols.update([Dict(solution(i, {})) for i in
+                _manual_solve(eqs, syms, **flags)])
+    else:
+        free = ordered_free_syms(e, syms)
+        if free:
+            # there were free symbols in this equation; we choose the
+            # first ordered symbol and for each solution, substitute it
+            # into all other equations. If, after substitution, an
+            # equation is 0 then the solution was a factor for that
+            # equation and we don't need to consider other solutions
+            # from that equation, e.g. for the system,
+            # [x - 1, (x - 1)*(y - 2), x + y] there is no need to solve
+            # for y = 2 in the second equation after finding that x=1
+            # in the first equation
+            for x in free:
+                try:
+                    sol = _solve(e, x, **flags)
+                    break
+                except NotImplementedError:
+                    pass
+            else:
+                raise NotImplementedError
+            syms.discard(x)
+            for s in sol:
+                di = {x: s}
+                nonzeros = []
+                for i in eqs:
+                    i = i.xreplace(lsol).xreplace(di)
+                    # if there are still syms to check then
+                    # check to see if i != 0; if there are not syms
+                    # then it no longer matters XXX?
+                    if syms and not checksol(x, x, i):
+                        nonzeros.append(i)
+                if not nonzeros:
+                    soln = solution(di, {})
+                    sols.add(Dict(soln))
+                else:
+                    osol = _manual_solve(nonzeros, syms, **flags)
+                    for oi in osol:
+                        soln = solution(di, oi)
+                        sols.add(Dict(soln))
+        else:
+            # no solution, e.g. for [L*z, z**2 - 1] there is a solution
+            # when L = 0 but not one when z = 0
+            pass
+
+<<<<<<< HEAD
     result = [r for r in result if r]
     return linear, result
+=======
+    # always return a list of solution dictionaries
+    return [dict(i) for i in sols if i]
+>>>>>>> 07b4bede1a... wip
 
 
 def solve_linear(lhs, rhs=0, symbols=[], exclude=[]):
@@ -2309,60 +2944,206 @@ def solve_linear_system(system, *symbols, **flags):
     return sol
 
 
-def solve_undetermined_coeffs(equ, coeffs, sym, **flags):
+def _bce(p):
+    # helper for __gens
+    cb, ce = p.as_base_exp()
+    c, e = ce.as_coeff_Mul()
+    _, b = cb.as_coeff_Mul()
+    if b == 1:  # e.g. S(2).as_coeff_Mul() -> (2, 1)
+        b = cb
+    return b, c, e
+
+def __gens(eq, s):
+    # helper for _gens
+    if eq in s:
+        yield eq
+    elif eq.is_Add:
+        for t in eq.args:
+            yield from __gens(t, s)
+    elif eq.is_Mul:
+        i, d = eq.as_coeff_mul(*s)
+        if d:
+            rv = []
+            for f in d:
+                g = list(__gens(f, s))
+                assert len(g) == 1, (f, g)
+                rv.extend(g)
+            yield Mul._from_args(rv)
+    elif eq.is_Pow or isinstance(eq, exp):
+        b, c, e = _bce(eq)
+        if any(__gens(b, s)) or any(__gens(e, s)):
+            ex = e/c.q
+            if ex == 1:
+                yield b
+            else:
+                yield Pow(b, ex, evaluate=False) if eq.is_Pow else exp(ex, evaluate=False)
+    elif eq.has_free(*s):
+        yield eq
+
+def _gens(eq, symset=None):
+    if symset is None:
+        symset = eq.free_symbols
+    if symset:
+        return {i for i in __gens(eq, symset)}
+
+
+def solve_undetermined_coeffs(equ, coeffs, *syms, **flags):
     r"""
     Solve equation of a type $p(x; a_1, \ldots, a_k) = q(x)$ where both
-    $p$ and $q$ are univariate polynomials that depend on $k$ parameters.
+    $p$ and $q$ are expressions that depend on $k$ parameters
+    in a linear fashion and $x$ represents one or more variables appearing
+    in some functional form in the equation.
 
     Explanation
     ===========
 
     The result of this function is a dictionary with symbolic values of those
-    parameters with respect to coefficients in $q$, [] if there is no
-    solution, else None if the system was not recognized.
+    parameters with respect to coefficients in $q$, an empty list if there
+    is no solution, else None if the system was not recognized.
 
     This function accepts both equations class instances and ordinary
-    SymPy expressions. Specification of parameters and variables is
-    obligatory for efficiency and simplicity reasons.
+    SymPy expressions. The solving process is most efficient when
+    symbols are specified in addition to parameters to be determined,
+    but an attempt to determine them (if absent) will be made. If a solution
+    is not obtained when expected, and symbols were not specified, try
+    specifying the symbols.
 
     Examples
     ========
 
     >>> from sympy import Eq, solve_undetermined_coeffs
-    >>> from sympy.abc import a, b, c, x
+    >>> from sympy.abc import a, b, c, h, p, k, x
 
-    >>> solve_undetermined_coeffs(Eq(2*a*x + a+b, x), [a, b], x)
+    >>> solve_undetermined_coeffs(Eq(a*x + a + b, x/2), [a, b], x)
     {a: 1/2, b: -1/2}
+    >>> solve_undetermined_coeffs(a - 2, [a])
+    {a: 2}
 
-    >>> solve_undetermined_coeffs(Eq(a*c*x + a+b, x), [a, b], x)
-    {a: 1/c, b: -1/c}
+    The equation can be nonlinear in the symbols:
 
-    >>> solve_undetermined_coeffs(0, [a], x)
-    []
+    >>> X, Y, Z = y, x**y, y*x**y
+    >>> eq = a*X + b*Y + c*Z - X - 2*Y - 3*Z
+    >>> coeffs = a, b, c
+    >>> syms = x, y
+    >>> solve_undetermined_coeffs(eq, coeffs, syms)
+    {a: 1, b: 2, c: 3}
 
-    >>> solve_undetermined_coeffs(a**2*x + 2*x + b + 3, [a, b], x) is None
+    And the system can be nonlinear in coefficients provided that
+    there is a single solution:
+
+    >>> eq = a*x**2 + b*x + c - ((x - h)**2 + 4*p*k)/4/p
+    >>> solve_undetermined_coeffs(eq, (h, p, k), x)
+    {h: -b/(2*a), k: (4*a*c - b**2)/(4*a), p: 1/(4*a)}
+
+    The following, however, has two solutions so None is returned:
+
+    >>> None is solve_undetermined_coeffs(a**2*x + b - x, [a, b], x)
     True
 
+    To obtain multiple solutions, use the flag `uc_linear=False``.
+    If this flag is used, a list of dictionaries giving solutions
+    will be returned whether there is 1 or more than 1 solution:
+
+    >>> solve_undetermined_coeffs(a**2*x + b - x, [a, b], x), uc_linear=False)
+    [{a: -1, b: 0}, {a: 1, b: 0}]
+    >>> solve_undetermined_coeffs(a*x + b - x, [a, b], x), uc_linear=False)
+    [{a: 1, b: 0}]
+    >>> solve_undetermined_coeffs(a*x + b - x, [a, b], x)
+    {a: 1, b: 0}
     """
-    if isinstance(equ, Eq):
-        # got equation, so move all the
-        # terms to the left hand side
-        equ = equ.lhs - equ.rhs
+    from sympy.core.containers import Dict
+    from sympy.solvers.solvers import recast_to_symbols
+    from sympy.core.function import _mexpand
 
-    equ = cancel(equ).as_numer_denom()[0]
+  # decide how to return solutions
 
-    system = list(collect(equ.expand(), sym, evaluate=False).values())
-
-    if not any(equ.has(sym) for equ in system):
-        # consecutive powers in the input expressions have
-        # been successfully collected, so solve remaining
-        # system using Gaussian elimination algorithm
-        _flags = dict(flags, set=None, dict=True)
-        sol = solve(system, *coeffs, **_flags)
+    uc_linear = flags.pop('uc_linear', True)
+    if uc_linear:
+        sol = solve_undetermined_coeffs(equ, coeffs, *syms, **flags, uc_linear=None)
+        if sol is None:
+            return None
         if len(sol) == 1:
             return sol[0]
-        elif not sol:
+        if not sol:
             return []
+        return  # more than one solutions
+    if uc_linear is not None:
+            return solve_undetermined_coeffs(equ, coeffs, *syms, **flags, uc_linear=None)
+
+  # return a list of all solutions from here for uc_linear=None
+
+    assert coeffs and all(i.is_Symbol for i in coeffs), 'must provide symbols for coeffs'
+
+    if isinstance(equ, Eq):
+        eq = equ.lhs - equ.rhs
+    else:
+        eq = equ
+
+    eq = _mexpand(cancel(eq).as_numer_denom()[0], recursive=True)
+
+    coeffs = eq.free_symbols & set(coeffs)
+    if not coeffs:
+        return
+
+    if not syms:
+        # e.g. A*exp(x) + B - (exp(x) + y) separated into parts that
+        # don't/do depend on coeffs gives
+        # -(exp(x) + y), A*exp(x) + B
+        # then see what symbols are common to both
+        # {x} = {x, A, B} - {x, y}
+        ind, dep = eq.as_independent(*coeffs, as_Add=True)  
+        dfree = dep.free_symbols
+        syms = dfree & ind.free_symbols
+        if not syms:
+            # but if the system looks like (a + b)*x + b - c
+            # then {} = {a, b, x} - c
+            # so calculate {x} = {a, b, x} - {a, b}
+            syms = dfree - set(coeffs)
+        if not syms:
+            syms = [Dummy()]
+    else:
+        e, s, d = recast_to_symbols([eq], syms)
+        e = e[0]
+        if d:
+            rv = solve_undetermined_coeffs(e, coeffs, *s, **flags, uc_linear=None)
+            return [dict(Dict(i).xreplace(d)) for i in rv]
+
+  # find the functional forms in which symbols appear
+
+    gens = set(_gens(eq, set(syms)))
+
+  # make sure we are working with symbols for generators
+
+    e, s, d = recast_to_symbols([eq], list(gens))
+    e = e[0]
+    if d:
+        rv = solve_undetermined_coeffs(e, coeffs, *s, **flags, uc_linear=None)
+        return [dict(Dict(i).xreplace(d)) for i in rv]
+
+  # collect coefficients in front of generators
+
+    system = list(collect(eq, gens, exact=False, evaluate=False).values())
+
+  # store output flags
+
+    miss = Dummy()
+    io = {k: flags.pop(k, miss) for k in ('dict', 'set')}
+    flags['dict'] = True
+
+  # get a solution
+
+    soln = solve(system, coeffs, **flags)
+
+  # restore flags
+
+    flags.pop('dict', None)
+    for k, v in io.items():
+        if v != miss:
+            flags[k] = v
+
+  # done
+
+    return soln
 
 
 def solve_linear_system_LU(matrix, syms):
