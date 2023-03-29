@@ -886,47 +886,8 @@ class Piecewise(Function):
         return exp_sets
 
     def _eval_rewrite_as_ITE(self, *args, **kwargs):
-        byfree = {}
-        args = list(args)
-        default = any(c == True for b, c in args)
-        for i, (b, c) in enumerate(args):
-            if not isinstance(b, Boolean) and b != True:
-                raise TypeError(filldedent('''
-                    Expecting Boolean or bool but got `%s`
-                    ''' % func_name(b)))
-            if c == True:
-                break
-            # loop over independent conditions for this b
-            for c in c.args if isinstance(c, Or) else [c]:
-                free = c.free_symbols
-                x = free.pop()
-                try:
-                    byfree[x] = byfree.setdefault(
-                        x, S.EmptySet).union(c.as_set())
-                except NotImplementedError:
-                    if not default:
-                        raise NotImplementedError(filldedent('''
-                            A method to determine whether a multivariate
-                            conditional is consistent with a complete coverage
-                            of all variables has not been implemented so the
-                            rewrite is being stopped after encountering `%s`.
-                            This error would not occur if a default expression
-                            like `(foo, True)` were given.
-                            ''' % c))
-                if byfree[x] in (S.UniversalSet, S.Reals):
-                    # collapse the ith condition to True and break
-                    args[i] = list(args[i])
-                    c = args[i][1] = True
-                    break
-            if c == True:
-                break
-        if c != True:
-            raise ValueError(filldedent('''
-                Conditions must cover all reals or a final default
-                condition `(foo, True)` must be given.
-                '''))
-        last, _ = args[i]  # ignore all past ith arg
-        for a, c in reversed(args[:i]):
+        last = args[-1][0]
+        for a, c in reversed(args[:-1]):
             last = ITE(c, a, last)
         return _canonical(last)
 

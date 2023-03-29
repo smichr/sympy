@@ -28,6 +28,7 @@ from sympy.sets.sets import Interval
 from sympy.solvers.solvers import solve
 from sympy.testing.pytest import raises, slow
 from sympy.utilities.lambdify import lambdify
+from sympy.utilities.iterables import cartes
 
 a, b, c, d, x, y = symbols('a:d, x, y')
 z = symbols('z', nonzero=True)
@@ -1604,3 +1605,19 @@ def test_piecewise__eval_is_meromorphic():
     assert f.is_meromorphic(x, 2) == True
     assert f.is_meromorphic(x, Symbol('a')) == None
     assert f.is_meromorphic(x, Symbol('a', real=True)) == None
+
+
+def test_issue_24961():
+    x, p, q, a, b, c, d = symbols('x p q a b c d')
+    y = Piecewise((1, x <= 1), (2, x <= 2), (3, True))
+    xi = Piecewise((a, p & q), (b, p), (c, q), (d, True))
+    yx = Piecewise((1, xi <= 1), (2, xi <= 2), (3, True))
+    assert yx == Piecewise((1, ITE(p & q, a <= 1, ITE(p, b <= 1, ITE(
+        q, c <= 1, d <= 1)))), (2, ITE(p & q, a <= 2, ITE(p, b <= 2,
+        ITE(q, c <= 2, d <= 2)))), (3, True))
+    for v in cartes(*[[0,1,2,3]]*6):
+        p, q, a, b, c, d =v
+        R = dict(zip((p, q, a, b, c, d),v))
+        xv = xi.xreplace(R)
+        yv = y.subs(x, xv)
+        assert yx.xreplace(R) == yv
