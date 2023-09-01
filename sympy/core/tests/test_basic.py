@@ -8,7 +8,7 @@ from sympy.core.basic import (Basic, Atom, as_Basic,
     _atomic, _aresame)
 from sympy.core.containers import Tuple
 from sympy.core.function import Function, Lambda
-from sympy.core.numbers import I, pi
+from sympy.core.numbers import I, pi, Float
 from sympy.core.singleton import S
 from sympy.core.symbol import symbols, Symbol, Dummy
 from sympy.concrete.summations import Sum
@@ -28,6 +28,8 @@ T = TypeVar('T')
 def test__aresame():
     assert not _aresame(Basic(Tuple()), Basic())
     assert not _aresame(Basic(S(2)), Basic(S(2.)))
+    assert _aresame(Float(1), 1.)
+    assert _aresame(1., Float(1))
 
 
 def test_structure():
