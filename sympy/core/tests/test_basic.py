@@ -27,9 +27,11 @@ T = TypeVar('T')
 
 def test__aresame():
     assert not _aresame(Basic(Tuple()), Basic())
-    assert not _aresame(Basic(S(2)), Basic(S(2.)))
-    assert _aresame(Float(1), 1.)
-    assert _aresame(1., Float(1))
+    for i, j in [(S(2), S(2.)), (1., Float(1))]:
+        for do in range(2):
+            assert not _aresame(Basic(i), Basic(j))
+            assert not _aresame(i, j)
+            i, j = j, i
 
 
 def test_structure():

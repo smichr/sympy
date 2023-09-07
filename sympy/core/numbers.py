@@ -1101,7 +1101,11 @@ class Float(Number):
 
     def __eq__(self, other):
         if isinstance(other, float):
+            if not other:
+                return not self
             other = Float(other)
+        elif isinstance(other, (int, Integer)):
+            return not other and not self
         return Basic.__eq__(self, other)
 
     def __ne__(self, other):
