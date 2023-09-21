@@ -1877,6 +1877,9 @@ def test_is_constant():
 
 
 def test_equals():
+    one = cos(2)**2 + sin(2)**2
+    assert (one - S(1)/10**120).equals(0) is False  # should be fast
+    assert cos(one - S(1)/10**120).equals(cos(one)) is False  # should be fast
     assert (-3 - sqrt(5) + (-sqrt(10)/2 - sqrt(2)/2)**2).equals(0)
     assert (x**2 - 1).equals((x + 1)*(x - 1))
     assert (cos(x)**2 + sin(x)**2).equals(1)

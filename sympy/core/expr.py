@@ -727,7 +727,17 @@ class Expr(Basic, EvalfMixin):
         # don't worry about doing simplification steps one at a time
         # because if the expression ever goes to 0 then the subsequent
         # simplification steps that are done will be very fast.
-        diff = factor_terms(simplify(self - other), radical=True)
+        diff = self - other
+        def add_simp(eq):
+            if eq.is_Add:
+                other, func = eq.as_independent(Function)
+                if func.is_Add:
+                    func = simplify(Add(*[add_simp(i) for i in func.args]))
+                return func + simplify(other)
+            elif not eq.args:
+                return eq
+            return eq.func(*[add_simp(i) for i in eq.args])
+        diff = factor_terms(add_simp(diff), radical=True)
 
         if not diff:
             return True
