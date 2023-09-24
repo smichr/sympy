@@ -1073,16 +1073,14 @@ def test_Mul():
 def test_issue_5524():
     assert pretty(-(-x + 5)*(-x - 2*sqrt(2) + 5) - (-y + 5)*(-y + 5)) == \
 """\
-         2           /         ___    \\\n\
-- (5 - y)  + (x - 5)*\\-x - 2*\\/ 2  + 5/\
+         2           /             ___\\
+- (5 - y)  + (x - 5)*\\-x + 5 - 2*\\/ 2 /\
 """
-
     assert upretty(-(-x + 5)*(-x - 2*sqrt(2) + 5) - (-y + 5)*(-y + 5)) == \
 """\
          2                          \n\
-- (5 - y)  + (x - 5)⋅(-x - 2⋅√2 + 5)\
+- (5 - y)  + (x - 5)⋅(-x + 5 - 2⋅√2)\
 """
-
 
 def test_pretty_ordering():
     assert pretty(x**2 + x + 1, order='lex') == \
