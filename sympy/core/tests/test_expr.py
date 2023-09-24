@@ -13,7 +13,7 @@ from sympy.core.numbers import (NumberSymbol, E, zoo, oo, Float, I,
 from sympy.core.power import Pow
 from sympy.core.relational import Ge, Lt, Gt, Le
 from sympy.core.singleton import S
-from sympy.core.sorting import default_sort_key
+from sympy.core.sorting import default_sort_key, ordered
 from sympy.core.symbol import Symbol, symbols, Dummy, Wild
 from sympy.core.sympify import sympify
 from sympy.functions.combinatorial.factorials import factorial
@@ -1788,7 +1788,7 @@ def test_as_ordered_terms():
     assert e.as_ordered_terms(order="rev-grlex") == [2, y, x**2*y**2, x*y**4]
 
     k = symbols('k')
-    assert k.as_ordered_terms(data=True) == ([(k, ((1.0, 0.0), (1,), ()))], [k])
+    assert k.as_ordered_terms(data=True) == ([(k, ((1, 0), (1,), ()))], [k])
 
 
 def test_sort_key_atomic_expr():
@@ -2286,3 +2286,8 @@ def test_format():
 
 def test_issue_24045():
     assert powsimp(exp(a)/((c*a - c*b)*(Float(1.0)*c*a - Float(1.0)*c*b)))  # doesn't raise
+
+
+def test_issue_10800():
+    i = Integral(sin(exp(x)), (x, 1, oo))
+    assert next(ordered([i + 1, i + 2])) == i + 1
