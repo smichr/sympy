@@ -1162,7 +1162,7 @@ class Expr(Basic, EvalfMixin):
         for term in Add.make_args(self):
             coeff, _term = term.as_coeff_Mul()
 
-            coeff = [S.One, S.Zero]
+            coeff = complex(S.One)
             def _coeff(c, d):
                 a, b = coeff
                 coeff[0] = a*c - d*b
@@ -1173,12 +1173,7 @@ class Expr(Basic, EvalfMixin):
                 for factor in Mul.make_args(_term):
                     if factor.is_number:
                         if factor.is_real is not None:
-                            if (ri := pure_complex(factor, or_real=True)) is not None:
-                                _coeff(*ri)
-                            elif factor.is_real:
-                                coeff[0] *= factor
-                            else:
-                                coeff[1] *= factor
+                            coeff *= complex(factor)
                             continue
 
                     if factor.is_commutative:
@@ -1189,7 +1184,7 @@ class Expr(Basic, EvalfMixin):
                     else:
                         ncpart.append(factor)
 
-            coeff = tuple(coeff)
+            coeff = coeff.real, coeff.imag
             ncpart = tuple(ncpart)
 
             terms.append((term, (coeff, cpart, ncpart)))
