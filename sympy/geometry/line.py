@@ -47,6 +47,101 @@ import random
 t, u = [Dummy('line_dummy') for i in range(2)]
 
 
+def close_points(l1, l2):
+    """Given two non-intersecting linear entities, return A Tuple of
+    the points on each, respectively, that are closest together.
+
+    Examples
+    ========
+
+    >>> from sympy import Line, Ray, Piecewise, Tuple
+    >>> close_points(Line((0,0,0), (1,1,1)), Line((0,1,0), (1,2,3)))
+    (Point3D(3/4, 3/4, 3/4), Point3D(1/4, 5/4, 3/4))
+    >>> close_points(Line((0,0,0), (1,2,3)), Line((1,1,1), (2,3,5)))
+    (Point3D(7/5, 14/5, 21/5), Point3D(9/5, 13/5, 21/5))
+
+    For a Ray or Segment, the closest point might be an end point
+
+    >>> close_points(Line((0,0,0), (1,1,1)),Ray((1,1,0), (1,2,-1)))
+    (Point3D(2, 2, 2), Point3D(1, 1, 0))
+
+    But if the Ray or Segment is symbolic, the closest point might
+    be reported as a Piecewise object which will select the :
+
+    >>> pts = close_points(Line((0,0,0),(1,1,1)), Ray((x,1,0),(1,2,-1)))
+    >>> pts.has(Piecewise)
+    True
+    >>> pts[1].subs(x, 1)
+    Point3D(1, 1, 0)
+    >>> pts[1].subs(x, -3)
+    Point3D(1, 2, -1)
+
+    >>> p = (3 - 2*x, x + 1, -x)
+    >>> r = close_points(Line((0,0,0),(1,1,1)), Ray(p,(1,2,-1)))[1]
+    >>> p1_RayPt = Tuple(p, r)
+
+    In [1/2, 1), the 1st point of the Ray will be selected since that
+    is when the condition in the Piecewise is true:
+
+    >>> solve(r.args[0].args[1]).as_set()
+    Union(Interval(-oo, 1/2), Interval.open(1, oo))
+    >>> p1_RayPt.subs(x, 0)
+    (Point3D(3, 1, 0), Point3D(2, 3/2, -1/2))
+    >>> p1_RayPt.subs(x, 1/2)
+    (Point3D(2, 3/2, -1/2), Point3D(2, 3/2, -1/2))
+    >>> p1_RayPt.subs(x, 3/4)
+    (Point3D(3/2, 7/4, -3/4), Point3D(3/2, 7/4, -3/4))
+    >>> p1_RayPt.subs(x, 1)
+    Traceback (most recent call last):
+    ...
+    TypeError: Invalid NaN comparison
+    >>> p1_RayPt.subs(x, 2)
+    (Point3D(-1, 3, -2), Point3D(2, 3/2, -1/2))
+    """
+    # when s and t are in [0,1] the solution is also valid for segments, otherwise
+    # one must determine which end is closer to ps and/or pt and use that instead of ps or pt
+    # respectively.
+    # The following was used to generate the code below it:
+    #
+    # s, t = var('s t')
+    # L1 = lambda p: l1.p1+p*l1.direction = l1.arbitrary_point(s)
+    # L2 = lambda p: l2.p1+p*l2.direction = l2.arbitrary_point(s)
+    # eq = lambda l1: Matrix(L1(s) - L2(t)).dot(l1.direction)
+    # stdict = solve((
+    #     eq(Line(var('x1 y1 z1'),var('x2 y2 z2'))),
+    #     eq(Line(var('x3 y3 z3'),var('x4 y4 z4')))),
+    #     var('s t'), dict=True)
+    from sympy.core.containers import Tuple
+    x1,y1,z1=p1=l1.p1
+    x2,y2,z2=p2=l1.p2
+    x3,y3,z3=p3=l2.p1
+    x4,y4,z4=p4=l2.p2
+    x21, y21, z21 = l1.direction
+    x43, y43, z43 = l2.direction
+    x31, y31, z31 = l2.p1 - l1.p1
+    R1 = x21**2 + y21**2 + z21**2
+    R2 = x43**2 + y43**2 + z43**2
+    d4321 = x21*x43 + y21*y43 + z21*z43
+    d3121 = x21*x31 + y21*y31 + z21*z31
+    d4331 = x31*x43 + y31*y43 + z31*z43
+    den = d4321**2 - R1*R2
+    # R1*s - d4321*t - d3121 = 0
+    # d4321*s - R2*t - d4331 = 0
+    s = (d4321*d4331 - R2*d3121)/den
+    t = (R1*d4331 - d4321*d3121)/den
+    def inspace(s, l1):
+        ps = l1.p1 + s*l1.direction
+        if isinstance(l1, Line) or s.is_number and ((0 <= s <= 1) or isinstance(l1, Ray) and (s > 1)):
+            return ps
+        if isinstance(l1, Segment):
+            ok = And(0 <= s, s <= 1)
+            p1close = ps.distance(l1.args[0]) < ps.distance(l1.args[1])
+            return Point(*[Piecewise((i, ok), (j, p1close), (k, True)) for i,j,k in zip(ps, *l1.args)])
+        else:
+            return Point(*[Piecewise((i, s >= 0),(j, True)) for i,j in zip(ps, l1.args[0])])
+    return Tuple(inspace(s, l1), inspace(t, l2))
+
+
 class LinearEntity(GeometrySet):
     """A base class for all linear entities (Line, Ray and Segment)
     in n-dimensional Euclidean space.
@@ -2647,12 +2742,14 @@ class Line3D(LinearEntity3D, Line):
         if isinstance(other, Point3D):
             return super().distance(other)
 
-        if isinstance(other, Line3D):
+        if isinstance(other, LinearEntity):
             if self == other:
                 return S.Zero
             if self.is_parallel(other):
                 return super().distance(other.p1)
 
+            a, b = close_points(self, other)
+            return a.distance(b)
             # Skew lines
             self_direction = Matrix(self.direction_ratio)
             other_direction = Matrix(other.direction_ratio)
