@@ -694,7 +694,10 @@ class Ellipse(GeometrySet):
             raise TypeError('Intersection not handled for %s' % func_name(o))
 
     def is_tangent(self, o):
-        """Is `o` tangent to the ellipse?
+        """Is `o` tangent to the ellipse? For a polygon return True if
+        all sides are tangent, None if any side is tangent, and False
+        if no side is tangent.
+
 
         Parameters
         ==========
@@ -755,7 +758,17 @@ class Ellipse(GeometrySet):
             else:
                 return False
         elif isinstance(o, Polygon):
-            return all(self.is_tangent(s) for s in o.sides)
+            hit = [0, 0]
+            for s in o.sides:
+                # is_tangent must raise if it can't decide;
+                # we are expecting True(1) or False(0) here
+                hit[self.is_tangent(s)] += 1
+            f, t = hit
+            if not f:
+                return True
+            if not t:
+                return False
+            return None
         elif isinstance(o, (LinearEntity3D, Point3D)):
             raise TypeError('Entity must be two dimensional, not three dimensional')
         else:
