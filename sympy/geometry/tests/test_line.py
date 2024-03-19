@@ -370,6 +370,11 @@ def test_distance_2d():
     assert r.distance(Point(-1, 1)) == sqrt(2)
     assert Ray((1, 1), (2, 2)).distance(Point(1.5, 3)) == 3 * sqrt(2) / 4
     assert r.distance((1, 1)) == 0
+    # line to ray, segment
+    l = Line((0, 0), (0, 1))
+    assert l.distance(Segment((1, 1),(2, 2))) == 1
+    assert l.distance(Ray((1, 1),(2, 2))) == 1
+    assert l.distance(Ray((x,1),(3,1))) == Piecewise((0, x/(3 - x) <= 0), (sqrt(x**2), True))
 
 
 def test_dimension_normalization():
@@ -411,6 +416,20 @@ def test_distance_3d():
     assert Line3D((0, 0, 0), (1, 0, 0)).distance(Line3D((0, 0, 0), (1, 0, 0))) == 0
     assert Line3D((0, 0, 0), (1, 0, 0)).distance(Line3D((10, 0, 0), (10, 1, 2))) == 0
     assert Line3D((0, 0, 0), (1, 0, 0)).distance(Line3D((0, 1, 0), (0, 1, 1))) == 1
+    # Line to Ray, Segment
+    l1 = Line((0, 0, 0), (1, 2, 3))
+    ans_r = 5*sqrt(61)/61
+    assert l1.distance(Ray((2, -1, 1), (2, 3, 4))) == ans_r
+    ans_s = 5*sqrt(77)/61
+    # check symbolic
+    assert l1.distance(Segment((2, -1, 1), (2, 3, 4))) == ans_s
+    assert l1.distance(Ray((x, -1, 1), (2, 3, 4))).subs(x, 2) == ans_r
+    assert l1.distance(Segment((x, -1, 1), (2, 3, 4))).subs(x, 2) == ans_s
+    assert l1.distance(Ray((2, x, 1), (2, 3, 4))).subs(x, -1) == ans_r
+    assert l1.distance(Segment((2, x, 1), (2, 3, 4))).subs(x, -1) == ans_s
+    assert l1.distance(Ray((2, -1, x), (2, 3, 4))).subs(x, 1) == ans_r
+    assert l1.distance(Segment((2, -1, x), (2, 3, 4))).subs(x, 1) == ans_s
+
     # Line to plane
     assert Line3D((0, 0, 0), (1, 0, 0)).distance(Plane((2, 0, 0), (0, 0, 1))) == 0
     assert Line3D((0, 0, 0), (1, 0, 0)).distance(Plane((0, 1, 0), (0, 1, 0))) == 1

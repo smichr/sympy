@@ -48,13 +48,16 @@ t, u = [Dummy('line_dummy') for i in range(2)]
 
 
 def close_points(l1, l2):
-    """Given two non-intersecting linear entities, return A Tuple of
+    """Given two non-intersecting linear entities, return a Tuple of
     the points on each, respectively, that are closest together.
+
+    A ValueError is raised if the dimensions of each are not 3.
 
     Examples
     ========
 
-    >>> from sympy import Line, Ray, Piecewise, Tuple
+    >>> from sympy import Line, Ray, Piecewise, Tuple, S
+    >>> from sympy.geometry.line import close_points
     >>> close_points(Line((0,0,0), (1,1,1)), Line((0,1,0), (1,2,3)))
     (Point3D(3/4, 3/4, 3/4), Point3D(1/4, 5/4, 3/4))
     >>> close_points(Line((0,0,0), (1,2,3)), Line((1,1,1), (2,3,5)))
@@ -62,19 +65,21 @@ def close_points(l1, l2):
 
     For a Ray or Segment, the closest point might be an end point
 
-    >>> close_points(Line((0,0,0), (1,1,1)),Ray((1,1,0), (1,2,-1)))
-    (Point3D(2, 2, 2), Point3D(1, 1, 0))
+    >>> close_points(Line((-1,0,0), (1,0,0)), Ray((0,0,-1), (0,-1,-1)))
+    (Point3D(0, 0, 0), Point3D(0, 0, -1))
 
     But if the Ray or Segment is symbolic, the closest point might
-    be reported as a Piecewise object which will select the :
+    be reported as a Piecewise object which will select the correct
+    coordinates:
 
+    >>> from sympy.abc import x
     >>> pts = close_points(Line((0,0,0),(1,1,1)), Ray((x,1,0),(1,2,-1)))
     >>> pts.has(Piecewise)
     True
     >>> pts[1].subs(x, 1)
     Point3D(1, 1, 0)
-    >>> pts[1].subs(x, -3)
-    Point3D(1, 2, -1)
+    >>> pts[1].subs(x, -1)
+    Point3D(-4/7, 17/14, -3/14)
 
     >>> p = (3 - 2*x, x + 1, -x)
     >>> r = close_points(Line((0,0,0),(1,1,1)), Ray(p,(1,2,-1)))[1]
@@ -83,39 +88,22 @@ def close_points(l1, l2):
     In [1/2, 1), the 1st point of the Ray will be selected since that
     is when the condition in the Piecewise is true:
 
-    >>> solve(r.args[0].args[1]).as_set()
-    Union(Interval(-oo, 1/2), Interval.open(1, oo))
     >>> p1_RayPt.subs(x, 0)
-    (Point3D(3, 1, 0), Point3D(2, 3/2, -1/2))
-    >>> p1_RayPt.subs(x, 1/2)
-    (Point3D(2, 3/2, -1/2), Point3D(2, 3/2, -1/2))
-    >>> p1_RayPt.subs(x, 3/4)
-    (Point3D(3/2, 7/4, -3/4), Point3D(3/2, 7/4, -3/4))
+    ((3, 1, 0), Point3D(2, 3/2, -1/2))
+    >>> p1_RayPt.subs(x, S(1)/2)
+    ((2, 3/2, -1/2), Point3D(2, 3/2, -1/2))
+    >>> p1_RayPt.subs(x, S(3)/4)
+    ((3/2, 7/4, -3/4), Point3D(3/2, 7/4, -3/4))
     >>> p1_RayPt.subs(x, 1)
     Traceback (most recent call last):
     ...
     TypeError: Invalid NaN comparison
     >>> p1_RayPt.subs(x, 2)
-    (Point3D(-1, 3, -2), Point3D(2, 3/2, -1/2))
+    ((-1, 3, -2), Point3D(2, 3/2, -1/2))
     """
-    # when s and t are in [0,1] the solution is also valid for segments, otherwise
-    # one must determine which end is closer to ps and/or pt and use that instead of ps or pt
-    # respectively.
-    # The following was used to generate the code below it:
-    #
-    # s, t = var('s t')
-    # L1 = lambda p: l1.p1+p*l1.direction = l1.arbitrary_point(s)
-    # L2 = lambda p: l2.p1+p*l2.direction = l2.arbitrary_point(s)
-    # eq = lambda l1: Matrix(L1(s) - L2(t)).dot(l1.direction)
-    # stdict = solve((
-    #     eq(Line(var('x1 y1 z1'),var('x2 y2 z2'))),
-    #     eq(Line(var('x3 y3 z3'),var('x4 y4 z4')))),
-    #     var('s t'), dict=True)
-    from sympy.core.containers import Tuple
-    x1,y1,z1=p1=l1.p1
-    x2,y2,z2=p2=l1.p2
-    x3,y3,z3=p3=l2.p1
-    x4,y4,z4=p4=l2.p2
+    if not (l1.ambient_dimension == l2.ambient_dimension == 3):
+         raise ValueError(
+            'expecting two linear entities with dimension 3')
     x21, y21, z21 = l1.direction
     x43, y43, z43 = l2.direction
     x31, y31, z31 = l2.p1 - l1.p1
@@ -125,21 +113,20 @@ def close_points(l1, l2):
     d3121 = x21*x31 + y21*y31 + z21*z31
     d4331 = x31*x43 + y31*y43 + z31*z43
     den = d4321**2 - R1*R2
-    # R1*s - d4321*t - d3121 = 0
-    # d4321*s - R2*t - d4331 = 0
-    s = (d4321*d4331 - R2*d3121)/den
-    t = (R1*d4331 - d4321*d3121)/den
-    def inspace(s, l1):
+    s = (d4321*d4331 - R2*d3121)/den  # R1*s - d4321*t - d3121 = 0
+    t = (R1*d4331 - d4321*d3121)/den  # d4321*s - R2*t - d4331 = 0
+    def _inspace(s, l1):
         ps = l1.p1 + s*l1.direction
+        print(s, l1)
         if isinstance(l1, Line) or s.is_number and ((0 <= s <= 1) or isinstance(l1, Ray) and (s > 1)):
             return ps
         if isinstance(l1, Segment):
-            ok = And(0 <= s, s <= 1)
+            c = And(0 <= s, s <= 1)
             p1close = ps.distance(l1.args[0]) < ps.distance(l1.args[1])
-            return Point(*[Piecewise((i, ok), (j, p1close), (k, True)) for i,j,k in zip(ps, *l1.args)])
+            return Point(*[Piecewise((i, c), (j, p1close), (k, True)) for i,j,k in zip(ps, *l1.args)])
         else:
             return Point(*[Piecewise((i, s >= 0),(j, True)) for i,j in zip(ps, l1.args[0])])
-    return Tuple(inspace(s, l1), inspace(t, l2))
+    return Tuple(_inspace(s, l1), _inspace(t, l2))
 
 
 class LinearEntity(GeometrySet):
@@ -778,6 +765,54 @@ class LinearEntity(GeometrySet):
         l = Line(self.p1, self.p2)
         return l.contains(other)
 
+    def distance(self, other):
+        """
+        Finds the shortest distance between a line and a point.
+
+        Raises
+        ======
+
+        NotImplementedError is raised if `other` is not a Point
+
+        Examples
+        ========
+
+        >>> from sympy import Point, Line
+        >>> p1, p2 = Point(0, 0), Point(1, 1)
+        >>> s = Line(p1, p2)
+        >>> s.distance(Point(-1, 1))
+        sqrt(2)
+        >>> s.distance((-1, 2))
+        3*sqrt(2)/2
+        >>> p1, p2 = Point(0, 0, 0), Point(1, 1, 1)
+        >>> s = Line(p1, p2)
+        >>> s.distance(Point(-1, 1, 1))
+        2*sqrt(6)/3
+        >>> s.distance((-1, 1, 1))
+        2*sqrt(6)/3
+
+        """
+        if not isinstance(other, GeometryEntity):
+            other = Point(other, dim=self.ambient_dimension)
+        if self.contains(other):
+            return S.Zero
+        if isinstance(other, LinearEntity):
+            dim = []
+            l3 = [self, other]
+            for i, l in enumerate(l3):
+                dim.append(l.ambient_dimension)
+                if l.ambient_dimension == 2:
+                    if isinstance(l, Line):
+                        l3[i] = Line3D(Point(l.p1, dim=3), Point(l.p2, dim=3))
+                    if isinstance(l, Ray):
+                        l3[i] = Ray3D(Point(l.p1, dim=3), Point(l.p2, dim=3))
+                    if isinstance(l, Segment):
+                        l3[i] = Segment3D(Point(l.p1, dim=3), Point(l.p2, dim=3))
+            return l3[0].distance(l3[1])
+        elif isinstance(other, Point):
+            return self.perpendicular_segment(other).length
+        raise NotImplementedError()
+
     @property
     def length(self):
         """
@@ -1364,39 +1399,6 @@ class Line(LinearEntity):
         if isinstance(other, LinearEntity):
             return Point.is_collinear(self.p1, self.p2, other.p1, other.p2)
         return False
-
-    def distance(self, other):
-        """
-        Finds the shortest distance between a line and a point.
-
-        Raises
-        ======
-
-        NotImplementedError is raised if `other` is not a Point
-
-        Examples
-        ========
-
-        >>> from sympy import Point, Line
-        >>> p1, p2 = Point(0, 0), Point(1, 1)
-        >>> s = Line(p1, p2)
-        >>> s.distance(Point(-1, 1))
-        sqrt(2)
-        >>> s.distance((-1, 2))
-        3*sqrt(2)/2
-        >>> p1, p2 = Point(0, 0, 0), Point(1, 1, 1)
-        >>> s = Line(p1, p2)
-        >>> s.distance(Point(-1, 1, 1))
-        2*sqrt(6)/3
-        >>> s.distance((-1, 1, 1))
-        2*sqrt(6)/3
-
-        """
-        if not isinstance(other, GeometryEntity):
-            other = Point(other, dim=self.ambient_dimension)
-        if self.contains(other):
-            return S.Zero
-        return self.perpendicular_segment(other).length
 
     def equals(self, other):
         """Returns True if self and other are the same mathematical entities"""
@@ -2689,7 +2691,7 @@ class Line3D(LinearEntity3D, Line):
 
     def distance(self, other):
         """
-        Finds the shortest distance between a line and another object.
+        Finds the shortest distance between a 3D-line and another object.
 
         Parameters
         ==========
@@ -2727,7 +2729,7 @@ class Line3D(LinearEntity3D, Line):
         >>> l1 = Line3D((0, 0, 0), (0, 0, 1))
         >>> l2 = Line3D((0, x, 0), (y, x, 1))
         >>> l1.distance(l2)
-        Abs(x*y)/Abs(sqrt(y**2))
+        sqrt(x**2)
 
         """
 
@@ -2750,12 +2752,6 @@ class Line3D(LinearEntity3D, Line):
 
             a, b = close_points(self, other)
             return a.distance(b)
-            # Skew lines
-            self_direction = Matrix(self.direction_ratio)
-            other_direction = Matrix(other.direction_ratio)
-            normal = self_direction.cross(other_direction)
-            plane_through_self = Plane(p1=self.p1, normal_vector=normal)
-            return other.p1.distance(plane_through_self)
 
         if isinstance(other, Plane):
             return other.distance(self)
