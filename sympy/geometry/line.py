@@ -104,10 +104,11 @@ def close_points(l1, l2):
     if not (l1.ambient_dimension == l2.ambient_dimension == 3):
          raise ValueError(
             'expecting two linear entities with dimension 3')
+    # implementing from https://math.stackexchange.com/a/2416582
     x21, y21, z21 = l1.direction
     x43, y43, z43 = l2.direction
     x31, y31, z31 = l2.p1 - l1.p1
-    R1 = x21**2 + y21**2 + z21**2
+    R1 = x21**2 + y21**2 + z21**2 # radius of sphere from l1.p1
     R2 = x43**2 + y43**2 + z43**2
     d4321 = x21*x43 + y21*y43 + z21*z43
     d3121 = x21*x31 + y21*y31 + z21*z31
@@ -115,18 +116,60 @@ def close_points(l1, l2):
     den = d4321**2 - R1*R2
     s = (d4321*d4331 - R2*d3121)/den  # R1*s - d4321*t - d3121 = 0
     t = (R1*d4331 - d4321*d3121)/den  # d4321*s - R2*t - d4331 = 0
-    def _inspace(s, l1):
-        ps = l1.p1 + s*l1.direction
-        print(s, l1)
-        if isinstance(l1, Line) or s.is_number and ((0 <= s <= 1) or isinstance(l1, Ray) and (s > 1)):
-            return ps
-        if isinstance(l1, Segment):
-            c = And(0 <= s, s <= 1)
-            p1close = ps.distance(l1.args[0]) < ps.distance(l1.args[1])
-            return Point(*[Piecewise((i, c), (j, p1close), (k, True)) for i,j,k in zip(ps, *l1.args)])
-        else:
-            return Point(*[Piecewise((i, s >= 0),(j, True)) for i,j in zip(ps, l1.args[0])])
-    return Tuple(_inspace(s, l1), _inspace(t, l2))
+    a = l1.p1 + s*l1.direction
+    b = l2.p1 + t*l2.direction
+    if l1 and isinstance(l1, Line) and isinstance(l2, Line):
+        return Tuple(a, b)
+    if s.is_number and ((0 <= s <= 1) or isinstance(l1, Ray) and (s > 1)) and t.is_number and ((0 <= t <= 1) or isinstance(l1, Ray) and (t > 1)):
+        return Tuple(a, b)
+    if isinstance(l2, Line):
+        l1, l2 = l2, l1
+        def l1perp(pt):
+            return l1.perpendicular_segment(pt).args
+    else:
+        def l1perp(pt):
+            return l1.perpendicular_segment(pt).args[::-1]
+    if isinstance(l1, Line):
+        s = Dummy()
+        l2pt = l2.arbitrary_point(s)
+        d = solve(l1.distance(l2pt).diff(s), s)
+        if not d:  # end pt is closest
+            if isinstance(l2, Ray):  # p1 is closest if ...
+                return Tuple(*l1perp(l2.p1))
+            to_p1 = l1perp(l2.p1)
+            to_p2 = l1perp(l2.p2)
+            c = to_p1[0].distance(to_p1[1]) <= to_p2[0].distance(to_p2[1])
+            l2pts, l1pts = list(zip(to_p1, to_p2))
+            return Tuple(
+                Point(*[Piecewise((i, c), (j, True)) for i,j in zip(*l1pts)]),
+                Point(*[Piecewise((i, c), (j, True)) for i,j in zip(*l2pts)]))
+        assert len(d) == 1
+        sval = d[0]
+        s1 = l1perp(l2.p1)  # if s <= 0
+        s3 = l1perp(l2pt.subs(s, sval))  # s <= 1 or Ray
+        if isinstance(l2, Ray):
+            pw = [(Tuple(*s1), sval <= 0), (Tuple(*s3), True)]
+            return Tuple(
+            Point(
+            Piecewise((pw[0][0][0].x,pw[0][1]),(pw[1][0][0].x,pw[1][1])),
+            Piecewise((pw[0][0][0].y,pw[0][1]),(pw[1][0][0].y,pw[1][1])),
+            Piecewise((pw[0][0][0].z,pw[0][1]),(pw[1][0][0].z,pw[1][1]))),
+            Point(
+            Piecewise((pw[0][0][1].x,pw[0][1]),(pw[1][0][1].x,pw[1][1])),
+            Piecewise((pw[0][0][1].y,pw[0][1]),(pw[1][0][1].y,pw[1][1])),
+            Piecewise((pw[0][0][1].z,pw[0][1]),(pw[1][0][1].z,pw[1][1]))))
+        s2 = l1perp(l2.p2)  # if s > 1
+        pw = ((Tuple(*s1), sval <= 0), (Tuple(*s2), sval > 1), (Tuple(*s3), True))
+        return Tuple(
+        Point(
+        Piecewise((pw[0][0][0].x,pw[0][1]),(pw[1][0][0].x,pw[1][1]),(pw[2][0][0].x,pw[2][1])),
+        Piecewise((pw[0][0][0].y,pw[0][1]),(pw[1][0][0].y,pw[1][1]),(pw[2][0][0].y,pw[2][1])),
+        Piecewise((pw[0][0][0].z,pw[0][1]),(pw[1][0][0].z,pw[1][1]),(pw[2][0][0].z,pw[2][1]))),
+        Point(
+        Piecewise((pw[0][0][1].x,pw[0][1]),(pw[1][0][1].x,pw[1][1]),(pw[2][0][1].x,pw[2][1])),
+        Piecewise((pw[0][0][1].y,pw[0][1]),(pw[1][0][1].y,pw[1][1]),(pw[2][0][1].y,pw[2][1])),
+        Piecewise((pw[0][0][1].z,pw[0][1]),(pw[1][0][1].z,pw[1][1]),(pw[2][0][1].z,pw[2][1]))))
+    raise NotImplementedError('segment|ray to segment|ray')
 
 
 class LinearEntity(GeometrySet):

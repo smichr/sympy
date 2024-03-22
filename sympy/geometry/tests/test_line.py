@@ -2,6 +2,7 @@ from sympy.core.numbers import (Float, Rational, oo, pi)
 from sympy.core.relational import Eq
 from sympy.core.singleton import S
 from sympy.core.symbol import (Symbol, symbols)
+from sympy.functions.elementary.piecewise import Piecewise
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.functions.elementary.trigonometric import (acos, cos, sin)
 from sympy.sets import EmptySet
