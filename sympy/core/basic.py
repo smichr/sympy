@@ -1215,6 +1215,7 @@ class Basic(Printable):
               routine uses this strategy when a substitution is attempted
               on any of its summation variables.
         """
+        from sympy.functions.elementary.exponential import ExpMeta
 
         def fallback(self, old, new):
             """
@@ -1255,7 +1256,7 @@ class Basic(Printable):
                         self.exp.as_coeff_Mul(
                             )[0]*old.exp.as_coeff_Mul()[0] < 0):
                     return fallback(self, old, new)
-        elif hasattr(old, 'exp'):
+        elif hasattr(old, 'exp') and not isinstance(old, ExpMeta):
             if old.exp.as_coeff_Mul()[0] < 0:
                  old, new = 1/old, 1/new
 
