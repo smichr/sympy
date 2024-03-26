@@ -1229,6 +1229,17 @@ class Basic(Printable):
                 return rv
             return self
 
+        if not hints.get('reciprocal', True):
+            if getattr(old, 'exp', S.One).as_coeff_Mul()[0] < 0:
+                # if self and old do not have the same sign of exponent
+                if (not hasattr(self, 'exp') or
+                        self.exp.as_coeff_Mul(
+                            )[0]*old.exp.as_coeff_Mul()[0] < 0):
+                    return fallback(self, old, new)
+        elif hasattr(old, 'exp'):
+            if old.exp.as_coeff_Mul()[0] < 0:
+                 old, new = 1/old, 1/new
+
         if _aresame(self, old):
             return new
 
