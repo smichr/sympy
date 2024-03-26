@@ -967,10 +967,6 @@ class Basic(Printable):
         If the keyword ``simultaneous`` is True, the subexpressions will not be
         evaluated until all the substitutions have been made.
 
-        If the keyword ``reciprocal`` is False, powers having exponents with a
-        negative coefficient will not target powers with exponents having a
-        positive coefficient.
-
         Examples
         ========
 
@@ -1152,7 +1148,8 @@ class Basic(Printable):
         for i in range(len(sequence)):
             o, n = sequence[i]
             if not isinstance(o, ExpMeta) and getattr(o, 'exp', S.One).as_coeff_Mul()[0] < 0:
-                o, n = (1/o, 1/n)
+                if new.is_commutative is not False:
+                    o, n = (1/o, 1/n)
             _d[o] = n
         sequence = list(_d.items())
 
