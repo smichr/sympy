@@ -1081,6 +1081,7 @@ class Basic(Printable):
         from .containers import Dict
         from .symbol import Dummy, Symbol
         from .numbers import _illegal
+        from sympy.functions.elementary.exponential import ExpMeta
 
         unordered = False
         if len(args) == 1:
@@ -1150,7 +1151,7 @@ class Basic(Printable):
         _d = {}
         for i in range(len(sequence)):
             o, n = sequence[i]
-            if getattr(o, 'exp', S.One).as_coeff_Mul()[0] < 0:
+            if not isinstance(o, ExpMeta) and getattr(o, 'exp', S.One).as_coeff_Mul()[0] < 0:
                 o, n = (1/o, 1/n)
             _d[o] = n
         sequence = list(_d.items())
