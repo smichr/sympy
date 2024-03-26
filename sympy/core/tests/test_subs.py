@@ -1,6 +1,6 @@
 from sympy.calculus.accumulationbounds import AccumBounds
 from sympy.core.add import Add
-from sympy.core.basic import Basic
+from sympy.core.basic import Basic, mask_inverse_subs
 from sympy.core.containers import (Dict, Tuple)
 from sympy.core.function import (Derivative, Function, Lambda, Subs)
 from sympy.core.mul import Mul
@@ -499,6 +499,21 @@ def test_functions_subs():
     assert (sin(x) + atan2(x, y)).subs([[atan2, f], [sin, g]]) == \
         f(x, y) + g(x)
     assert (g(f(x + y, x))).subs([[f, l], [g, exp]]) == exp(x + sin(x + y))
+
+
+def test_issue_26405():
+    f = Function('f')
+    for e in (y, f(x), f(x).diff(x), exp(x), exp(1)):
+        assert e.subs(1/e, x) == 1/x
+        assert (e**2).subs(1/e, x) == 1/x**2
+        assert (e**2).subs(1/e**2, x) == 1/x
+        assert (1/e**2).subs(1/e**2, x) == x
+        assert (e + 1/e).subs(1/e, x) == 1/x + x
+        assert mask_inverse_subs(e, 1/e, x) == e,e
+        assert mask_inverse_subs(e**2, 1/e, x) == e**2
+        assert mask_inverse_subs(e**2, 1/e**2, x) == e**2
+        assert mask_inverse_subs(1/e**2, 1/e**2, x) == x
+        assert mask_inverse_subs(e + 1/e, 1/e, x) == e + x
 
 
 def test_derivative_subs():

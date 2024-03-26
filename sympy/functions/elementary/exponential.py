@@ -438,7 +438,7 @@ class exp(ExpBase, metaclass=ExpMeta):
         # keep processing of power-like args centralized in Pow
         if old.is_Pow:  # handle (exp(3*log(x))).subs(x**2, z) -> z**(3/2)
             old = exp(old.exp*log(old.base))
-        elif old is S.Exp1 and new.is_Function:
+        elif old is S.Exp1 and new.is_Function and new is not 1/S.Exp1:
             old = exp
         if isinstance(old, exp) or old is S.Exp1:
             f = lambda a: Pow(*a.as_base_exp(), evaluate=False) if (

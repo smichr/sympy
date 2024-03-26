@@ -123,6 +123,36 @@ def _cmp_name(x: type, y: type) -> int:
     return (i1 > i2) - (i1 < i2)
 
 
+def mask_inverse_subs(self, old, new):
+    """don't let old target 1/old in self
+
+    EXAMPLES
+    ========
+
+    >>> from sympy.abc import x, y
+    >>> from sympy.core.basic import mask_inverse_subs
+    >>> mask_inverse_subs(2*x + 1/x, x, y)
+    2*y + 1/x
+    >>> mask_inverse_subs(2*x + 1/x, 1/x, y)
+    2*x + y
+    """
+    from sympy.core.symbol import Dummy
+    if not hasattr(old, 'exp'):
+        base = old
+        exp = S.One
+    else:
+        base = old.base
+        exp = old.exp.as_coeff_Mul()[0]
+    d = Dummy()
+    if exp < 0:
+        return self.subs(base, 1/base).replace(
+        lambda p: hasattr(p,'exp') and p.base == base and p.exp.as_coeff_Mul()[0]<0,
+        lambda p:d**p.exp).subs(1/old, new).xreplace({d: 1/base})
+    return self.replace(
+        lambda p: hasattr(p,'exp') and p.base == base and p.exp.as_coeff_Mul()[0]<0,
+        lambda p:d**p.exp).subs(old, new).xreplace({d: base})
+
+
 class Basic(Printable):
     """
     Base class for all SymPy objects.
@@ -937,6 +967,10 @@ class Basic(Printable):
         If the keyword ``simultaneous`` is True, the subexpressions will not be
         evaluated until all the substitutions have been made.
 
+        If the keyword ``reciprocal`` is False, powers having exponents with a
+        negative coefficient will not target powers with exponents having a
+        positive coefficient.
+
         Examples
         ========
 
@@ -961,6 +995,19 @@ class Basic(Printable):
 
         >>> (x**2 + x**4).xreplace({x**2: y})
         x**4 + y
+
+        Powers, by default, will target the reciprocal:
+
+        >>> (x + 1/x).subs(x, y)
+        y + 1/y
+
+        To avoid this, use mask_inverse to carry out the substitution:
+
+        >>> from sympy.core.basic import mask_inverse_subs
+        >>> mask_inverse_subs(x + 1/x, x, y)
+        y + 1/x
+        >>> mask_inverse_subs(x + 1/x, 1/x, y)
+        x + y
 
         To delay evaluation until all substitutions have been made,
         set the keyword ``simultaneous`` to True:
@@ -1097,6 +1144,16 @@ class Basic(Printable):
                 redo = [i for i, seq in enumerate(sequence) if seq[1] in _illegal]
                 for i in reversed(redo):
                     sequence.insert(0, sequence.pop(i))
+
+        # use reciprocals of any negative powers since they already
+        # target the reciprocals
+        _d = {}
+        for i in range(len(sequence)):
+            o, n = sequence[i]
+            if getattr(o, 'exp', S.One).as_coeff_Mul()[0] < 0:
+                o, n = (1/o, 1/n)
+            _d[o] = n
+        sequence = list(_d.items())
 
         if simultaneous:  # XXX should this be the default for dict subs?
             reps = {}
