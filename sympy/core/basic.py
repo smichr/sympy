@@ -937,6 +937,10 @@ class Basic(Printable):
         If the keyword ``simultaneous`` is True, the subexpressions will not be
         evaluated until all the substitutions have been made.
 
+        If the keyword ``reciprocal`` is False, powers having exponents with a
+        negative coefficient will not target powers with exponents having a
+        positive coefficient.
+
         Examples
         ========
 
@@ -961,6 +965,21 @@ class Basic(Printable):
 
         >>> (x**2 + x**4).xreplace({x**2: y})
         x**4 + y
+
+        Reciprocal powers, by default, will target the reciprocal:
+
+        >>> (x + 1/x).subs(1/x, y)
+        y + 1/y
+
+        To disable this, set the ``reciprocal`` flag to False:
+
+        >>> (x + 1/x).subs(1/x, y, reciprocal=False)
+        x + y
+
+        The flag is ignored if the ``old`` pattern is not a power:
+
+        >>> (x + 1/x).subs(x, y, reciprocal=False)
+        y + 1/y
 
         To delay evaluation until all substitutions have been made,
         set the keyword ``simultaneous`` to True:
