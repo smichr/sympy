@@ -2850,6 +2850,27 @@ class Triangle(Polygon):
             return self.orthocenter
         return Line(self.orthocenter, self.circumcenter)
 
+    @property
+    def angles(self):
+        if any(not i.x.is_number or not i.y.is_number for i in self.args):
+            # symbolic triangles will not resolve via Polygon.angles
+            from sympy.simplify.fu import TR5
+            from sympy.functions.elementary.trigonometric import acos
+            from sympy.core.mul import prod
+            l = [TR5(i.length) for i in self.sides]
+            # compute the angle opposite of the given side
+            ang = [acos((sum(i**2 for i in l if i != l[j]) - l[j]**2
+                )/(2*prod(i for i in l if i != l[j])))
+                for j in range(3)]
+            v = set(self.args)
+            p = [(v-set(s.args)).pop() for s in self.sides]
+            rv = dict(list(zip(v, ang)))
+            # keep them in the same order as in self vertices
+            return {k: rv[k] for k in self.vertices}
+        return super().angles
+        
+
+
 def rad(d):
     """Return the radian value for the given degrees (pi = 180 degrees)."""
     return d*pi/180
