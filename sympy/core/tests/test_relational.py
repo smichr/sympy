@@ -809,6 +809,21 @@ def test_simplify_relational():
     assert simplify(m*x + y > 1 + y) is S.false
 
 
+def test_issue_28666():
+    assert Eq(x**2 + 1, y**2 + 1).simplify() == Eq(x**2, y**2)
+    assert Eq(91*sin(x) + 40, 91*sin(y) + 40).simplify() == Eq(sin(x), sin(y))
+    assert Lt(-2*sin(x), -2*sin(y)).simplify() == Gt(sin(x), sin(y))
+
+    r = Symbol('r', real=True)
+    assert Lt(x + sin(r), y + sin(r)).simplify() == Lt(x, y)
+
+    expr = Lt(x + sin(z), y + sin(z))
+    assert expr.simplify() == expr
+
+    xr, zr = symbols('xr zr', real=True, zero=False)
+    assert Eq(zr*xr, zr*(xr + 1)).simplify() is S.false
+
+
 def test_equals():
     w, x, y, z = symbols('w:z')
     f = Function('f')
