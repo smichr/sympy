@@ -523,9 +523,9 @@ class Relational(Boolean, EvalfMixin):
         r = r.func(*[i.simplify(**kwargs) for i in r.args])
         blocked = False
         if r.is_Relational and isinstance(r.lhs, Expr) and isinstance(r.rhs, Expr):
-            r = r.func(factor_terms(r.lhs), factor_terms(r.rhs))
             while r.is_Relational:
                 old = r
+                r = r.func(factor_terms(r.lhs), factor_terms(r.rhs))
                 r, b = simplify_mul(r)
                 blocked |= b
                 if not r.is_Relational:
