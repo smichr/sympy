@@ -823,6 +823,9 @@ def test_issue_28666():
     xr, zr = symbols('xr zr', real=True, zero=False)
     assert Eq(zr*xr, zr*(xr + 1)).simplify() is S.false
 
+    a = Symbol('a', finite=True, zero=False)
+    assert Eq(a*x + a*y + 1, 1).simplify() == Eq(x + y, 0)
+
 
 def test_equals():
     w, x, y, z = symbols('w:z')
