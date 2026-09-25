@@ -429,9 +429,110 @@ class Relational(Boolean, EvalfMixin):
     def _eval_simplify(self, **kwargs):
         from .add import Add
         from .expr import Expr
+        from .mul import Mul
+        from sympy.core.exprtools import factor_terms
+
+        recursive = kwargs.pop('_relational_recursive', False)
+
+        def mul_cancel(rel):
+            L, R = rel.args
+            if L == 0 and R != 0:
+                rel = rel.reversed
+                L, R = rel.args
+
+            if R == 0:
+                keep = []
+                neg = False
+                for f in Mul.make_args(L):
+                    if rel.func in (Eq, Ne):
+                        cancel = f.is_finite is True and f.is_zero is False
+                    else:
+                        cancel = f.is_positive is True or f.is_negative is True
+                    if cancel:
+                        neg ^= f.is_negative is True
+                    else:
+                        keep.append(f)
+                new = Mul(*keep)
+                if new != L:
+                    if neg:
+                        new = -new
+                    return rel.func(new, S.Zero), False
+                return rel, False
+
+            lf = list(Mul.make_args(L))
+            rf = list(Mul.make_args(R))
+            neg = False
+            blocked = False
+            for f in lf[:]:
+                if not f.is_commutative:
+                    continue
+                try:
+                    j = rf.index(f)
+                except ValueError:
+                    continue
+                if rel.func in (Eq, Ne):
+                    cancel = f.is_finite is True and f.is_zero is False
+                else:
+                    cancel = f.is_positive is True or f.is_negative is True
+                if not cancel:
+                    blocked = True
+                    continue
+                lf.remove(f)
+                rf.pop(j)
+                neg ^= f.is_negative is True
+            l, r = Mul(*lf), Mul(*rf)
+            if (l, r) != (L, R):
+                if neg:
+                    l, r = -l, -r
+                return rel.func(l, r), blocked
+            return rel, blocked
+
+        def add_cancel(rel):
+            L = rel.lhs.as_coefficients_dict()
+            R = rel.rhs.as_coefficients_dict()
+            blocked = False
+            changed = False
+            for k in list(L):
+                if (k not in R or L[k].is_Rational is not True or
+                        R[k].is_Rational is not True):
+                    continue
+                d = L[k] - R[k]
+                if d == 0:
+                    safe = (k.is_finite is True and
+                        (rel.func in (Eq, Ne) or k.is_real is True))
+                    if not safe:
+                        blocked = True
+                        continue
+                L[k] = d
+                R.pop(k)
+                if L[k] == 0:
+                    del L[k]
+                changed = True
+            if not changed:
+                return rel, blocked
+            l = Add(*[k*v for k, v in L.items()])
+            r = Add(*[k*v for k, v in R.items()])
+            return rel.func(l, r), blocked
+
         r = self
         r = r.func(*[i.simplify(**kwargs) for i in r.args])
-        if r.is_Relational:
+        handled = blocked = False
+        if r.is_Relational and isinstance(r.lhs, Expr) and isinstance(r.rhs, Expr):
+            new = r.func(factor_terms(r.lhs), factor_terms(r.rhs))
+            if new == r:
+                new, blocked = mul_cancel(r)
+            if new == r:
+                new, blocked = add_cancel(r)
+            if new != r:
+                if new.is_Relational:
+                    recur = kwargs.copy()
+                    recur['_relational_recursive'] = True
+                    r = new._eval_simplify(**recur)
+                else:
+                    r = new
+                handled = True
+
+        if r.is_Relational and not (handled or blocked):
             if not isinstance(r.lhs, Expr) or not isinstance(r.rhs, Expr):
                 return r
             dif = r.lhs - r.rhs
@@ -510,6 +611,8 @@ class Relational(Boolean, EvalfMixin):
                     pass
         # Did we get a simplified result?
         r = r.canonical
+        if recursive:
+            return r
         measure = kwargs['measure']
         if measure(r) < kwargs['ratio'] * measure(self):
             return r
