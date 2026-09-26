@@ -429,9 +429,47 @@ class Relational(Boolean, EvalfMixin):
     def _eval_simplify(self, **kwargs):
         from .add import Add
         from .expr import Expr
+        from .symbol import Dummy
+
         r = self
         r = r.func(*[i.simplify(**kwargs) for i in r.args])
-        if r.is_Relational:
+
+        handled = False
+        if r.is_Relational and isinstance(r.lhs, Expr) and isinstance(r.rhs, Expr):
+            terms = []
+            for side in r.args:
+                d = {}
+                for term in Add.make_args(side):
+                    coeff, term = term.as_coeff_Mul(rational=True)
+                    if not term.is_Atom:
+                        d[term] = coeff
+                terms.append(d)
+
+            common = set(terms[0]).intersection(terms[1])
+            for term in common:
+                if terms[0][term] == terms[1][term] and not (
+                        term.is_finite is True and
+                        (r.func in (Eq, Ne) or term.is_real is True)):
+                    return r
+
+            reps = {}
+            for term in set(terms[0]).union(terms[1]):
+                assumptions = {}
+                for prop in ('finite', 'real', 'zero', 'positive', 'negative'):
+                    value = getattr(term, 'is_' + prop)
+                    if value is not None:
+                        assumptions[prop] = value
+                reps[term] = Dummy(**assumptions)
+
+            if reps:
+                masked = r.xreplace(reps)
+                candidate = masked.simplify(**kwargs).xreplace(
+                    {v: k for k, v in reps.items()})
+                if candidate != r:
+                    r = candidate
+                    handled = True
+
+        if r.is_Relational and not handled:
             if not isinstance(r.lhs, Expr) or not isinstance(r.rhs, Expr):
                 return r
             dif = r.lhs - r.rhs
