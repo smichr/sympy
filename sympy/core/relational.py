@@ -430,67 +430,82 @@ class Relational(Boolean, EvalfMixin):
         from .add import Add
         from .expr import Expr
         from .mul import Mul
+        from .symbol import Dummy
         from sympy.simplify.simplify import factor_terms
 
         def simplify_mul(rel):
             blocked = False
-            L, R = rel.args
-            if L == 0 and R != 0:
+            if rel.lhs == 0 and rel.rhs != 0:
                 rel = rel.reversed
-                L, R = rel.args
+            L, R = rel.args
 
+            # When one side is 0 there is no d-dependent Add to isolate.
+            # Strip only safe factors from the nonzero side.
             if R == 0:
                 keep = []
                 neg = False
                 changed = False
-                for f in Mul.make_args(L):
+                for factor in Mul.make_args(L):
+                    if not factor.is_commutative:
+                        keep.append(factor)
+                        continue
                     if rel.func in (Eq, Ne):
-                        cancel = f.is_finite is True and f.is_zero is False
+                        cancel = (factor.is_finite is True and
+                            factor.is_zero is False)
                     else:
-                        cancel = f.is_positive is True or f.is_negative is True
+                        cancel = (factor.is_finite is True and
+                            (factor.is_positive is True or
+                             factor.is_negative is True))
                     if cancel:
                         changed = True
-                        if f.is_negative is True:
+                        if factor.is_negative is True:
                             neg = not neg
                     else:
-                        keep.append(f)
+                        keep.append(factor)
                 if not changed:
                     return rel, blocked
                 L = Mul(*keep)
-                R = S.Zero
-                if neg:
-                    L, R = -L, -R
-                return rel.func(L, R), blocked
+                if rel.func not in (Eq, Ne) and neg:
+                    return rel.reversed.func(L, S.Zero), blocked
+                return rel.func(L, S.Zero), blocked
 
-            lf = list(Mul.make_args(L))
-            rf = list(Mul.make_args(R))
+            d = Dummy()
+            common, core = factor_terms(L - d*R).as_independent(
+                d, as_Add=False)
+            if common == 1:
+                return rel, blocked
+
+            keep = []
             neg = False
             changed = False
-            for f in lf[:]:
-                if not f.is_commutative:
-                    continue
-                try:
-                    j = rf.index(f)
-                except ValueError:
+            for factor in Mul.make_args(common):
+                if not factor.is_commutative:
+                    keep.append(factor)
+                    blocked = True
                     continue
                 if rel.func in (Eq, Ne):
-                    cancel = f.is_finite is True and f.is_zero is False
+                    cancel = (factor.is_finite is True and
+                        factor.is_zero is False)
                 else:
-                    cancel = f.is_positive is True or f.is_negative is True
-                if not cancel:
-                    if not f.is_Symbol:
-                        blocked = True
-                    continue
-                lf.remove(f)
-                rf.pop(j)
-                changed = True
-                if f.is_negative is True:
-                    neg = not neg
+                    cancel = (factor.is_finite is True and
+                        (factor.is_positive is True or
+                         factor.is_negative is True))
+                if cancel:
+                    changed = True
+                    if factor.is_negative is True:
+                        neg = not neg
+                else:
+                    keep.append(factor)
+                    blocked = True
+
             if not changed:
                 return rel, blocked
-            L, R = Mul(*lf), Mul(*rf)
-            if neg:
-                L, R = -L, -R
+
+            keep = Mul(*keep)
+            L = keep*core.subs(d, 0)
+            R = -keep*core.coeff(d)
+            if rel.func not in (Eq, Ne) and neg:
+                return rel.reversed.func(L, R), blocked
             return rel.func(L, R), blocked
 
         def simplify_add(rel):
