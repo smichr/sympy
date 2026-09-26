@@ -821,6 +821,7 @@ def test_issue_28666():
     assert expr.simplify() == expr
 
     xr, zr = symbols('xr zr', real=True, zero=False)
+    assert Eq(zr*xr, zr*y).simplify() == Eq(x, y)
     assert Eq(zr*xr, zr*(xr + 1)).simplify() is S.false
 
     a = Symbol('a', finite=True, zero=False)
