@@ -56,6 +56,21 @@ def test_Interval_Interval():
            Interval(10, 40)
 
 
+def test_Interval_Interval_unbounded_mul():
+    cc = SetExpr(Interval(0, 1))
+    lo = SetExpr(Interval.Lopen(0, 1))
+    pos = SetExpr(Interval(1, oo))
+    neg = SetExpr(Interval(-oo, -1))
+
+    assert cc*pos == SetExpr(Interval(0, oo))
+    assert lo*pos == SetExpr(Interval.open(0, oo))
+    assert cc*neg == SetExpr(Interval(-oo, 0))
+    assert lo*neg == SetExpr(Interval.open(-oo, 0))
+
+    assert SetExpr(Interval(0, oo))*cc == SetExpr(Interval(0, oo))
+    assert SetExpr(Interval(-oo, 0))*cc == SetExpr(Interval(-oo, 0))
+
+
 def test_FiniteSet_FiniteSet():
     assert (SetExpr(FiniteSet(1, 2, 3)) + SetExpr(FiniteSet(1, 2))).set == \
            FiniteSet(2, 3, 4, 5)

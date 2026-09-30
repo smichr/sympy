@@ -1,6 +1,7 @@
 from __future__ import annotations
 from sympy.core import Basic, Expr
 from sympy.core.numbers import oo
+from sympy.core.singleton import S
 from sympy.core.symbol import symbols
 from sympy.multipledispatch import Dispatcher
 from sympy.sets.setexpr import set_mul
@@ -26,22 +27,37 @@ def _(x, y):
 def _(x, y):
     return x*y
 
+def _interval_mul_endpoint(x, y):
+    # An infinite endpoint is not an element of an Interval. When paired
+    # with a zero endpoint, the limiting product is 0 rather than the
+    # indeterminate scalar product 0*oo.
+    if x.is_zero is True or y.is_zero is True:
+        return S.Zero
+    return x*y
+
+
 @_set_mul.register(Interval, Interval)
 def _(x, y):
     """
     Multiplications in interval arithmetic
     https://en.wikipedia.org/wiki/Interval_arithmetic
     """
-    # TODO: some intervals containing 0 and oo will fail as 0*oo returns nan.
     comvals = (
-        (x.start * y.start, bool(x.left_open or y.left_open)),
-        (x.start * y.end, bool(x.left_open or y.right_open)),
-        (x.end * y.start, bool(x.right_open or y.left_open)),
-        (x.end * y.end, bool(x.right_open or y.right_open)),
+        (_interval_mul_endpoint(x.start, y.start),
+            bool(x.left_open or y.left_open)),
+        (_interval_mul_endpoint(x.start, y.end),
+            bool(x.left_open or y.right_open)),
+        (_interval_mul_endpoint(x.end, y.start),
+            bool(x.right_open or y.left_open)),
+        (_interval_mul_endpoint(x.end, y.end),
+            bool(x.right_open or y.right_open)),
     )
     # TODO: handle symbolic intervals
-    minval, minopen = min(comvals)
-    maxval, maxopen = max(comvals)
+    minval = min(v for v, _ in comvals)
+    maxval = max(v for v, _ in comvals)
+    # An extremum is closed if any corner attaining it is closed.
+    minopen = all(o for v, o in comvals if v == minval)
+    maxopen = all(o for v, o in comvals if v == maxval)
     return Interval(
         minval,
         maxval,
