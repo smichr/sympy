@@ -62,7 +62,34 @@ def test_value_set_arithmetic():
     x = Symbol('x', positive=True)
     assert _value_set(x + 1) == Interval.open(1, oo)
     assert _value_set(x**2) == Interval.open(0, oo)
-    assert _value_set(1/x) is None
+    assert _value_set(1/x) == Interval.open(0, oo)
+
+
+def test_value_set_monotonic_sign_cases():
+    x = Symbol('x', negative=True)
+    assert _value_set(x**3) == Interval.open(-oo, 0)
+    assert _value_set(x**3 + log(2)*x - 1) == Interval.open(-oo, -1)
+
+    x = Symbol('x', positive=True)
+    assert _value_set(-x**3) == Interval.open(-oo, 0)
+
+    p = Symbol('p', positive=True)
+    assert _value_set(1/p) == Interval.open(0, oo)
+    assert _value_set(p/(p + 1)) == Interval.open(0, oo)
+    assert _value_set(-1/p) == Interval.open(-oo, 0)
+
+    p = Symbol('p', nonnegative=True)
+    assert _value_set(p/(p + 1)) == Interval(0, oo)
+
+    p = Symbol('p', nonpositive=True)
+    assert _value_set(p/(-p + 1)) == Interval(-oo, 0)
+
+    p = Symbol('p', positive=True, integer=True)
+    q = Symbol('q', positive=True, integer=True)
+    assert _value_set(-2/p/q) == Interval.Ropen(-2, 0)
+    assert _value_set(-2/(p - 1)/q) is None
+    assert _value_set((p - 1)*q + 1) == Interval(1, oo)
+    assert _value_set(-(p - 1)*q - 1) == Interval(-oo, -1)
 
 def test_scalar_funcs():
     assert SetExpr(Interval(0, 1)).set == Interval(0, 1)

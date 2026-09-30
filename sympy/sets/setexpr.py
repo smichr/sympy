@@ -2,6 +2,7 @@ from __future__ import annotations
 from sympy.core import Expr
 from sympy.core.decorators import call_highest_priority, _sympifyit
 from sympy.core.numbers import oo
+from sympy.core.singleton import S
 from .fancysets import ImageSet
 from .sets import (FiniteSet, Interval, set_add, set_sub, set_mul, set_div,
     set_pow, set_function)
@@ -163,10 +164,12 @@ def _setexpr_from_assumptions(expr):
 
     if expr.is_Pow:
         base, exponent = args
-        if isinstance(exponent, SetExpr):
+        if isinstance(exponent, SetExpr) or exponent.is_integer is not True:
             return None
-        if exponent.is_integer and exponent.is_nonnegative:
+        if exponent.is_nonnegative:
             return base**exponent
+        if isinstance(base, SetExpr) and base.set.contains(0) is S.false:
+            return (1/base)**(-exponent)
         return None
 
     return None
