@@ -1,5 +1,6 @@
 from __future__ import annotations
-from sympy.sets.setexpr import SetExpr
+from sympy.sets.setexpr import (
+    SetExpr, _domain_from_assumptions, _value_set)
 from sympy.sets import Interval, FiniteSet, Intersection, ImageSet, Union
 
 from sympy.core.expr import Expr
@@ -22,6 +23,46 @@ def test_setexpr():
     assert isinstance(se.set, Set)
     assert isinstance(se, Expr)
 
+
+def test_value_set_from_assumptions():
+    p = Symbol('p', positive=True)
+    pi = Symbol('pi', positive=True, integer=True)
+    pe = Symbol('pe', positive=True, even=True)
+    pr = Symbol('pr', prime=True)
+    co = Symbol('co', composite=True, odd=True)
+    n = Symbol('n', negative=True)
+    ni = Symbol('ni', negative=True, integer=True)
+    ne = Symbol('ne', negative=True, even=True)
+    nn = Symbol('nn', nonnegative=True)
+    np = Symbol('np', nonpositive=True)
+    r = Symbol('r', real=True)
+
+    assert _domain_from_assumptions(p) == Interval.open(0, oo)
+    assert _domain_from_assumptions(pi) == Interval(1, oo)
+    assert _domain_from_assumptions(pe) == Interval(2, oo)
+    assert _domain_from_assumptions(pr) == Interval(2, oo)
+    assert _domain_from_assumptions(co) == Interval(9, oo)
+    assert _domain_from_assumptions(n) == Interval.open(-oo, 0)
+    assert _domain_from_assumptions(ni) == Interval(-oo, -1)
+    assert _domain_from_assumptions(ne) == Interval(-oo, -2)
+    assert _domain_from_assumptions(nn) == Interval(0, oo)
+    assert _domain_from_assumptions(np) == Interval(-oo, 0)
+    assert _domain_from_assumptions(r) == Interval(-oo, oo)
+
+
+def test_value_set_arithmetic():
+    a, b, c = symbols('a b c', positive=True, integer=True)
+
+    assert _value_set(a + b + c - 2) == Interval(1, oo)
+    assert _value_set(a + b + c - 3) == Interval(0, oo)
+    assert _value_set(a + b - c - 2) == Interval(-oo, oo)
+    assert _value_set(2*a + 3*b - 4) == Interval(1, oo)
+    assert _value_set((a + b)**2) == Interval(4, oo)
+
+    x = Symbol('x', positive=True)
+    assert _value_set(x + 1) == Interval.open(1, oo)
+    assert _value_set(x**2) == Interval.open(0, oo)
+    assert _value_set(1/x) is None
 
 def test_scalar_funcs():
     assert SetExpr(Interval(0, 1)).set == Interval(0, 1)

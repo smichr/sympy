@@ -1,8 +1,10 @@
 from __future__ import annotations
 from sympy.core import Expr
 from sympy.core.decorators import call_highest_priority, _sympifyit
+from sympy.core.numbers import oo
 from .fancysets import ImageSet
-from .sets import set_add, set_sub, set_mul, set_div, set_pow, set_function
+from .sets import (FiniteSet, Interval, set_add, set_sub, set_mul, set_div,
+    set_pow, set_function)
 
 
 class SetExpr(Expr):
@@ -96,3 +98,89 @@ def _setexpr_apply_operation(op, x, y):
         y = y.set
     out = op(x, y)
     return SetExpr(out)
+
+
+def _domain_from_assumptions(expr):
+    """Return a conservative real value set implied by expr assumptions."""
+    if not expr.is_Symbol or expr.is_real is not True:
+        return None
+
+    if expr.is_zero:
+        return FiniteSet(0)
+
+    if expr.is_positive:
+        if expr.is_integer:
+            if expr.is_prime:
+                lo = 3 if expr.is_odd else 2
+            elif expr.is_composite:
+                lo = 9 if expr.is_odd else 4
+            elif expr.is_even:
+                lo = 2
+            else:
+                lo = 1
+            return Interval(lo, oo)
+        return Interval.open(0, oo)
+
+    if expr.is_negative:
+        if expr.is_integer:
+            hi = -2 if expr.is_even else -1
+            return Interval(-oo, hi)
+        return Interval.open(-oo, 0)
+
+    if expr.is_nonnegative:
+        return Interval(0, oo)
+
+    if expr.is_nonpositive:
+        return Interval(-oo, 0)
+
+    return Interval(-oo, oo)
+
+
+def _setexpr_from_assumptions(expr):
+    """Evaluate expr conservatively in the SetExpr domain."""
+    if not expr.free_symbols:
+        return expr
+
+    if expr.is_Symbol:
+        domain = _domain_from_assumptions(expr)
+        return None if domain is None else SetExpr(domain)
+
+    args = [_setexpr_from_assumptions(arg) for arg in expr.args]
+    if any(arg is None for arg in args):
+        return None
+
+    if expr.is_Add:
+        result = args[0]
+        for arg in args[1:]:
+            result += arg
+        return result
+
+    if expr.is_Mul:
+        result = args[0]
+        for arg in args[1:]:
+            result *= arg
+        return result
+
+    if expr.is_Pow:
+        base, exponent = args
+        if isinstance(exponent, SetExpr):
+            return None
+        if exponent.is_integer and exponent.is_nonnegative:
+            return base**exponent
+        return None
+
+    return None
+
+
+def _value_set(expr):
+    """Return a conservative set containing all values of expr.
+
+    Only inexpensive SetExpr arithmetic is used. None is returned when
+    the expression cannot be handled safely by the supported operations.
+    """
+    result = _setexpr_from_assumptions(expr)
+    if result is None:
+        return None
+    if isinstance(result, SetExpr):
+        return result.set
+    return FiniteSet(result)
