@@ -826,6 +826,8 @@ class Add(Expr, AssocOp):
             return True
         elif not pos and not nonneg:
             return False
+        from sympy.sets.setexpr import _value_set_is_positive
+        return _value_set_is_positive(self)
 
     def _eval_is_extended_nonnegative(self):
         if not self.is_number:
@@ -841,6 +843,8 @@ class Add(Expr, AssocOp):
                         v = _monotonic_sign(self)
                         if v is not None and v != self and v.is_extended_nonnegative:
                             return True
+            from sympy.sets.setexpr import _value_set_is_nonnegative
+            return _value_set_is_nonnegative(self)
 
     def _eval_is_extended_nonpositive(self):
         if not self.is_number:
@@ -856,6 +860,8 @@ class Add(Expr, AssocOp):
                         v = _monotonic_sign(self)
                         if v is not None and v != self and v.is_extended_nonpositive:
                             return True
+            from sympy.sets.setexpr import _value_set_is_nonpositive
+            return _value_set_is_nonpositive(self)
 
     def _eval_is_extended_negative(self):
         if self.is_number:
@@ -908,6 +914,8 @@ class Add(Expr, AssocOp):
             return True
         elif not neg and not nonpos:
             return False
+        from sympy.sets.setexpr import _value_set_is_negative
+        return _value_set_is_negative(self)
 
     def _eval_subs(self, old, new):
         if not old.is_Add:

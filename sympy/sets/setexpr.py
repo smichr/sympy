@@ -101,6 +101,12 @@ def _setexpr_apply_operation(op, x, y):
     return SetExpr(out)
 
 
+def _as_setexpr(arg):
+    if isinstance(arg, SetExpr):
+        return arg
+    return SetExpr(FiniteSet(arg))
+
+
 def _domain_from_assumptions(expr):
     """Return a conservative real value set implied by expr assumptions."""
     if not expr.is_Symbol or expr.is_real is not True:
@@ -139,30 +145,31 @@ def _domain_from_assumptions(expr):
 
 def _setexpr_from_assumptions(expr):
     """Evaluate expr conservatively in the SetExpr domain."""
-    if not expr.free_symbols:
-        return expr
-
     if expr.is_Symbol:
         domain = _domain_from_assumptions(expr)
         return None if domain is None else SetExpr(domain)
 
-    args = [_setexpr_from_assumptions(arg) for arg in expr.args]
-    if any(arg is None for arg in args):
-        return None
+    args = []
+    for arg in expr.args:
+        args.append(value := _setexpr_from_assumptions(arg))
+        if value is None:
+            return None
 
     if expr.is_Add:
+        args = [_as_setexpr(arg) for arg in args]
         result = args[0]
         for arg in args[1:]:
             result += arg
         return result
 
-    if expr.is_Mul:
+    elif expr.is_Mul:
+        args = [_as_setexpr(arg) for arg in args]
         result = args[0]
         for arg in args[1:]:
             result *= arg
         return result
 
-    if expr.is_Pow:
+    elif expr.is_Pow:
         base, exponent = args
         if isinstance(exponent, SetExpr) or exponent.is_integer is not True:
             return None
@@ -172,9 +179,17 @@ def _setexpr_from_assumptions(expr):
             return (1/base)**(-exponent)
         return None
 
+    # We are no longer dealing with Add/Mul/Pow, so this cannot
+    # recurse into our Add assumptions handler.
+    elif not expr.free_symbols and expr.is_number and expr.is_real is True:
+        return expr
+
     return None
 
 
+# This routine can be called from the assumptions system. Never query an
+# assumption of the expression currently being resolved; only query atoms
+# or strict subexpressions, otherwise assumptions recursion can result.
 def _value_set(expr):
     """Return a conservative set containing all values of expr.
 
@@ -187,3 +202,43 @@ def _value_set(expr):
     if isinstance(result, SetExpr):
         return result.set
     return FiniteSet(result)
+
+
+def _value_set_is_positive(expr):
+    values = _value_set(expr)
+    if values is None:
+        return None
+    if values.is_subset(Interval.open(0, oo)):
+        return True
+    if values.is_subset(Interval(-oo, 0)):
+        return False
+
+
+def _value_set_is_nonnegative(expr):
+    values = _value_set(expr)
+    if values is None:
+        return None
+    if values.is_subset(Interval(0, oo)):
+        return True
+    if values.is_subset(Interval.open(-oo, 0)):
+        return False
+
+
+def _value_set_is_negative(expr):
+    values = _value_set(expr)
+    if values is None:
+        return None
+    if values.is_subset(Interval.open(-oo, 0)):
+        return True
+    if values.is_subset(Interval(0, oo)):
+        return False
+
+
+def _value_set_is_nonpositive(expr):
+    values = _value_set(expr)
+    if values is None:
+        return None
+    if values.is_subset(Interval(-oo, 0)):
+        return True
+    if values.is_subset(Interval.open(0, oo)):
+        return False

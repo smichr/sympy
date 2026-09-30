@@ -1345,3 +1345,17 @@ def test_ask_shuffle():
     third = grp.random()
 
     assert first == second == third
+
+
+def test_add_value_set_assumptions():
+    a = Symbol('a', positive=True, integer=True)
+    b = Symbol('b', positive=True, integer=True)
+    c = Symbol('c', positive=True, integer=True)
+
+    assert (a + b + c - 2).is_positive is True
+    assert (a + b + c - 2).is_negative is False
+    assert (a + b + c - 3).is_nonnegative is True
+    assert (a + b + c - 3).is_positive is None
+    assert (a + b + c - 3).is_nonpositive is None
+    assert (a + b - c - 2).is_positive is None
+    assert (a + b - c - 2).is_negative is None
