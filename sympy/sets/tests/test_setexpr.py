@@ -4,7 +4,7 @@ from sympy.sets.setexpr import (
 from sympy.sets import Interval, FiniteSet, Intersection, ImageSet, Union
 
 from sympy.core.expr import Expr
-from sympy.core.function import Lambda
+from sympy.core.function import Lambda, Function
 from sympy.core.numbers import (I, Rational, oo)
 from sympy.core.singleton import S
 from sympy.core.symbol import (Dummy, Symbol, symbols)
@@ -399,3 +399,22 @@ def test_SetExpr_Integers():
     assert (SetExpr(S.Integers)*I + 1).dummy_eq(
         SetExpr(ImageSet(Lambda(x, x + 1),
         ImageSet(Lambda(_d, _d*I), S.Integers))))
+
+
+def test_value_set_real_subexpressions():
+    x = Symbol('x', positive=True)
+
+    # A smaller real numerical expression may use its assumptions.
+    assert _value_set(log(2)*x - 1) == Interval.open(-1, oo)
+
+    # Complex numerical expressions are outside this real value-set model.
+    assert _value_set(I*x) is None
+
+
+def test_value_set_unsupported_constant_expression():
+    f = Function('f')
+
+    # Unsupported constant expressions should fail without assumptions
+    # recursion in the containing Add.
+    assert _value_set(f(1) - f(2)) is None
+    assert (f(1) - f(2)).is_nonpositive is None
