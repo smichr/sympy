@@ -18,7 +18,7 @@ from sympy.series.order import O
 from sympy.sets.sets import Interval
 from sympy.simplify.radsimp import collect
 from sympy.simplify.simplify import simplify
-from sympy.core.exprtools import (_decompose_exprs, decompose_power, Factors,
+from sympy.core.exprtools import (_decompose_exprs, _expr_gens, decompose_power, Factors,
                                   Term, _gcd_terms, gcd_terms, factor_terms,
                                   factor_nc, _mask_nc, _monotonic_sign)
 from sympy.core.mul import _keep_coeff as _keep_coeff
@@ -42,6 +42,18 @@ def test__decompose_exprs():
 
     raises(NonCommutativeExpression, lambda:
         _decompose_exprs((A*B,)))
+
+
+def test__expr_gens():
+    assert _expr_gens(S.One) == set()
+    assert _expr_gens(x) == {x}
+    assert _expr_gens((1 + x**2)**3 + 1) == {x}
+    assert _expr_gens(x + (1 + x)**100) == {x}
+    assert _expr_gens(x/y**2) == {x, y}
+    assert _expr_gens(x**(2*y)) == {x**y}
+    assert _expr_gens(exp(2*x) + exp(x) + 1) == {exp(x)}
+    assert _expr_gens(sin(x) + sin(x)**2) == {sin(x)}
+    assert _expr_gens(x + exp(x)) == {x, exp(x)}
 
 
 def test_decompose_power():
