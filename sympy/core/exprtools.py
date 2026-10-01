@@ -358,6 +358,37 @@ def _decompose_exprs(
     return exprs_data, bases
 
 
+def _expr_gens(expr):
+    """Return the structural generators of a commutative expression.
+
+    Generator identification is performed without expanding the expression.
+    Bases which are ``Add`` or ``Mul`` objects are recursively decomposed;
+    other bases returned by ``decompose_power`` are retained as generators.
+
+    Examples
+    ========
+
+    >>> from sympy import exp
+    >>> from sympy.abc import x
+    >>> from sympy.core.exprtools import _expr_gens
+    >>> _expr_gens((1 + x**2)**3 + 1)
+    {x}
+    >>> _expr_gens(exp(2*x) + exp(x))
+    {exp(x)}
+
+    """
+    _, bases = _decompose_exprs((expr,))
+    gens = set()
+
+    for base in bases:
+        if base.is_Add or base.is_Mul:
+            gens.update(_expr_gens(base))
+        else:
+            gens.add(base)
+
+    return gens
+
+
 class Factors:
     """Efficient representation of ``f_1*f_2*...*f_n``."""
 
