@@ -1355,7 +1355,7 @@ def test_Poly_degree():
 
 
     # optimization
-    big = 2  # make this number 1000 when full expansion can be avoided
+    big = 20000  # make this number 1000 when full expansion can be avoided
 
     assert degree((x + 1)**big, x) == big  # Large power (fast-path, no expansion)
     assert degree((x + 1)**big + x**(big-1), x) == big  # Addition without cancellation
@@ -1385,6 +1385,15 @@ def test_Poly_degree():
     assert degree(x, 1.1) == degree(x, pi) == 0                      #
     assert degree(0, 1.1) == -oo                                     #
     # end of zoo of warnings-----------------------------------------#
+
+    assert degree(sin(x), sin(x)) == 1
+    assert degree(sin(x) + sin(x)**2, sin(x)) == 2
+
+    assert degree(1/x, 1/x) == 1
+    assert degree((x + 1/x**2)**big, 1/x) == 2*big
+
+    assert degree(exp(x), exp(x)) == 1
+    assert degree(exp(x) + exp(-2*x), exp(-x)) == 2
 
 
 def test_Poly_degree_list():
