@@ -4976,25 +4976,36 @@ def degree(f, gen=0):
             a symbol (not int) generator or a Poly (which identifies
             the generators).'''))
 
-    def _dummy_form(expr, generator):
+    def _dummy_form(expr, generator, expand=True):
         """Replace nonnegative powers of generator with powers of a Dummy."""
         gbase, gexp = decompose_power(generator)
         if not gexp:
             raise PolynomialError(
                 "a valid generator expected, got %s" % generator)
         d = Dummy()
+        fd = expr
         if gbase.func == exp:
             A = generator.args[0]
             pows = {i:d**e for i in expr.atoms(exp) if (e:=i.args[0]/A).is_Integer and e >= 1}
-        else:
-            pows = {i:d**e for i in expr.atoms(Pow) if i.base == gbase and (e:=i.exp/gexp).is_Integer and e >= 0}
+            fd = fd.xreplace(pows)
+        elif gexp != 1:
+            def predicate(x):
+                if not x.is_Pow:
+                    return
+                b, e = decompose_power(x)
+                if type(e) is not int:
+                    return
+                if b != gbase:
+                    return
+                if (e*gexp > 0 and e % gexp == 0):
+                    return True
+            def action(x):
+                b, e = decompose_power(x)
+                return d**(e/gexp)
+            fd = fd.replace(predicate, action)
 
-        # first replace recognized powers of the formal generator
-        fd = expr.xreplace(pows)
-
-        # then handle a bare base only when the generator itself is first power
-        if gexp == 1:
-            fd = fd.replace(lambda x: x == gbase, lambda x: d)
+        # if there are any gbase left, it is not polynomial, but let the caller deal with it
+        fd = fd.xreplace({gbase: d})
         return fd, d
 
     def _poly_form(expr, generator, implicit=False):
