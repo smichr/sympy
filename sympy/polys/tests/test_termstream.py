@@ -152,20 +152,20 @@ def test_termstream_affine_product_recurrence():
 
 
 def test_termstream_affine_product_avoids_convolution():
-    left = Pow(2*x + 3, 40, evaluate=False)
-    right = Pow(5*x - 7, 30, evaluate=False)
+    # Keep this control case intentionally small; the larger comparison lives
+    # in bench_termstream.py because forcing the generic convolution path is
+    # deliberately expensive.
+    left = Pow(2*x + 3, 8, evaluate=False)
+    right = Pow(5*x - 7, 6, evaluate=False)
     direct = Mul(left, right, evaluate=False)
 
-    # Wrapping one factor in an unevaluated +0 defeats the structural
-    # affine-product recognition without changing the polynomial, giving a
-    # convenient generic-convolution control case.
     wrapped_left = Add(left, S.Zero, evaluate=False)
     generic = Mul(wrapped_left, right, evaluate=False)
 
     direct_stream = PolyTermStream(direct, x, collect_stats=True)
     generic_stream = PolyTermStream(generic, x, collect_stats=True)
 
-    assert_stream_equal(direct_stream.take(12), generic_stream.take(12))
+    assert_stream_equal(direct_stream.take(5), generic_stream.take(5))
     assert direct_stream.stats['mul_states_popped'] == 0
     assert generic_stream.stats['mul_states_popped'] > 0
     assert direct_stream.stats['term_requests'] < generic_stream.stats['term_requests']
