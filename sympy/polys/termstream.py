@@ -81,6 +81,13 @@ def _affine_power_data(expr, gen):
     # nonzeroness keeps the generic path rather than introducing a condition.
     if a.is_zero is not False:
         return None
+
+    # Repeated exact division can cause severe expression swell when the
+    # affine coefficients contain symbolic parameters.  The generic stream
+    # handles those well, so keep the recurrence shortcut numeric for now.
+    if a.free_symbols or b.free_symbols:
+        return None
+
     return a, b, exponent
 
 
