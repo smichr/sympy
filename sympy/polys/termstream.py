@@ -21,10 +21,36 @@ def _is_zero(coeff):
     return coeff == 0 or coeff.is_zero is True
 
 
+class _StreamStats:
+    """Optional counters for studying the amount of lazy stream work."""
+
+    __slots__ = (
+        'term_requests', 'child_requests', 'cache_hits', 'cache_misses',
+        'generated_terms', 'mul_states_popped', 'cancelled_layers',
+        'streams_created',
+    )
+
+    def __init__(self):
+        self.term_requests = 0
+        self.child_requests = 0
+        self.cache_hits = 0
+        self.cache_misses = 0
+        self.generated_terms = 0
+        self.mul_states_popped = 0
+        self.cancelled_layers = 0
+        self.streams_created = 0
+
+    def as_dict(self):
+        return {name: getattr(self, name) for name in self.__slots__}
+
+
 class _TermStream:
     """Memoized stream of descending ``(degree, coefficient)`` pairs."""
 
-    def __init__(self):
+    def __init__(self, stats=None):
+        self._stats = stats
+        if stats is not None:
+            stats.streams_created += 1
         self._cache = []
         self._done = False
         self._generator = self._generate()
@@ -34,14 +60,29 @@ class _TermStream:
 
     def term(self, index):
         """Return term *index*, generating only as much as necessary."""
+        stats = self._stats
+        if stats is not None:
+            stats.term_requests += 1
+            if index < len(self._cache):
+                stats.cache_hits += 1
+            else:
+                stats.cache_misses += 1
+
         while len(self._cache) <= index and not self._done:
             try:
                 self._cache.append(next(self._generator))
+                if stats is not None:
+                    stats.generated_terms += 1
             except StopIteration:
                 self._done = True
         if index < len(self._cache):
             return self._cache[index]
         return None
+
+    def _child_term(self, child, index):
+        if self._stats is not None:
+            self._stats.child_requests += 1
+        return child.term(index)
 
     def take(self, count):
         """Return at most the first *count* emitted terms."""
@@ -56,10 +97,10 @@ class _TermStream:
 
 class _MonomialStream(_TermStream):
 
-    def __init__(self, degree, coeff):
+    def __init__(self, degree, coeff, stats=None):
         self.degree = degree
         self.coeff = coeff
-        super().__init__()
+        super().__init__(stats)
 
     def _generate(self):
         if not _is_zero(self.coeff):
@@ -69,14 +110,14 @@ class _MonomialStream(_TermStream):
 class _AddStream(_TermStream):
     """Merge descending child streams, combining equal degree layers."""
 
-    def __init__(self, children):
+    def __init__(self, children, stats=None):
         self.children = children
-        super().__init__()
+        super().__init__(stats)
 
     def _generate(self):
         heap = []
         for child_index, child in enumerate(self.children):
-            term = child.term(0)
+            term = self._child_term(child, 0)
             if term is not None:
                 degree, coeff = term
                 heappush(heap, (-degree, child_index, 0, coeff))
@@ -89,7 +130,8 @@ class _AddStream(_TermStream):
                 _, child_index, term_index, child_coeff = heappop(heap)
                 coeff += child_coeff
 
-                term = self.children[child_index].term(term_index + 1)
+                term = self._child_term(
+                    self.children[child_index], term_index + 1)
                 if term is not None:
                     next_degree, next_coeff = term
                     heappush(
@@ -98,21 +140,24 @@ class _AddStream(_TermStream):
                          next_coeff),
                     )
 
-            if not _is_zero(coeff):
+            if _is_zero(coeff):
+                if self._stats is not None:
+                    self._stats.cancelled_layers += 1
+            else:
                 yield degree, coeff
 
 
 class _MulStream(_TermStream):
     """Lazily merge the ordered Cartesian product of two term streams."""
 
-    def __init__(self, left, right):
+    def __init__(self, left, right, stats=None):
         self.left = left
         self.right = right
-        super().__init__()
+        super().__init__(stats)
 
     def _state(self, left_index, right_index):
-        left = self.left.term(left_index)
-        right = self.right.term(right_index)
+        left = self._child_term(self.left, left_index)
+        right = self._child_term(self.right, right_index)
         if left is None or right is None:
             return None
         return left[0] + right[0], left[1] * right[1]
@@ -134,6 +179,8 @@ class _MulStream(_TermStream):
             # degree layer.
             while heap and -heap[0][0] == degree:
                 _, left_index, right_index = heappop(heap)
+                if self._stats is not None:
+                    self._stats.mul_states_popped += 1
                 state = self._state(left_index, right_index)
                 coeff += state[1]
 
@@ -149,45 +196,49 @@ class _MulStream(_TermStream):
                     if state is not None:
                         heappush(heap, (-state[0], *neighbor))
 
-            if not _is_zero(coeff):
+            if _is_zero(coeff):
+                if self._stats is not None:
+                    self._stats.cancelled_layers += 1
+            else:
                 yield degree, coeff
 
 
-def _power_stream(base, exponent):
+def _power_stream(base, exponent, stats=None):
     """Build a logarithmic-depth lazy stream for ``base**exponent``."""
     if exponent == 0:
-        return _MonomialStream(0, S.One)
+        return _MonomialStream(0, S.One, stats)
     if exponent == 1:
         return base
 
-    half = _power_stream(base, exponent // 2)
-    square = _MulStream(half, half)
+    half = _power_stream(base, exponent // 2, stats)
+    square = _MulStream(half, half, stats)
     if exponent % 2:
-        return _MulStream(square, base)
+        return _MulStream(square, base, stats)
     return square
 
 
-def _stream_from_expr(expr, gen):
+def _stream_from_expr(expr, gen, stats=None):
     if expr == gen:
-        return _MonomialStream(1, S.One)
+        return _MonomialStream(1, S.One, stats)
 
     if not expr.has(gen):
-        return _MonomialStream(0, expr)
+        return _MonomialStream(0, expr, stats)
 
     if expr.is_Add:
-        return _AddStream([_stream_from_expr(arg, gen) for arg in expr.args])
+        return _AddStream(
+            [_stream_from_expr(arg, gen, stats) for arg in expr.args], stats)
 
     if expr.is_Mul:
-        children = [_stream_from_expr(arg, gen) for arg in expr.args]
+        children = [_stream_from_expr(arg, gen, stats) for arg in expr.args]
         stream = children[0]
         for child in children[1:]:
-            stream = _MulStream(stream, child)
+            stream = _MulStream(stream, child, stats)
         return stream
 
     if expr.is_Pow:
         if expr.exp.is_Integer and expr.exp.is_nonnegative:
-            base = _stream_from_expr(expr.base, gen)
-            return _power_stream(base, int(expr.exp))
+            base = _stream_from_expr(expr.base, gen, stats)
+            return _power_stream(base, int(expr.exp), stats)
 
     raise PolynomialError(
         "%s is not supported as a polynomial expression in %s"
@@ -204,6 +255,10 @@ class PolyTermStream:
     nonzero; the current prototype is intended primarily for exact domains
     such as ``ZZ`` and ``QQ``.
 
+    Set ``collect_stats=True`` to collect experimental counters describing
+    how much lazy work was needed.  The current values are available from the
+    ``stats`` property.
+
     Examples
     ========
 
@@ -216,14 +271,15 @@ class PolyTermStream:
     99999
     """
 
-    def __init__(self, expr, gen):
+    def __init__(self, expr, gen, collect_stats=False):
         expr = sympify(expr)
         gen = sympify(gen)
         if not gen.is_Symbol:
             raise TypeError("the prototype requires a Symbol generator")
         self.expr = expr
         self.gen = gen
-        self._stream = _stream_from_expr(expr, gen)
+        self._stats = _StreamStats() if collect_stats else None
+        self._stream = _stream_from_expr(expr, gen, self._stats)
 
     def term(self, index):
         """Return the *index*-th surviving term as ``(degree, coeff)``."""
@@ -246,3 +302,12 @@ class PolyTermStream:
         if term is None:
             return S.Zero
         return term[1]
+
+    @property
+    def stats(self):
+        """Return instrumentation counters, or None when not collecting."""
+        if self._stats is None:
+            return None
+        result = self._stats.as_dict()
+        result['root_terms_generated'] = len(self._stream._cache)
+        return result
