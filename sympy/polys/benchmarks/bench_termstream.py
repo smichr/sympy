@@ -1,5 +1,7 @@
 """Benchmarks for experimental lazy polynomial term streams."""
 
+from time import perf_counter
+
 from sympy import Add, Mul, Poly, Pow, S, binomial, symbols
 from sympy.polys.termstream import PolyTermStream
 
@@ -157,3 +159,33 @@ def termstream_affine_product_stats(count=None):
         stream.take(count)
         result[name] = stream.stats
     return result
+
+
+def affine_product_wall_times(repeat=5):
+    """Return best wall-clock times for the large affine-product A/B case."""
+    cases = {}
+    for count in (5, 10, 20, None):
+        requested = affine_product_size + 1 if count is None else count
+        label = 'all' if count is None else count
+        for name, expr in (
+            ('recurrence', affine_product_direct),
+            ('generic', affine_product_generic),
+        ):
+            best = None
+            for _ in range(repeat):
+                start = perf_counter()
+                PolyTermStream(expr, x).take(requested)
+                elapsed = perf_counter() - start
+                if best is None or elapsed < best:
+                    best = elapsed
+            cases[(label, name)] = best
+
+    best = None
+    for _ in range(repeat):
+        start = perf_counter()
+        Poly(affine_product_direct, x).terms()
+        elapsed = perf_counter() - start
+        if best is None or elapsed < best:
+            best = elapsed
+    cases[('all', 'Poly')] = best
+    return cases
