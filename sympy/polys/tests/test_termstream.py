@@ -34,16 +34,12 @@ def _assert_matches_poly(expr):
     expected = _poly_terms(expr)
     stream = PolyTermStream(expr, x)
 
-    # Asking for one term beyond exhaustion verifies that no duplicate or
-    # spurious degree layer remains after the canonical Poly terms.
     assert_stream_equal(stream.take(len(expected) + 1), expected)
 
     poly = Poly(expr.doit().expand(), x)
     assert stream.degree() == poly.degree()
     assert stream.LC().equals(poly.LC())
 
-    # A stream emits one coefficient for each degree layer, so degrees must
-    # be strictly decreasing and emitted coefficients must be nonzero.
     assert all(
         left[0] > right[0]
         for left, right in zip(expected, expected[1:])
@@ -85,7 +81,6 @@ def test_termstream_add_cancellation():
 
 
 def test_termstream_cancellation_depth():
-    # Cancel increasingly long prefixes of a huge power without expanding it.
     n = 100000
     for cancelled in (1, 2, 5, 10, 20, 50):
         prefix = Add(*(
@@ -98,9 +93,6 @@ def test_termstream_cancellation_depth():
 
 
 def test_termstream_structural_cancellation_depth():
-    # The k-th finite difference of x**n has degree n-k.  Unlike the explicit
-    # prefix test above, cancellation here is discovered only by merging the
-    # streams of k+1 structurally different powers.
     n = 1000
     for k in (1, 2, 5, 10):
         stream = PolyTermStream(_finite_difference_power(n, k), x)
@@ -120,13 +112,9 @@ def test_termstream_instrumentation():
     assert stats['cancelled_layers'] >= 5
     assert stats['generated_terms'] > 1
     assert stats['child_requests'] > 0
-    # Affine powers are emitted directly and coefficient-only factors are
-    # scaled without convolution, so this family should need no Mul lattice.
     assert stats['mul_states_popped'] == 0
     assert stats['streams_created'] > 1
 
-    # Re-querying the leading term should use the memoized root term rather
-    # than generate another one.
     generated = stats['generated_terms']
     hits = stats['cache_hits']
     assert stream.LC() == prod(range(996, 1001))
@@ -137,9 +125,6 @@ def test_termstream_instrumentation():
 
 
 def test_termstream_instrumentation_tracks_cancellation_depth():
-    # These expressions all have the same nominal degree.  More finite
-    # differences force the root Add stream to discard more leading layers
-    # before it can emit its first surviving term.
     previous_cancelled = -1
     previous_generated = -1
     for k in (1, 2, 5, 10):
@@ -156,10 +141,37 @@ def test_termstream_instrumentation_tracks_cancellation_depth():
         previous_generated = stats['generated_terms']
 
 
+def test_termstream_affine_product_recurrence():
+    expressions = [
+        (2*x + 3)**4*(5*x - 7)**3,
+        (x + 1)**8*(x - 1)**5,
+        (3*x - 2)**6*(2*x + 5)**4,
+    ]
+    for expr in expressions:
+        _assert_matches_poly(expr)
+
+
+def test_termstream_affine_product_avoids_convolution():
+    left = Pow(2*x + 3, 40, evaluate=False)
+    right = Pow(5*x - 7, 30, evaluate=False)
+    direct = Mul(left, right, evaluate=False)
+
+    # Wrapping one factor in an unevaluated +0 defeats the structural
+    # affine-product recognition without changing the polynomial, giving a
+    # convenient generic-convolution control case.
+    wrapped_left = Add(left, S.Zero, evaluate=False)
+    generic = Mul(wrapped_left, right, evaluate=False)
+
+    direct_stream = PolyTermStream(direct, x, collect_stats=True)
+    generic_stream = PolyTermStream(generic, x, collect_stats=True)
+
+    assert_stream_equal(direct_stream.take(12), generic_stream.take(12))
+    assert direct_stream.stats['mul_states_popped'] == 0
+    assert generic_stream.stats['mul_states_popped'] > 0
+    assert direct_stream.stats['term_requests'] < generic_stream.stats['term_requests']
+
+
 def test_termstream_factorized_identity_cancellation():
-    # Two very different trees represent the same degree-2*n polynomial.
-    # Their complete cancellation should expose the final +x without either
-    # side first being put into canonical polynomial form.
     for n in (5, 10, 30):
         factored = Mul(
             Pow(x + 1, n, evaluate=False),
@@ -191,7 +203,6 @@ def test_termstream_sparse_mul():
 
 
 def test_termstream_mul_degree_collisions():
-    # Several pairs of child terms contribute to each middle degree.
     p = x**4 + x**2 + 1
     q = x**4 - x**2 + 1
     _assert_matches_poly(p*q)
@@ -245,9 +256,6 @@ def test_termstream_symbolic_coefficients():
     assert_stream_equal(stream.take(5), expected[:5])
     _assert_matches_poly(expr)
 
-    # Coefficients are formal coefficients with respect to x.  The stream is
-    # not expected to prove stronger identities in the coefficient domain
-    # than Poly does.
     coeff = sin(y)**2 + (1 - sin(y)**2) - 1
     _assert_matches_poly(Mul(coeff, x**10, evaluate=False) + x)
 
@@ -287,8 +295,6 @@ def _random_poly(rng, depth):
 
 
 def test_termstream_random_against_poly():
-    # A fixed seed makes failures reproducible while exercising many tree
-    # shapes that hand-written examples are unlikely to cover.
     rng = Random(8675309)
     for _ in range(500):
         expr = _random_poly(rng, 3)
