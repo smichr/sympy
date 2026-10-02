@@ -1,3 +1,4 @@
+from math import prod
 from random import Random
 
 from sympy import (
@@ -18,6 +19,7 @@ def assert_stream_equal(got, expected):
             zip(got, expected):
         assert degree == expected_degree
         assert coeff.equals(expected_coeff) is True
+
 
 def _poly_terms(expr):
     """Return the canonical nonzero terms of ``Poly(expr, x)``."""
@@ -47,6 +49,14 @@ def _assert_matches_poly(expr):
         for left, right in zip(expected, expected[1:])
     )
     assert all(coeff != 0 for _, coeff in expected)
+
+
+def _finite_difference_power(n, k):
+    """Return the k-th forward difference of x**n, kept unevaluated."""
+    return Add(*(
+        (-1)**(k - j)*binomial(k, j)*Pow(x + j, n, evaluate=False)
+        for j in range(k + 1)
+    ), evaluate=False)
 
 
 def test_termstream_power():
@@ -85,6 +95,34 @@ def test_termstream_cancellation_depth():
         stream = PolyTermStream((x + 1)**n - prefix, x)
         assert stream.term(0) == (
             n - cancelled, binomial(n, cancelled))
+
+
+def test_termstream_structural_cancellation_depth():
+    # The k-th finite difference of x**n has degree n-k.  Unlike the explicit
+    # prefix test above, cancellation here is discovered only by merging the
+    # streams of k+1 structurally different powers.
+    n = 1000
+    for k in (1, 2, 5, 10):
+        stream = PolyTermStream(_finite_difference_power(n, k), x)
+        expected_lc = prod(range(n - k + 1, n + 1))
+        assert stream.term(0) == (n - k, expected_lc)
+
+
+def test_termstream_factorized_identity_cancellation():
+    # Two very different trees represent the same degree-2*n polynomial.
+    # Their complete cancellation should expose the final +x without either
+    # side first being put into canonical polynomial form.
+    for n in (5, 10, 30):
+        factored = Mul(
+            Pow(x + 1, n, evaluate=False),
+            Pow(x - 1, n, evaluate=False),
+            evaluate=False,
+        )
+        power = Pow(x**2 - 1, n, evaluate=False)
+        expr = Add(factored, -power, x, evaluate=False)
+        stream = PolyTermStream(expr, x)
+        assert stream.term(0) == (1, 1)
+        assert stream.take(2) == [(1, 1)]
 
 
 def test_termstream_mul():
