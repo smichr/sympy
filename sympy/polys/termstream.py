@@ -387,6 +387,27 @@ def _power_stream(base, exponent, stats=None):
 
 
 def _stream_from_expr(expr, gen, stats=None):
+    """Build the most specific lazy stream available for ``expr``.
+
+    Multiplication first looks for a favorable structure that can be emitted
+    directly, such as a recurrence-backed product of affine powers::
+
+                         Mul
+                          |
+                 can I recognize a
+              favorable special structure?
+                    /             \
+                  yes              no
+                   |                |
+            recurrence stream    generic MulStream
+                   |                |
+              C0, C1, C2, ...   walk diagonals
+
+    Falling back to ``_MulStream`` does not expand the product.  It lazily
+    traverses the ordered Cartesian product of the child term streams, one
+    degree diagonal at a time, and stops as soon as the consumer has enough
+    output.
+    """
     if expr == gen:
         return _MonomialStream(1, S.One, stats)
 
