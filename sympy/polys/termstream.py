@@ -148,6 +148,30 @@ class _MonomialStream(_TermStream):
             yield self.degree, self.coeff
 
 
+class _ScaleStream(_TermStream):
+    """Multiply all coefficients of a child stream by a scalar."""
+
+    def __init__(self, factor, child, stats=None):
+        self.factor = factor
+        self.child = child
+        super().__init__(stats)
+
+    def _generate(self):
+        if _is_zero(self.factor):
+            return
+
+        index = 0
+        while True:
+            term = self._child_term(self.child, index)
+            if term is None:
+                return
+            degree, coeff = term
+            coeff *= self.factor
+            if not _is_zero(coeff):
+                yield degree, coeff
+            index += 1
+
+
 class _AffinePowerStream(_TermStream):
     """Direct coefficient stream for ``(a*x + b)**n``.
 
@@ -306,10 +330,20 @@ def _stream_from_expr(expr, gen, stats=None):
             [_stream_from_expr(arg, gen, stats) for arg in expr.args], stats)
 
     if expr.is_Mul:
-        children = [_stream_from_expr(arg, gen, stats) for arg in expr.args]
+        scale = S.One
+        dependent = []
+        for arg in expr.args:
+            if arg.has(gen):
+                dependent.append(arg)
+            else:
+                scale *= arg
+
+        children = [_stream_from_expr(arg, gen, stats) for arg in dependent]
         stream = children[0]
         for child in children[1:]:
             stream = _MulStream(stream, child, stats)
+        if scale != 1:
+            stream = _ScaleStream(scale, stream, stats)
         return stream
 
     if expr.is_Pow:
