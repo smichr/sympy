@@ -62,6 +62,28 @@ def _affine_coeffs(expr, gen):
     return None
 
 
+def _affine_power_data(expr, gen):
+    """Return ``(a, b, n)`` for ``(a*gen + b)**n`` when safe."""
+    exponent = 1
+    base = expr
+    if expr.is_Pow:
+        if not (expr.exp.is_Integer and expr.exp.is_nonnegative):
+            return None
+        exponent = int(expr.exp)
+        base = expr.base
+
+    affine = _affine_coeffs(base, gen)
+    if affine is None:
+        return None
+    a, b = affine
+
+    # The product recurrence divides by leading coefficients.  Unknown
+    # nonzeroness keeps the generic path rather than introducing a condition.
+    if a.is_zero is not False:
+        return None
+    return a, b, exponent
+
+
 class _StreamStats:
     """Optional counters for studying the amount of lazy stream work."""
 
@@ -207,6 +229,50 @@ class _AffinePowerStream(_TermStream):
                 yield n - r, coeff
 
 
+class _AffineProductStream(_TermStream):
+    """Direct stream for ``(a*x+b)**m * (c*x+d)**n``.
+
+    With ``t = 1/x`` the coefficient generator is
+
+    ``F(t) = (a + b*t)**m * (c + d*t)**n``.
+
+    The logarithmic derivative of ``F`` gives a second-order linear
+    recurrence for its coefficients, so each new degree layer is obtained
+    with O(1) coefficient operations instead of walking a convolution
+    diagonal.
+    """
+
+    def __init__(self, left, right, stats=None):
+        self.a, self.b, self.m = left
+        self.c, self.d, self.n = right
+        super().__init__(stats)
+
+    def _generate(self):
+        a, b, m = self.a, self.b, self.m
+        c, d, n = self.c, self.d, self.n
+        total = m + n
+
+        q0 = a*c
+        q1 = a*d + b*c
+        q2 = b*d
+        p0 = m*b*c + n*d*a
+        p1 = b*d*total
+
+        previous = S.Zero
+        coeff = a**m*c**n
+        if not _is_zero(coeff):
+            yield total, coeff
+
+        for r in range(total):
+            next_coeff = (
+                (p0 - q1*r)*coeff
+                + (p1 - q2*(r - 1))*previous
+            )/(q0*(r + 1))
+            previous, coeff = coeff, next_coeff
+            if not _is_zero(coeff):
+                yield total - r - 1, coeff
+
+
 class _AddStream(_TermStream):
     """Merge descending child streams, combining equal degree layers."""
 
@@ -274,11 +340,6 @@ class _MulStream(_TermStream):
             degree = -heap[0][0]
             coeff = S.Zero
 
-            # Processing a state can reveal another state having the same
-            # degree, so continue until the heap really moves below this
-            # degree layer.  Each heap entry carries the product coefficient
-            # computed when the state was discovered so it need not be looked
-            # up again when popped.
             while heap and -heap[0][0] == degree:
                 _, left_index, right_index, state_coeff = heappop(heap)
                 if self._stats is not None:
@@ -337,6 +398,15 @@ def _stream_from_expr(expr, gen, stats=None):
                 dependent.append(arg)
             else:
                 scale *= arg
+
+        if len(dependent) == 2:
+            left = _affine_power_data(dependent[0], gen)
+            right = _affine_power_data(dependent[1], gen)
+            if left is not None and right is not None:
+                stream = _AffineProductStream(left, right, stats)
+                if scale != 1:
+                    stream = _ScaleStream(scale, stream, stats)
+                return stream
 
         children = [_stream_from_expr(arg, gen, stats) for arg in dependent]
         stream = children[0]
