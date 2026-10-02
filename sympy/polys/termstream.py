@@ -167,7 +167,7 @@ class _MulStream(_TermStream):
         if first is None:
             return
 
-        heap = [(-first[0], 0, 0)]
+        heap = [(-first[0], 0, 0, first[1])]
         seen = {(0, 0)}
 
         while heap:
@@ -176,13 +176,14 @@ class _MulStream(_TermStream):
 
             # Processing a state can reveal another state having the same
             # degree, so continue until the heap really moves below this
-            # degree layer.
+            # degree layer.  Each heap entry carries the product coefficient
+            # computed when the state was discovered so it need not be looked
+            # up again when popped.
             while heap and -heap[0][0] == degree:
-                _, left_index, right_index = heappop(heap)
+                _, left_index, right_index, state_coeff = heappop(heap)
                 if self._stats is not None:
                     self._stats.mul_states_popped += 1
-                state = self._state(left_index, right_index)
-                coeff += state[1]
+                coeff += state_coeff
 
                 neighbors = (
                     (left_index + 1, right_index),
@@ -194,7 +195,7 @@ class _MulStream(_TermStream):
                     seen.add(neighbor)
                     state = self._state(*neighbor)
                     if state is not None:
-                        heappush(heap, (-state[0], *neighbor))
+                        heappush(heap, (-state[0], *neighbor, state[1]))
 
             if _is_zero(coeff):
                 if self._stats is not None:
