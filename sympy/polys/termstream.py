@@ -13,12 +13,53 @@ integer exponent are supported.
 from heapq import heappop, heappush
 
 from sympy.core import S, sympify
+from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
 
 
 def _is_zero(coeff):
     """Return True only when a coefficient is known to be zero."""
     return coeff == 0 or coeff.is_zero is True
+
+
+def _affine_coeffs(expr, gen):
+    """Return ``(a, b)`` when *expr* is structurally ``a*gen + b``."""
+    if expr == gen:
+        return S.One, S.Zero
+    if not expr.has(gen):
+        return S.Zero, expr
+
+    if expr.is_Add:
+        a = S.Zero
+        b = S.Zero
+        for arg in expr.args:
+            coeffs = _affine_coeffs(arg, gen)
+            if coeffs is None:
+                return None
+            ai, bi = coeffs
+            a += ai
+            b += bi
+        return a, b
+
+    if expr.is_Mul:
+        independent = S.One
+        dependent = None
+        for arg in expr.args:
+            if arg.has(gen):
+                if dependent is not None:
+                    return None
+                dependent = arg
+            else:
+                independent *= arg
+        if dependent is None:
+            return S.Zero, independent
+        coeffs = _affine_coeffs(dependent, gen)
+        if coeffs is None:
+            return None
+        a, b = coeffs
+        return independent*a, independent*b
+
+    return None
 
 
 class _StreamStats:
@@ -105,6 +146,41 @@ class _MonomialStream(_TermStream):
     def _generate(self):
         if not _is_zero(self.coeff):
             yield self.degree, self.coeff
+
+
+class _AffinePowerStream(_TermStream):
+    """Direct coefficient stream for ``(a*x + b)**n``.
+
+    With ``t = 1/x``, this is the coefficient sequence of
+    ``a**n * (1 + (b/a)*t)**n``.  Emitting it directly avoids constructing
+    the multiplication lattice that exponentiation by squaring would create.
+    """
+
+    def __init__(self, a, b, exponent, stats=None):
+        self.a = a
+        self.b = b
+        self.exponent = exponent
+        super().__init__(stats)
+
+    def _generate(self):
+        n = self.exponent
+
+        if _is_zero(self.a):
+            coeff = self.b**n
+            if not _is_zero(coeff):
+                yield 0, coeff
+            return
+
+        if _is_zero(self.b):
+            coeff = self.a**n
+            if not _is_zero(coeff):
+                yield n, coeff
+            return
+
+        for r in range(n + 1):
+            coeff = binomial(n, r)*self.a**(n - r)*self.b**r
+            if not _is_zero(coeff):
+                yield n - r, coeff
 
 
 class _AddStream(_TermStream):
@@ -238,8 +314,13 @@ def _stream_from_expr(expr, gen, stats=None):
 
     if expr.is_Pow:
         if expr.exp.is_Integer and expr.exp.is_nonnegative:
+            exponent = int(expr.exp)
+            affine = _affine_coeffs(expr.base, gen)
+            if affine is not None:
+                a, b = affine
+                return _AffinePowerStream(a, b, exponent, stats)
             base = _stream_from_expr(expr.base, gen, stats)
-            return _power_stream(base, int(expr.exp), stats)
+            return _power_stream(base, exponent, stats)
 
     raise PolynomialError(
         "%s is not supported as a polynomial expression in %s"
