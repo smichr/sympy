@@ -29,6 +29,7 @@ from sympy.polys.polyclasses import DMF
 from sympy.polys.polyroots import roots
 from sympy.polys.polytools import Poly
 from sympy.polys.matrices import DomainMatrix
+from sympy.polys.recurrences import DifferentialRecurrence
 from sympy.printing import sstr
 from sympy.series.limits import limit
 from sympy.series.order import Order
@@ -1241,31 +1242,22 @@ class HolonomicFunction:
         if self.annihilator.is_singular(self.x0):
             return self._frobenius(lb=lb)
 
-        dict1 = {}
         n = Symbol('n', integer=True)
         dom = self.annihilator.parent.base.dom
         R, _ = RecurrenceOperators(dom.old_poly_ring(n), 'Sn')
 
-        # substituting each term of the form `x^k Dx^j` in the
-        # annihilator, according to the formula below:
-        # x^k Dx^j = Sum(rf(n + 1 - k, j) * a(n + j - k) * x^n, (n, k, oo))
-        # for explanation see [2].
+        recurrence_terms = []
         for i, j in enumerate(self.annihilator.listofpoly):
-
             listofdmp = j.all_coeffs()
             degree = len(listofdmp) - 1
 
             for k in range(degree + 1):
                 coeff = listofdmp[degree - k]
-
-                if coeff == 0:
-                    continue
-
-                if (i - k, k) in dict1:
-                    dict1[(i - k, k)] += (dom.to_sympy(coeff) * rf(n - k + 1, i))
-                else:
-                    dict1[(i - k, k)] = (dom.to_sympy(coeff) * rf(n - k + 1, i))
-
+                if coeff != 0:
+                    recurrence_terms.append(
+                        (i, k, dom.to_sympy(coeff))
+                    )
+        dict1 = DifferentialRecurrence(recurrence_terms).terms(n)
 
         sol = []
         keylist = [i[0] for i in dict1]
