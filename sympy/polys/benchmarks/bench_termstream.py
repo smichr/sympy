@@ -30,6 +30,11 @@ factorized_100 = Add(
     evaluate=False,
 )
 
+finite_difference_depths = {
+    k: finite_difference_power(1000, k)
+    for k in (1, 2, 5, 10, 20)
+}
+
 
 def timeit_termstream_power_1000_degree():
     PolyTermStream(power_1000, x).degree()
@@ -57,3 +62,31 @@ def timeit_poly_factorized_identity_100_degree():
 
 def timeit_termstream_finite_difference_100000_10_degree():
     PolyTermStream(finite_difference_100000_10, x).degree()
+
+
+def timeit_termstream_finite_difference_depth_1():
+    PolyTermStream(finite_difference_depths[1], x).degree()
+
+
+def timeit_termstream_finite_difference_depth_2():
+    PolyTermStream(finite_difference_depths[2], x).degree()
+
+
+def timeit_termstream_finite_difference_depth_5():
+    PolyTermStream(finite_difference_depths[5], x).degree()
+
+
+def timeit_termstream_finite_difference_depth_10():
+    PolyTermStream(finite_difference_depths[10], x).degree()
+
+
+def timeit_termstream_finite_difference_depth_20():
+    PolyTermStream(finite_difference_depths[20], x).degree()
+
+
+def termstream_finite_difference_stats(k):
+    """Return work counters for a cancellation-depth experiment."""
+    stream = PolyTermStream(
+        finite_difference_depths[k], x, collect_stats=True)
+    stream.degree()
+    return stream.stats
