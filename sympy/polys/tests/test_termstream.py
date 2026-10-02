@@ -108,6 +108,51 @@ def test_termstream_structural_cancellation_depth():
         assert stream.term(0) == (n - k, expected_lc)
 
 
+def test_termstream_instrumentation():
+    expr = _finite_difference_power(1000, 5)
+    stream = PolyTermStream(expr, x, collect_stats=True)
+
+    assert stream.stats['root_terms_generated'] == 0
+    assert stream.degree() == 995
+
+    stats = stream.stats
+    assert stats['root_terms_generated'] == 1
+    assert stats['cancelled_layers'] >= 5
+    assert stats['generated_terms'] > 1
+    assert stats['child_requests'] > 0
+    assert stats['mul_states_popped'] > 0
+    assert stats['streams_created'] > 1
+
+    # Re-querying the leading term should use the memoized root term rather
+    # than generate another one.
+    generated = stats['generated_terms']
+    hits = stats['cache_hits']
+    assert stream.LC() == prod(range(996, 1001))
+    assert stream.stats['generated_terms'] == generated
+    assert stream.stats['cache_hits'] > hits
+
+    assert PolyTermStream(expr, x).stats is None
+
+
+def test_termstream_instrumentation_tracks_cancellation_depth():
+    # These expressions all have the same nominal degree.  More finite
+    # differences force the root Add stream to discard more leading layers
+    # before it can emit its first surviving term.
+    previous_cancelled = -1
+    previous_generated = -1
+    for k in (1, 2, 5, 10):
+        stream = PolyTermStream(
+            _finite_difference_power(1000, k), x, collect_stats=True)
+        assert stream.degree() == 1000 - k
+        stats = stream.stats
+        assert stats['root_terms_generated'] == 1
+        assert stats['cancelled_layers'] >= k
+        assert stats['cancelled_layers'] > previous_cancelled
+        assert stats['generated_terms'] > previous_generated
+        previous_cancelled = stats['cancelled_layers']
+        previous_generated = stats['generated_terms']
+
+
 def test_termstream_factorized_identity_cancellation():
     # Two very different trees represent the same degree-2*n polynomial.
     # Their complete cancellation should expose the final +x without either
