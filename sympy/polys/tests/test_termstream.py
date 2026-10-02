@@ -120,7 +120,9 @@ def test_termstream_instrumentation():
     assert stats['cancelled_layers'] >= 5
     assert stats['generated_terms'] > 1
     assert stats['child_requests'] > 0
-    assert stats['mul_states_popped'] > 0
+    # Affine powers are emitted directly and coefficient-only factors are
+    # scaled without convolution, so this family should need no Mul lattice.
+    assert stats['mul_states_popped'] == 0
     assert stats['streams_created'] > 1
 
     # Re-querying the leading term should use the memoized root term rather
@@ -149,6 +151,7 @@ def test_termstream_instrumentation_tracks_cancellation_depth():
         assert stats['cancelled_layers'] >= k
         assert stats['cancelled_layers'] > previous_cancelled
         assert stats['generated_terms'] > previous_generated
+        assert stats['mul_states_popped'] == 0
         previous_cancelled = stats['cancelled_layers']
         previous_generated = stats['generated_terms']
 
