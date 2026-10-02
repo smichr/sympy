@@ -15,6 +15,7 @@ from heapq import heappop, heappush
 from sympy.core import S, sympify
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
+from sympy.polys.recurrences import DifferentialRecurrence
 
 
 def _is_zero(coeff):
@@ -243,10 +244,10 @@ class _AffineProductStream(_TermStream):
 
     ``F(t) = (a + b*t)**m * (c + d*t)**n``.
 
-    The logarithmic derivative of ``F`` gives a second-order linear
-    recurrence for its coefficients, so each new degree layer is obtained
-    with O(1) coefficient operations instead of walking a convolution
-    diagonal.
+    The logarithmic derivative gives a first-order differential annihilator
+    ``Q(t)*F'(t) - P(t)*F(t)``.  ``DifferentialRecurrence`` converts that
+    annihilator to a coefficient recurrence, so each new degree layer is
+    obtained without walking a convolution diagonal.
     """
 
     def __init__(self, left, right, stats=None):
@@ -265,16 +266,24 @@ class _AffineProductStream(_TermStream):
         p0 = m*b*c + n*d*a
         p1 = b*d*total
 
+        recurrence = DifferentialRecurrence((
+            (0, 0, -p0),
+            (0, 1, -p1),
+            (1, 0, q0),
+            (1, 1, q1),
+            (1, 2, q2),
+        ))
+
         previous = S.Zero
         coeff = a**m*c**n
         if not _is_zero(coeff):
             yield total, coeff
 
         for r in range(total):
-            next_coeff = (
-                (p0 - q1*r)*coeff
-                + (p1 - q2*(r - 1))*previous
-            )/(q0*(r + 1))
+            next_coeff = -(
+                recurrence.coefficient(0, r)*coeff
+                + recurrence.coefficient(-1, r)*previous
+            )/recurrence.coefficient(1, r)
             previous, coeff = coeff, next_coeff
             if not _is_zero(coeff):
                 yield total - r - 1, coeff
