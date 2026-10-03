@@ -235,10 +235,27 @@ def test_reduce_inequalities_errors():
 
 
 def test__solve_inequalities():
+    yf = Symbol('yf', finite=True)
+    yr = Symbol('yr', real=True)
+
     assert reduce_inequalities(x + y < 1, symbols=[x]) == (x + y < 1)
+    eq = x + yf < 1
+    assert reduce_inequalities(eq, symbols=[x]) == (x + yf < 1)
+    assert reduce_inequalities(eq.subs(yf, yr), symbols=[x]) == (x < 1 - yr)
+    assert eq.subs({x: I, yf: -I}) == True
+    assert raises(TypeError, lambda: (x < 1 - yf).subs({x: I, yf: -I}))
+
     assert reduce_inequalities(x + y >= 1, symbols=[x]) == (x + y >= 1)
-    assert reduce_inequalities(Eq(0, x - y), symbols=[x]) == Eq(x, y)
-    assert reduce_inequalities(Ne(0, x - y), symbols=[x]) == Ne(x, y)
+    assert reduce_inequalities(x + yr >= 1, symbols=[x]) == \
+        (x >= 1 - yr)
+
+    assert reduce_inequalities(Eq(0, x - y), symbols=[x]) == Eq(x - y, 0)
+    assert reduce_inequalities(Eq(0, x - yf), symbols=[x]) == Eq(x - yf, 0)
+    assert reduce_inequalities(Eq(0, x - yr), symbols=[x]) == Eq(x, yr)
+
+    assert reduce_inequalities(Ne(0, x - y), symbols=[x]) == Ne(x - y, 0)
+    assert reduce_inequalities(Ne(0, x - yf), symbols=[x]) == Ne(x - yf, 0)
+    assert reduce_inequalities(Ne(0, x - yr), symbols=[x]) == Ne(x, yr)
 
 
 def test_issue_6343():
@@ -509,12 +526,32 @@ def test_issue_30598():
     # the relation on its own since that turns an indeterminate oo - oo
     # into a definite result
     assert reduce_inequalities(a*(-y - 2*z + 1) < b - 2*c - x, y) == \
-        (-a*(y + 2*z) < -a + b - 2*c - x)
+        (-a*y - 2*a*z < -a + b - 2*c - x)
+
+    # any factoring must preserve the possibility of indeterminacy
+    a = Symbol('a')
+    e = a*x + a*y < 1
+    rv = reduce_inequalities(e, x)
+    reps = {a: oo, x: 2, y: -1}
+    assert rv == e
+    assert raises(TypeError, lambda: e.subs(reps))
+    assert (a*(x + y) < 1).subs(reps) is S.false
+
     # terms that are known to be finite can still be moved
     u, v, r, s = symbols('u v r s', real=True)
     assert reduce_inequalities(r*u + s*v < 1, u) == (r*u < -s*v + 1)
     # the terms must not be split even when the target could be isolated
     assert reduce_inequalities(y + z < 1, y) == (y + z < 1)
+
+    # target-only indeterminacy is handled by endpoint/domain bookkeeping
+    assert reduce_inequalities(x/(x - 1) - 2/(x - 1) < 0, x) == (
+        S(1) < x) & (x < 2)
+
+    # Do not actually form lhs - rhs before protecting potentially
+    # nonfinite additive terms: doing so would cancel y here and
+    # incorrectly reduce the relation to x < 1, cancelling indeterminacy
+    assert reduce_inequalities(x + y < y + 1, x) == \
+        (x + y < y + 1)
 
 
 def test_issue_30529():  # do not allow singularity cancellation
@@ -524,6 +561,8 @@ def test_issue_30529():  # do not allow singularity cancellation
 
     e = x/(x - 1) + 1/x <= x + 1/x
     rv = reduce_inequalities(e, x)
+    assert rv == Ne(x, 0) & (
+        (((S(0) <= x) & (x < 1)) | ((S(2) <= x) & (x < oo))))
     assert rv.subs(x, 0) is S.false
     assert rv.subs(x, S.Half) is S.true
     assert rv.subs(x, 1) is S.false
