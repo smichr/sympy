@@ -42,7 +42,19 @@ class DifferentialRecurrence:
             for (shift, power), coeff in sorted(grouped.items())
             if coeff != 0
         )
-        self.shifts = tuple(sorted({term[0] for term in self._terms}))
+
+        by_shift = {}
+        for shift, power, derivative_order, coeff in self._terms:
+            by_shift.setdefault(shift, []).append(
+                (power, derivative_order, coeff)
+            )
+
+        self._by_shift = {
+            shift: tuple(terms)
+            for shift, terms in by_shift.items()
+        }
+
+        self.shifts = tuple(self._by_shift)
 
     @staticmethod
     def _term_value(coeff, power, derivative_order, n):
@@ -62,8 +74,7 @@ class DifferentialRecurrence:
     def coefficient(self, shift, n):
         """Return the total coefficient multiplying ``a[n + shift]``."""
         result = S.Zero
-        for term_shift, power, derivative_order, coeff in self._terms:
-            if term_shift == shift:
-                result += self._term_value(
-                    coeff, power, derivative_order, n)
+        for power, derivative_order, coeff in self._by_shift.get(shift, ()):
+            result += self._term_value(
+                coeff, power, derivative_order, n)
         return result
