@@ -13,7 +13,7 @@ integer exponent are supported.
 from heapq import heappop, heappush
 
 from sympy.core import S, sympify
-from sympy.core.exprtools import _decompose_exprs
+from sympy.core.exprtools import _decompose_exprs, factor_terms
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.recurrences import DifferentialRecurrence
@@ -83,6 +83,49 @@ def _polynomial_power_data(expr, gen):
         degree - power: coeff for power, coeff in coeffs.items()
     }
     return reversed_coeffs, degree, exponent
+
+
+def _polynomial_product_data(expr, gen):
+    """Return structural data for a product of polynomial powers.
+
+    ``factor_terms`` first exposes common monomial and polynomial factors.
+    The whole resulting product is then decomposed at once so repeated bases
+    are collected by ``_decompose_exprs``.  The return value is
+    ``(scale, degree_shift, factors)``, where ``factors`` contains reversed
+    polynomial data ``(coeffs, degree, exponent)``.
+    """
+    expr = factor_terms(expr)
+    (terms,), _ = _decompose_exprs(
+        (expr,), is_coeff=lambda factor: not factor.has(gen))
+
+    if len(terms) != 1:
+        return None
+
+    coeff_factors, powers = terms[0]
+    scale = S.One
+    for factor in coeff_factors:
+        scale *= factor
+
+    degree_shift = 0
+    factors = []
+    for base, (pos, neg) in powers.items():
+        if neg:
+            return None
+        if not pos:
+            continue
+
+        exponent = int(pos)
+        if base == gen:
+            degree_shift += exponent
+            continue
+
+        data = _polynomial_power_data(base, gen)
+        if data is None:
+            return None
+        coeffs, degree, base_exponent = data
+        factors.append((coeffs, degree, exponent*base_exponent))
+
+    return scale, degree_shift, factors
 
 
 def _recurrence_safe(data):
@@ -274,6 +317,34 @@ class _ScaleStream(_TermStream):
             if not _is_zero(coeff):
                 yield degree, coeff
             index += 1
+
+
+class _ShiftStream(_TermStream):
+    """Add a fixed offset to every degree emitted by a child stream."""
+
+    def __init__(self, offset, child, stats=None):
+        self.offset = offset
+        self.child = child
+        super().__init__(stats)
+
+    def _generate(self):
+        index = 0
+        while True:
+            term = self._child_term(self.child, index)
+            if term is None:
+                return
+            degree, coeff = term
+            yield degree + self.offset, coeff
+            index += 1
+
+
+def _scale_shift_stream(stream, scale, degree_shift, stats=None):
+    """Apply structural scalar and monomial factors to a stream."""
+    if degree_shift:
+        stream = _ShiftStream(degree_shift, stream, stats)
+    if scale != 1:
+        stream = _ScaleStream(scale, stream, stats)
+    return stream
 
 
 class _AffinePowerStream(_TermStream):
@@ -480,6 +551,34 @@ def _power_stream(base, exponent, stats=None):
     return square
 
 
+def _special_product_stream(expr, gen, stats=None):
+    """Return a normalized polynomial-power stream when one is available."""
+    data = _polynomial_product_data(expr, gen)
+    if data is None:
+        return None
+
+    scale, degree_shift, factors = data
+    if not factors:
+        return _MonomialStream(degree_shift, scale, stats)
+
+    if len(factors) == 1 and factors[0][1] == 1:
+        coeffs, _, exponent = factors[0]
+        stream = _AffinePowerStream(
+            coeffs.get(0, S.Zero),
+            coeffs.get(1, S.Zero),
+            exponent,
+            stats,
+        )
+        return _scale_shift_stream(
+            stream, scale, degree_shift, stats)
+
+    if not all(_recurrence_safe(factor) for factor in factors):
+        return None
+
+    stream = _PolynomialPowersStream(factors, stats)
+    return _scale_shift_stream(stream, scale, degree_shift, stats)
+
+
 def _stream_from_expr(expr, gen, stats=None):
     """Build the most specific lazy stream available for ``expr``.
 
@@ -513,6 +612,10 @@ def _stream_from_expr(expr, gen, stats=None):
             [_stream_from_expr(arg, gen, stats) for arg in expr.args], stats)
 
     if expr.is_Mul:
+        stream = _special_product_stream(expr, gen, stats)
+        if stream is not None:
+            return stream
+
         scale = S.One
         dependent = []
         for arg in expr.args:
@@ -520,18 +623,6 @@ def _stream_from_expr(expr, gen, stats=None):
                 dependent.append(arg)
             else:
                 scale *= arg
-
-        if len(dependent) >= 2:
-            polynomial_factors = [
-                _polynomial_power_data(arg, gen) for arg in dependent
-            ]
-            if all(
-                    factor is not None and _recurrence_safe(factor)
-                    for factor in polynomial_factors):
-                stream = _PolynomialPowersStream(polynomial_factors, stats)
-                if scale != 1:
-                    stream = _ScaleStream(scale, stream, stats)
-                return stream
 
         children = [_stream_from_expr(arg, gen, stats) for arg in dependent]
         stream = children[0]
@@ -543,22 +634,13 @@ def _stream_from_expr(expr, gen, stats=None):
 
     if expr.is_Pow:
         if expr.exp.is_Integer and expr.exp.is_nonnegative:
+            stream = _special_product_stream(expr, gen, stats)
+            if stream is not None:
+                return stream
+
             exponent = int(expr.exp)
             if exponent == 0:
                 return _MonomialStream(0, S.One, stats)
-
-            data = _polynomial_power_data(expr, gen)
-            if data is not None:
-                coeffs, degree, exponent = data
-                if degree == 1:
-                    return _AffinePowerStream(
-                        coeffs.get(0, S.Zero),
-                        coeffs.get(1, S.Zero),
-                        exponent,
-                        stats,
-                    )
-                if _recurrence_safe(data):
-                    return _PolynomialPowersStream([data], stats)
 
             base = _stream_from_expr(expr.base, gen, stats)
             return _power_stream(base, exponent, stats)

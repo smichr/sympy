@@ -2,8 +2,10 @@
 
 from time import perf_counter
 
-from sympy import Add, Mul, Poly, Pow, S, binomial, symbols
-from sympy.polys.termstream import PolyTermStream
+from sympy import Add, Mul, Poly, Pow, binomial, symbols
+from sympy.polys.termstream import (
+    PolyTermStream, _MulStream, _StreamStats, _stream_from_expr,
+)
 
 
 x = symbols('x')
@@ -38,19 +40,25 @@ finite_difference_depths = {
 }
 
 # Large A/B case for the recurrence-backed affine-product stream.  The
-# unevaluated +0 wrapper leaves the polynomial unchanged but deliberately
-# prevents the structural affine-product recognizer from seeing the left
-# factor, giving a generic-convolution control case.
+# generic control is built explicitly from the same specialized child streams
+# so product normalization cannot turn the control back into a recurrence.
 affine_product_left = Pow(2*x + 3, 40, evaluate=False)
 affine_product_right = Pow(5*x - 7, 30, evaluate=False)
 affine_product_direct = Mul(
     affine_product_left, affine_product_right, evaluate=False)
-affine_product_generic = Mul(
-    Add(affine_product_left, S.Zero, evaluate=False),
-    affine_product_right,
-    evaluate=False,
-)
 affine_product_size = 40 + 30 + 1
+
+
+def _generic_affine_product_stream(stats=None):
+    left = _stream_from_expr(affine_product_left, x, stats)
+    right = _stream_from_expr(affine_product_right, x, stats)
+    return _MulStream(left, right, stats)
+
+
+def _stream_stats(stream, stats):
+    result = stats.as_dict()
+    result['root_terms_generated'] = len(stream._cache)
+    return result
 
 
 def timeit_termstream_power_1000_degree():
@@ -118,19 +126,19 @@ def timeit_termstream_affine_product_recurrence_all():
 
 
 def timeit_termstream_affine_product_generic_5():
-    PolyTermStream(affine_product_generic, x).take(5)
+    _generic_affine_product_stream().take(5)
 
 
 def timeit_termstream_affine_product_generic_10():
-    PolyTermStream(affine_product_generic, x).take(10)
+    _generic_affine_product_stream().take(10)
 
 
 def timeit_termstream_affine_product_generic_20():
-    PolyTermStream(affine_product_generic, x).take(20)
+    _generic_affine_product_stream().take(20)
 
 
 def timeit_termstream_affine_product_generic_all():
-    PolyTermStream(affine_product_generic, x).take(affine_product_size + 1)
+    _generic_affine_product_stream().take(affine_product_size + 1)
 
 
 def timeit_poly_affine_product_all():
@@ -150,15 +158,18 @@ def termstream_affine_product_stats(count=None):
     if count is None:
         count = affine_product_size + 1
 
-    result = {}
-    for name, expr in (
-        ('recurrence', affine_product_direct),
-        ('generic', affine_product_generic),
-    ):
-        stream = PolyTermStream(expr, x, collect_stats=True)
-        stream.take(count)
-        result[name] = stream.stats
-    return result
+    recurrence = PolyTermStream(
+        affine_product_direct, x, collect_stats=True)
+    recurrence.take(count)
+
+    stats = _StreamStats()
+    generic = _generic_affine_product_stream(stats)
+    generic.take(count)
+
+    return {
+        'recurrence': recurrence.stats,
+        'generic': _stream_stats(generic, stats),
+    }
 
 
 def affine_product_wall_times(repeat=5):
@@ -167,14 +178,15 @@ def affine_product_wall_times(repeat=5):
     for count in (5, 10, 20, None):
         requested = affine_product_size + 1 if count is None else count
         label = 'all' if count is None else count
-        for name, expr in (
-            ('recurrence', affine_product_direct),
-            ('generic', affine_product_generic),
-        ):
+
+        for name in ('recurrence', 'generic'):
             best = None
             for _ in range(repeat):
                 start = perf_counter()
-                PolyTermStream(expr, x).take(requested)
+                if name == 'recurrence':
+                    PolyTermStream(affine_product_direct, x).take(requested)
+                else:
+                    _generic_affine_product_stream().take(requested)
                 elapsed = perf_counter() - start
                 if best is None or elapsed < best:
                     best = elapsed
