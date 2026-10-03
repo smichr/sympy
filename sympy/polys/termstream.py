@@ -92,6 +92,52 @@ def _affine_power_data(expr, gen):
     return a, b, exponent
 
 
+def _mul_linear_coeffs(coeffs, a, b):
+    """Multiply ascending polynomial coefficients by ``a + b*t``."""
+    result = [S.Zero] * (len(coeffs) + 1)
+    for i, coeff in enumerate(coeffs):
+        result[i] += a*coeff
+        result[i + 1] += b*coeff
+    while len(result) > 1 and _is_zero(result[-1]):
+        result.pop()
+    return result
+
+
+def _affine_product_annihilator(factors):
+    r"""Return ``(P, Q)`` for ``Q*F' - P*F = 0``.
+
+    Here ``F(t) = product((a + b*t)**m)`` and *factors* contains the
+    corresponding ``(a, b, m)`` triples.  ``P`` and ``Q`` are returned as
+    ascending coefficient lists.
+
+    If ``P/Q`` is the logarithmic derivative for the factors processed so
+    far, adjoining ``(a + b*t)**m`` updates
+
+    ``Q -> Q*(a + b*t)`` and
+    ``P -> P*(a + b*t) + m*b*Q``.
+    """
+    p = [S.Zero]
+    q = [S.One]
+
+    for a, b, exponent in factors:
+        if exponent == 0:
+            continue
+
+        old_q = q
+        q = _mul_linear_coeffs(q, a, b)
+        p = _mul_linear_coeffs(p, a, b)
+
+        if len(p) < len(old_q):
+            p.extend([S.Zero] * (len(old_q) - len(p)))
+        for i, coeff in enumerate(old_q):
+            p[i] += exponent*b*coeff
+
+        while len(p) > 1 and _is_zero(p[-1]):
+            p.pop()
+
+    return p, q
+
+
 class _StreamStats:
     """Optional counters for studying the amount of lazy stream work."""
 
@@ -238,55 +284,64 @@ class _AffinePowerStream(_TermStream):
 
 
 class _AffineProductStream(_TermStream):
-    """Direct stream for ``(a*x+b)**m * (c*x+d)**n``.
+    r"""Direct stream for a product of affine powers.
 
     With ``t = 1/x`` the coefficient generator is
 
-    ``F(t) = (a + b*t)**m * (c + d*t)**n``.
+    ``F(t) = product((a_i + b_i*t)**m_i)``.
 
-    The logarithmic derivative gives a first-order differential annihilator
+    Its logarithmic derivative gives a first-order differential annihilator
     ``Q(t)*F'(t) - P(t)*F(t)``.  ``DifferentialRecurrence`` converts that
-    annihilator to a coefficient recurrence, so each new degree layer is
-    obtained without walking a convolution diagonal.
+    annihilator to a finite-order coefficient recurrence, so each new degree
+    layer is obtained without walking a multidimensional convolution.
     """
 
-    def __init__(self, left, right, stats=None):
-        self.a, self.b, self.m = left
-        self.c, self.d, self.n = right
+    def __init__(self, factors, stats=None):
+        self.factors = factors
         super().__init__(stats)
 
     def _generate(self):
-        a, b, m = self.a, self.b, self.m
-        c, d, n = self.c, self.d, self.n
-        total = m + n
+        factors = [factor for factor in self.factors if factor[2] != 0]
+        total = sum(exponent for _, _, exponent in factors)
 
-        q0 = a*c
-        q1 = a*d + b*c
-        q2 = b*d
-        p0 = m*b*c + n*d*a
-        p1 = b*d*total
+        p, q = _affine_product_annihilator(factors)
+        recurrence_terms = []
+        recurrence_terms.extend(
+            (0, power, -coeff)
+            for power, coeff in enumerate(p)
+            if not _is_zero(coeff)
+        )
+        recurrence_terms.extend(
+            (1, power, coeff)
+            for power, coeff in enumerate(q)
+            if not _is_zero(coeff)
+        )
+        recurrence = DifferentialRecurrence(recurrence_terms)
 
-        recurrence = DifferentialRecurrence((
-            (0, 0, -p0),
-            (0, 1, -p1),
-            (1, 0, q0),
-            (1, 1, q1),
-            (1, 2, q2),
-        ))
+        coeff = S.One
+        for a, _, exponent in factors:
+            coeff *= a**exponent
 
-        previous = S.Zero
-        coeff = a**m*c**n
+        coefficients = [coeff]
         if not _is_zero(coeff):
             yield total, coeff
 
+        history_shifts = [
+            shift for shift in recurrence.shifts if shift != 1
+        ]
         for r in range(total):
-            next_coeff = -(
-                recurrence.coefficient(0, r)*coeff
-                + recurrence.coefficient(-1, r)*previous
-            )/recurrence.coefficient(1, r)
-            previous, coeff = coeff, next_coeff
-            if not _is_zero(coeff):
-                yield total - r - 1, coeff
+            numerator = S.Zero
+            for shift in history_shifts:
+                index = r + shift
+                if index >= 0:
+                    numerator += (
+                        recurrence.coefficient(shift, r)*coefficients[index]
+                    )
+
+            next_coeff = -numerator/recurrence.coefficient(1, r)
+            coefficients.append(next_coeff)
+            if not _is_zero(next_coeff):
+                yield total - r - 1, next_coeff
 
 
 class _AddStream(_TermStream):
@@ -436,11 +491,12 @@ def _stream_from_expr(expr, gen, stats=None):
             else:
                 scale *= arg
 
-        if len(dependent) == 2:
-            left = _affine_power_data(dependent[0], gen)
-            right = _affine_power_data(dependent[1], gen)
-            if left is not None and right is not None:
-                stream = _AffineProductStream(left, right, stats)
+        if len(dependent) >= 2:
+            affine_factors = [
+                _affine_power_data(arg, gen) for arg in dependent
+            ]
+            if all(factor is not None for factor in affine_factors):
+                stream = _AffineProductStream(affine_factors, stats)
                 if scale != 1:
                     stream = _ScaleStream(scale, stream, stats)
                 return stream
