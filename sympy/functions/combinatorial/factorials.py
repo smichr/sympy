@@ -506,11 +506,27 @@ class RisingFactorial(CombinatorialFunction):
     function arising in concrete mathematics, hypergeometric functions
     and series expansions. It is defined by:
 
-    .. math:: \texttt{rf(y, k)} = (x)^k = x \cdot (x+1) \cdots (x+k-1)
+    .. math:: \texttt{rf(x, k)} = (x)^k = x \cdot (x+1) \cdots (x+k-1)
 
     where `x` can be arbitrary expression and `k` is an integer. For
     more information check "Concrete mathematics" by Graham, pp. 66
     or visit https://mathworld.wolfram.com/RisingFactorial.html page.
+
+    For integer ``k``, the rising factorial is defined by the finite
+    product above. For noninteger ``k``, it is extended using the gamma
+    function.
+    
+    For noninteger ``k`` and ``x`` not a nonpositive integer,
+    
+    .. math::
+    
+        \operatorname{rf}(x, k) =
+            \frac{\Gamma(x + k)}{\Gamma(x)}.
+
+    When ``x`` is a negative integer and ``k`` is noninteger, the
+    continuation gives zero. Consequently, as a function of ``k`` this
+    extension need not be continuous at integer values of ``k`` when
+    ``x`` is a negative integer.
 
     When `x` is a :class:`~.Poly` instance of degree $\ge 1$ with a single variable,
     `(x)^k = x(y) \cdot x(y+1) \cdots x(y+k-1)`, where `y` is the
@@ -617,6 +633,8 @@ class RisingFactorial(CombinatorialFunction):
 
         if k.is_integer == False:
             if x.is_integer and x.is_negative:
+                # Gamma continuation: 1/gamma(x) = 0 for negative
+                # integer x, while gamma(x + k) is finite.
                 return S.Zero
 
     def _eval_rewrite_as_gamma(self, x, k, piecewise=True, **kwargs):
@@ -670,6 +688,20 @@ class FallingFactorial(CombinatorialFunction):
     where `x` can be arbitrary expression and `k` is an integer. For
     more information check "Concrete mathematics" by Graham, pp. 66
     or [1]_.
+
+    For noninteger `k`, the falling factorial is extended using the
+    gamma function. When the gamma functions involved are finite,
+
+    .. math::
+
+        \operatorname{ff}(x, k) =
+            \frac{\Gamma(x + 1)}{\Gamma(x - k + 1)}.
+
+    At poles of this expression, an equivalent gamma representation
+    is used to give the continuation where possible. As with the
+    rising factorial, the finite-product values for integer `k` need
+    not agree with the limiting values obtained by varying a
+    noninteger `k` through an integer.
 
     When `x` is a :class:`~.Poly` instance of degree $\ge 1$ with single variable,
     `(x)_k = x(y) \cdot x(y-1) \cdots x(y-k+1)`, where `y` is the
