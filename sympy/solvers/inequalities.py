@@ -775,22 +775,64 @@ def _pt(start, end):
     return pt
 
 
-def _protected_additive_terms(ie, s):
-    # Return the additive terms of ie that must not be separated from
-    # the terms containing s. Terms that may be infinite can sum to an
-    # indeterminate oo - oo so the terms of such a group can only be
-    # rearranged together; the group that contains s is rearranged with
-    # s since s is the term being isolated.
-    keep = set()
-    for side in (ie.lhs, ie.rhs):
-        # the expression that is rearranged is the expanded form of
-        # side so the group is recognized at that granularity
+def _guard_indeterminate_group(ie, s):
+    """Protect an additive group before forming ``lhs - rhs``.
+
+    Potentially nonfinite terms are inspected as they would occur in
+    ``lhs - rhs`` without actually constructing that difference. This is
+    important because constructing it can already cancel a term whose
+    presence is needed to preserve a possible ``oo - oo`` indeterminacy.
+
+    If the target symbol occurs in exactly one potentially indeterminate
+    additive group, that whole group is replaced by a tracker and
+    ``(guarded_relation, tracker, group)`` is returned.
+
+    If the target occurs in protected groups on both sides, ``S.NaN`` is
+    returned as the tracker to indicate that there is no single group that
+    can safely be isolated.
+    """
+    sides = []
+    virtual = []
+
+    for side, negate in ((ie.lhs, False), (ie.rhs, True)):
         args = Add.make_args(expand_mul(side))
-        terms = [a for a in args if a.is_finite is not True]
-        if (len(terms) > 1 and _may_be_indeterminate(terms)
-                and any(a.has(s) for a in terms)):
-            keep.update(terms)
-    return keep
+        nonfinite = [a for a in args if a.is_finite is not True]
+        finite = [a for a in args if a.is_finite is True]
+        sides.append((finite, nonfinite))
+        virtual.extend(-a if negate else a for a in nonfinite)
+
+    if not _may_be_indeterminate(virtual):
+        return ie, None, None
+
+    # Indeterminacy involving only terms that depend on the target is handled
+    # by the ordinary solver machinery: denominator restrictions protect finite
+    # singularities and _solve_inequality checks the relation at +/-oo.
+    # Protection is needed when a potentially nonfinite term is independent
+    # of the target.
+    if all(t.has_free(s) for t in virtual):
+        return ie, None, None
+
+    hits = [
+        i for i, (_, terms) in enumerate(sides)
+        if any(t.has(s) for t in terms)
+    ]
+    if not hits:
+        return ie, None, None
+    if len(hits) != 1:
+        return ie, S.NaN, None
+
+    i = hits[0]
+    finite, nonfinite = sides[i]
+    group = Add(*nonfinite)
+    tracker = Dummy()
+    guarded = Add(*finite, tracker)
+
+    if i == 0:
+        ie = ie.func(guarded, ie.rhs, evaluate=False)
+    else:
+        ie = ie.func(ie.lhs, guarded, evaluate=False)
+
+    return ie, tracker, group
 
 
 def _solve_inequality(ie, s, linear=False, protect_indeterminate=False):
@@ -893,6 +935,19 @@ def _solve_inequality(ie, s, linear=False, protect_indeterminate=False):
 
     beginning_denoms = denoms(ie.lhs) | denoms(ie.rhs)
 
+    if protect_indeterminate:
+        guarded, tracker, group = _guard_indeterminate_group(ie, s)
+        if tracker is S.NaN:
+            # The target belongs to potentially indeterminate groups on
+            # both sides, so there is no single additive object to isolate.
+            return And(*[Ne(d, 0) for d in beginning_denoms], ie)
+        if tracker is not None:
+            rv = _solve_inequality(
+                guarded, tracker, linear=linear,
+                protect_indeterminate=False)
+            rv = rv.xreplace({tracker: group})
+            return And(*[Ne(d, 0) for d in beginning_denoms], rv)
+
     def classify(ie, s, i):
         # return True or False if ie evaluates when substituting s with
         # i else None (if unevaluated) or NaN (when there is an error
@@ -948,36 +1003,15 @@ def _solve_inequality(ie, s, linear=False, protect_indeterminate=False):
         # the relational is Eq/Ne; for other relationals
         # the sign must also be positive or negative
         b, ax = e.as_independent(s, as_Add=True)
-        # terms that may be indeterminate cannot be separated from the
-        # group that contains s. When protect_indeterminate is True such
-        # terms of b are kept on the left with s here, before the group is
-        # extracted; otherwise they are protected below, only when the
-        # group cannot be divided out.
-        m = S.Zero
-        if protect_indeterminate and any(
-                t.is_finite is not True for t in Add.make_args(b)):
-            keep = _protected_additive_terms(ie, s)
-            m = Add(*[t for t in Add.make_args(b) if t in keep])
-        e = ax + m
-        rhs = m - b
+        e = ax
+        rhs = -b
         ef = factor_terms(e)
         a, e = ef.as_independent(s, as_Add=False)
         if (a.is_zero != False or  # don't divide by potential 0
                 a.is_negative ==
                 a.is_positive is None and  # if sign is not known then
                 ie.rel_op not in ('!=', '==')): # reject if not Eq/Ne
-            if protect_indeterminate:
-                e = ef  # m is already part of ef
-            else:
-                # s is left in a nontrivial expression so the s-dependent
-                # group cannot be divided out; keep any indeterminate
-                # terms of b with it
-                m = S.Zero
-                if any(t.is_finite is not True for t in Add.make_args(b)):
-                    keep = _protected_additive_terms(ie, s)
-                    m = Add(*[t for t in Add.make_args(b) if t in keep])
-                e = ef if m == 0 else factor_terms(ef + m)
-                rhs += m
+            e = ef
             a = S.One
         rhs /= a
         if a.is_positive:
