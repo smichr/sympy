@@ -21,7 +21,11 @@ from sympy.polys.recurrences import DifferentialRecurrence
 
 def _is_zero(coeff):
     """Return True only when a coefficient is known to be zero."""
-    return coeff == 0 or coeff.is_zero is True
+    if not coeff:
+        return True
+    if coeff.is_Number:
+        return False
+    return coeff.is_zero is True
 
 
 def _polynomial_coeffs(expr, gen):
