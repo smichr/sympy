@@ -6,7 +6,9 @@ from sympy import (
     symbols,
 )
 from sympy.polys.polyerrors import PolynomialError
-from sympy.polys.termstream import PolyTermStream
+from sympy.polys.termstream import (
+    PolyTermStream, _MulStream, _StreamStats, _stream_from_expr,
+)
 from sympy.testing.pytest import raises
 
 
@@ -159,16 +161,18 @@ def test_termstream_affine_product_avoids_convolution():
     right = Pow(5*x - 7, 6, evaluate=False)
     direct = Mul(left, right, evaluate=False)
 
-    wrapped_left = Add(left, S.Zero, evaluate=False)
-    generic = Mul(wrapped_left, right, evaluate=False)
-
     direct_stream = PolyTermStream(direct, x, collect_stats=True)
-    generic_stream = PolyTermStream(generic, x, collect_stats=True)
+    stats = _StreamStats()
+    generic_stream = _MulStream(
+        _stream_from_expr(left, x, stats),
+        _stream_from_expr(right, x, stats),
+        stats,
+    )
 
     assert_stream_equal(direct_stream.take(5), generic_stream.take(5))
     assert direct_stream.stats['mul_states_popped'] == 0
-    assert generic_stream.stats['mul_states_popped'] > 0
-    assert direct_stream.stats['term_requests'] < generic_stream.stats['term_requests']
+    assert stats.mul_states_popped > 0
+    assert direct_stream.stats['term_requests'] < stats.term_requests
 
 
 def test_termstream_factorized_identity_cancellation():
@@ -327,3 +331,11 @@ def test_termstream_rejects_nonpolynomial_nodes():
         raises(PolynomialError, lambda expr=expr: PolyTermStream(expr, x))
 
     raises(TypeError, lambda: PolyTermStream(x, x + 1))
+
+
+def test_termstream_nested_unevaluated_power_exponents():
+    base = Pow(x + 1, 2, evaluate=False)
+    expr = Pow(base, 3, evaluate=False)
+
+    _assert_matches_poly(expr)
+    assert PolyTermStream(expr, x).degree() == 6
