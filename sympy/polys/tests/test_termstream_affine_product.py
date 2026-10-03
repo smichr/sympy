@@ -64,3 +64,48 @@ def test_termstream_affine_product_avoids_multidimensional_convolution():
     assert direct_stream.stats['mul_states_popped'] == 0
     assert generic_stream.stats['mul_states_popped'] > 0
     assert direct_stream.stats['term_requests'] < generic_stream.stats['term_requests']
+
+
+def test_termstream_polynomial_power_recurrence():
+    expressions = [
+        Pow(x**2 + x + 1, 8, evaluate=False),
+        Pow(2*x**2 + 3*x + 5, 6, evaluate=False),
+        Pow(x**3 - x + 2, 5, evaluate=False),
+    ]
+
+    for expr in expressions:
+        expected = _poly_terms(expr)
+        stream = PolyTermStream(expr, x, collect_stats=True)
+        assert stream.take(len(expected) + 1) == expected
+        assert stream.stats['mul_states_popped'] == 0
+
+
+def test_termstream_product_of_polynomial_powers():
+    factors = [
+        Pow(x**2 + x + 1, 4, evaluate=False),
+        Pow(2*x + 3, 3, evaluate=False),
+        Pow(x**3 - x + 2, 2, evaluate=False),
+    ]
+    expr = Mul(*factors, evaluate=False)
+
+    expected = _poly_terms(expr)
+    stream = PolyTermStream(expr, x, collect_stats=True)
+
+    assert stream.take(len(expected) + 1) == expected
+    assert stream.stats['mul_states_popped'] == 0
+
+
+def test_termstream_polynomial_power_avoids_generic_power_stream():
+    base = Add(x**2, x, S.One, evaluate=False)
+    expr = Pow(base, 30, evaluate=False)
+
+    recurrence_stream = PolyTermStream(expr, x, collect_stats=True)
+    generic_stream = PolyTermStream(
+        Pow(Add(base, S.Zero, evaluate=False), 30, evaluate=False),
+        x,
+        collect_stats=True,
+    )
+
+    assert recurrence_stream.take(10) == generic_stream.take(10)
+    assert recurrence_stream.stats['mul_states_popped'] == 0
+    assert generic_stream.stats['mul_states_popped'] > 0

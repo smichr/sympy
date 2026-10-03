@@ -13,6 +13,7 @@ integer exponent are supported.
 from heapq import heappop, heappush
 
 from sympy.core import S, sympify
+from sympy.core.exprtools import _decompose_exprs
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.recurrences import DifferentialRecurrence
@@ -23,117 +24,144 @@ def _is_zero(coeff):
     return coeff == 0 or coeff.is_zero is True
 
 
-def _affine_coeffs(expr, gen):
-    """Return ``(a, b)`` when *expr* is structurally ``a*gen + b``."""
-    if expr == gen:
-        return S.One, S.Zero
-    if not expr.has(gen):
-        return S.Zero, expr
+def _polynomial_coeffs(expr, gen):
+    """Return sparse coefficients of a structural polynomial in ``gen``.
 
-    if expr.is_Add:
-        a = S.Zero
-        b = S.Zero
-        for arg in expr.args:
-            coeffs = _affine_coeffs(arg, gen)
-            if coeffs is None:
+    The result maps powers of ``gen`` to coefficients.  ``_decompose_exprs``
+    analyzes the expression as written, so this does not expand products or
+    otherwise invoke the higher-level polynomial conversion machinery.
+    ``None`` is returned when a generator-dependent factor is not a power of
+    ``gen`` with a nonnegative integer exponent.
+    """
+    (terms,), _ = _decompose_exprs(
+        (expr,), is_coeff=lambda factor: not factor.has(gen))
+
+    coeffs = {}
+    for coeff_factors, powers in terms:
+        degree = 0
+        for base, (pos, neg) in powers.items():
+            if base != gen or neg:
                 return None
-            ai, bi = coeffs
-            a += ai
-            b += bi
-        return a, b
+            degree += int(pos)
 
-    if expr.is_Mul:
-        independent = S.One
-        dependent = None
-        for arg in expr.args:
-            if arg.has(gen):
-                if dependent is not None:
-                    return None
-                dependent = arg
-            else:
-                independent *= arg
-        if dependent is None:
-            return S.Zero, independent
-        coeffs = _affine_coeffs(dependent, gen)
-        if coeffs is None:
-            return None
-        a, b = coeffs
-        return independent*a, independent*b
+        coeff = S.One
+        for factor in coeff_factors:
+            coeff *= factor
 
-    return None
+        coeff = coeffs.get(degree, S.Zero) + coeff
+        if _is_zero(coeff):
+            coeffs.pop(degree, None)
+        else:
+            coeffs[degree] = coeff
+
+    return coeffs
 
 
-def _affine_power_data(expr, gen):
-    """Return ``(a, b, n)`` for ``(a*gen + b)**n`` when safe."""
+def _polynomial_power_data(expr, gen):
+    """Return reversed polynomial data for ``base**n`` when structural."""
     exponent = 1
     base = expr
     if expr.is_Pow:
         if not (expr.exp.is_Integer and expr.exp.is_nonnegative):
             return None
         exponent = int(expr.exp)
+        if exponent == 0:
+            return {0: S.One}, 0, 0
         base = expr.base
 
-    affine = _affine_coeffs(base, gen)
-    if affine is None:
+    coeffs = _polynomial_coeffs(base, gen)
+    if not coeffs:
         return None
-    a, b = affine
 
-    # The product recurrence divides by leading coefficients.  Unknown
-    # nonzeroness keeps the generic path rather than introducing a condition.
-    if a.is_zero is not False:
+    degree = max(coeffs)
+    if degree == 0:
         return None
+
+    # If B(x) = sum(c_k*x**k) has degree d, then
+    # B(x) = x**d*A(1/x), where A(t) has coefficients c_{d-k}.
+    reversed_coeffs = {
+        degree - power: coeff for power, coeff in coeffs.items()
+    }
+    return reversed_coeffs, degree, exponent
+
+
+def _recurrence_safe(data):
+    """Return whether polynomial-power data is safe for exact recurrence."""
+    coeffs, _, exponent = data
+    if exponent == 0:
+        return True
+
+    leading = coeffs.get(0, S.Zero)
+    if leading.is_zero is not False:
+        return False
 
     # Repeated exact division can cause severe expression swell when the
-    # affine coefficients contain symbolic parameters.  The generic stream
-    # handles those well, so keep the recurrence shortcut numeric for now.
-    if a.free_symbols or b.free_symbols:
-        return None
-
-    return a, b, exponent
+    # polynomial coefficients contain symbolic parameters.  Keep the
+    # recurrence shortcut numeric for now; specialized streams may still
+    # handle symbolic data directly.
+    return not any(coeff.free_symbols for coeff in coeffs.values())
 
 
-def _mul_linear_coeffs(coeffs, a, b):
-    """Multiply ascending polynomial coefficients by ``a + b*t``."""
-    result = [S.Zero] * (len(coeffs) + 1)
-    for i, coeff in enumerate(coeffs):
-        result[i] += a*coeff
-        result[i + 1] += b*coeff
-    while len(result) > 1 and _is_zero(result[-1]):
-        result.pop()
+def _poly_mul(left, right):
+    """Multiply sparse ascending coefficient dictionaries."""
+    if not left or not right:
+        return {}
+
+    result = {}
+    for i, a in left.items():
+        for j, b in right.items():
+            power = i + j
+            coeff = result.get(power, S.Zero) + a*b
+            if _is_zero(coeff):
+                result.pop(power, None)
+            else:
+                result[power] = coeff
     return result
 
 
-def _affine_product_annihilator(factors):
+def _poly_diff(coeffs):
+    """Differentiate sparse ascending coefficient dictionaries."""
+    result = {}
+    for power, coeff in coeffs.items():
+        if power:
+            value = power*coeff
+            if not _is_zero(value):
+                result[power - 1] = value
+    return result
+
+
+def _polynomial_product_annihilator(factors):
     r"""Return ``(P, Q)`` for ``Q*F' - P*F = 0``.
 
-    Here ``F(t) = product((a + b*t)**m)`` and *factors* contains the
-    corresponding ``(a, b, m)`` triples.  ``P`` and ``Q`` are returned as
-    ascending coefficient lists.
+    Each item in *factors* is ``(A, degree, m)``, where ``A`` is the sparse
+    ascending coefficient dictionary for a reversed polynomial factor and
+
+    ``F(t) = product(A_i(t)**m_i)``.
 
     If ``P/Q`` is the logarithmic derivative for the factors processed so
-    far, adjoining ``(a + b*t)**m`` updates
+    far, adjoining ``A(t)**m`` updates
 
-    ``Q -> Q*(a + b*t)`` and
-    ``P -> P*(a + b*t) + m*b*Q``.
+    ``Q -> Q*A`` and
+    ``P -> P*A + m*A'*Q``.
     """
-    p = [S.Zero]
-    q = [S.One]
+    p = {}
+    q = {0: S.One}
 
-    for a, b, exponent in factors:
+    for coeffs, _, exponent in factors:
         if exponent == 0:
             continue
 
         old_q = q
-        q = _mul_linear_coeffs(q, a, b)
-        p = _mul_linear_coeffs(p, a, b)
+        q = _poly_mul(q, coeffs)
+        p = _poly_mul(p, coeffs)
 
-        if len(p) < len(old_q):
-            p.extend([S.Zero] * (len(old_q) - len(p)))
-        for i, coeff in enumerate(old_q):
-            p[i] += exponent*b*coeff
-
-        while len(p) > 1 and _is_zero(p[-1]):
-            p.pop()
+        extra = _poly_mul(old_q, _poly_diff(coeffs))
+        for power, coeff in extra.items():
+            value = p.get(power, S.Zero) + exponent*coeff
+            if _is_zero(value):
+                p.pop(power, None)
+            else:
+                p[power] = value
 
     return p, q
 
@@ -283,14 +311,15 @@ class _AffinePowerStream(_TermStream):
                 yield n - r, coeff
 
 
-class _AffineProductStream(_TermStream):
-    r"""Direct stream for a product of affine powers.
+class _PolynomialPowersStream(_TermStream):
+    r"""Direct stream for a product of polynomial powers.
 
     With ``t = 1/x`` the coefficient generator is
 
-    ``F(t) = product((a_i + b_i*t)**m_i)``.
+    ``F(t) = product(A_i(t)**m_i)``,
 
-    Its logarithmic derivative gives a first-order differential annihilator
+    where the ``A_i`` are reversed polynomial bases.  Its logarithmic
+    derivative gives a first-order differential annihilator
     ``Q(t)*F'(t) - P(t)*F(t)``.  ``DifferentialRecurrence`` converts that
     annihilator to a finite-order coefficient recurrence, so each new degree
     layer is obtained without walking a multidimensional convolution.
@@ -302,25 +331,26 @@ class _AffineProductStream(_TermStream):
 
     def _generate(self):
         factors = [factor for factor in self.factors if factor[2] != 0]
-        total = sum(exponent for _, _, exponent in factors)
+        total = sum(
+            degree*exponent for _, degree, exponent in factors)
 
-        p, q = _affine_product_annihilator(factors)
+        p, q = _polynomial_product_annihilator(factors)
         recurrence_terms = []
         recurrence_terms.extend(
             (0, power, -coeff)
-            for power, coeff in enumerate(p)
+            for power, coeff in p.items()
             if not _is_zero(coeff)
         )
         recurrence_terms.extend(
             (1, power, coeff)
-            for power, coeff in enumerate(q)
+            for power, coeff in q.items()
             if not _is_zero(coeff)
         )
         recurrence = DifferentialRecurrence(recurrence_terms)
 
         coeff = S.One
-        for a, _, exponent in factors:
-            coeff *= a**exponent
+        for poly, _, exponent in factors:
+            coeff *= poly[0]**exponent
 
         coefficients = [coeff]
         if not _is_zero(coeff):
@@ -454,7 +484,7 @@ def _stream_from_expr(expr, gen, stats=None):
     """Build the most specific lazy stream available for ``expr``.
 
     Multiplication first looks for a favorable structure that can be emitted
-    directly, such as a recurrence-backed product of affine powers::
+    directly, such as a recurrence-backed product of polynomial powers::
 
                          Mul
                           |
@@ -492,11 +522,13 @@ def _stream_from_expr(expr, gen, stats=None):
                 scale *= arg
 
         if len(dependent) >= 2:
-            affine_factors = [
-                _affine_power_data(arg, gen) for arg in dependent
+            polynomial_factors = [
+                _polynomial_power_data(arg, gen) for arg in dependent
             ]
-            if all(factor is not None for factor in affine_factors):
-                stream = _AffineProductStream(affine_factors, stats)
+            if all(
+                    factor is not None and _recurrence_safe(factor)
+                    for factor in polynomial_factors):
+                stream = _PolynomialPowersStream(polynomial_factors, stats)
                 if scale != 1:
                     stream = _ScaleStream(scale, stream, stats)
                 return stream
@@ -512,10 +544,22 @@ def _stream_from_expr(expr, gen, stats=None):
     if expr.is_Pow:
         if expr.exp.is_Integer and expr.exp.is_nonnegative:
             exponent = int(expr.exp)
-            affine = _affine_coeffs(expr.base, gen)
-            if affine is not None:
-                a, b = affine
-                return _AffinePowerStream(a, b, exponent, stats)
+            if exponent == 0:
+                return _MonomialStream(0, S.One, stats)
+
+            data = _polynomial_power_data(expr, gen)
+            if data is not None:
+                coeffs, degree, exponent = data
+                if degree == 1:
+                    return _AffinePowerStream(
+                        coeffs.get(0, S.Zero),
+                        coeffs.get(1, S.Zero),
+                        exponent,
+                        stats,
+                    )
+                if _recurrence_safe(data):
+                    return _PolynomialPowersStream([data], stats)
+
             base = _stream_from_expr(expr.base, gen, stats)
             return _power_stream(base, exponent, stats)
 
