@@ -362,7 +362,9 @@ def test_polynomial_zero_unresolved_residual():
     a = symbols('a')
     coeff = sin(a)**2 + (1 - sin(a)**2) - 1
     expr = Mul(x, coeff, evaluate=False)
-    assert polynomial_zero(expr) == (True, None)
+    expr = expr.xreplace({coeff: sin(a)**2 + cos(a)**2 - 1})
+    assert polynomial_zero(expr) == (
+        None, ({x: 1}, sin(a)**2 + cos(a)**2 - 1))
 
 
 def test_polynomial_zero_leading_cancellation_chain():
