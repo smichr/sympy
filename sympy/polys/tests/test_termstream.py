@@ -8,6 +8,7 @@ from sympy import (
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.termstream import (
     PolyTermStream, _MulStream, _StreamStats, _stream_from_expr,
+    polynomial_zero,
 )
 from sympy.testing.pytest import raises
 
@@ -339,3 +340,45 @@ def test_termstream_nested_unevaluated_power_exponents():
 
     _assert_matches_poly(expr)
     assert PolyTermStream(expr, x).degree() == 6
+
+
+
+def test_polynomial_zero_nonzero_witness():
+    expr = (x + y)**20 - (x - y)**20
+    assert polynomial_zero(expr) == (
+        False, ({x: 19, y: 1}, 40))
+
+
+def test_polynomial_zero_by_stream_exhaustion():
+    a = symbols('a')
+    expr = Add(
+        -a**2, -2*a, Pow(a + 1, 2, evaluate=False), -1,
+        evaluate=False,
+    )
+    assert polynomial_zero(expr) == (True, None)
+
+
+def test_polynomial_zero_unresolved_residual():
+    a = symbols('a')
+    coeff = sin(a)**2 + (1 - sin(a)**2) - 1
+    expr = Mul(x, coeff, evaluate=False)
+    assert polynomial_zero(expr) == (True, None)
+
+
+def test_polynomial_zero_leading_cancellation_chain():
+    n = 200
+    k = 6
+    cancel = Add(*(
+        (-1)**(k - j)*binomial(k, j)*Pow(x + j*y, n, evaluate=False)
+        for j in range(k + 1)
+    ), evaluate=False)
+    expr = Pow(
+        x**80 - Pow(x - y, 30, evaluate=False)*(y**3 + 1),
+        100,
+        evaluate=False,
+    )*cancel
+
+    assert polynomial_zero(expr) == (
+        False,
+        ({x: 8194, y: 6}, prod(range(195, 201))),
+    )
