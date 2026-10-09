@@ -360,11 +360,10 @@ def test_polynomial_zero_by_stream_exhaustion():
 
 def test_polynomial_zero_unresolved_residual():
     a = symbols('a')
-    coeff = sin(a)**2 + (1 - sin(a)**2) - 1
+    coeff = sin(a)**2 + cos(a)**2 - 1
     expr = Mul(x, coeff, evaluate=False)
-    expr = expr.xreplace({coeff: sin(a)**2 + cos(a)**2 - 1})
     assert polynomial_zero(expr) == (
-        None, ({x: 1}, sin(a)**2 + cos(a)**2 - 1))
+        None, ({x: 1}, coeff))
 
 
 def test_polynomial_zero_leading_cancellation_chain():
