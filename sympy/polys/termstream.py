@@ -13,6 +13,8 @@ integer exponent are supported.
 from heapq import heappop, heappush
 
 from sympy.core import S, sympify
+from sympy.core.function import count_ops
+from sympy.core.sorting import default_sort_key
 from sympy.core.exprtools import _decompose_exprs, factor_terms
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
@@ -655,6 +657,15 @@ def _stream_from_expr(expr, gen, stats=None):
     )
 
 
+def _normalize_polynomial_ops(expr):
+    """Rebuild Add, Mul, and Pow nodes with ordinary evaluation."""
+    return expr.replace(
+        lambda arg: arg.is_Add or arg.is_Mul or arg.is_Pow,
+        lambda arg: arg.func(*arg.args),
+    )
+
+
+
 class PolyTermStream:
     """Lazy descending term stream for a univariate polynomial expression.
 
@@ -720,3 +731,80 @@ class PolyTermStream:
         result = self._stats.as_dict()
         result['root_terms_generated'] = len(self._stream._cache)
         return result
+
+
+def polynomial_zero(expr, max_probes=1000):
+    """Try to prove whether expr is the zero polynomial.
+
+    Completed coefficients from PolyTermStream are examined recursively,
+    so a single definitely nonzero coefficient can prove the original
+    expression nonzero without constructing a full multivariate Poly.
+
+    Returns (True, None) when zero is proved, (False, evidence) when a
+    nonzero coefficient is found, and (None, evidence) when the search is
+    inconclusive.  Evidence is a (path, coefficient) pair, where path maps
+    generators to the degrees followed by the search.  For an inconclusive
+    result the smallest unresolved coefficient seen is returned, ordered by
+    count_ops and then by number of free symbols.
+    """
+    expr = sympify(expr)
+    probes = [0]
+
+    def score(residual):
+        return count_ops(residual), len(residual.free_symbols)
+
+    def better(best, candidate):
+        if candidate is None:
+            return best
+        if best is None:
+            return candidate
+        return candidate if score(candidate[1]) < score(best[1]) else best
+
+    def check(current, path):
+        current = _normalize_polynomial_ops(current)
+
+        if current.is_zero is True:
+            return True, None
+        if current.is_zero is False:
+            return False, (path, current)
+        if probes[0] >= max_probes:
+            return None, (path, current)
+
+        generators = sorted(current.free_symbols, key=default_sort_key)
+        if not generators:
+            return None, (path, current)
+
+        best = (path, current)
+        for generator in generators:
+            try:
+                stream = PolyTermStream(current, generator)
+            except PolynomialError:
+                continue
+
+            index = 0
+            unresolved = False
+            local_best = None
+            while probes[0] < max_probes:
+                probes[0] += 1
+                term = stream.term(index)
+                if term is None:
+                    if not unresolved:
+                        return True, None
+                    break
+
+                degree, coefficient = term
+                newpath = dict(path)
+                newpath[generator] = degree
+                status, evidence = check(coefficient, newpath)
+                if status is False:
+                    return False, evidence
+                if status is None:
+                    unresolved = True
+                    local_best = better(local_best, evidence)
+                index += 1
+
+            best = better(best, local_best)
+
+        return None, best
+
+    return check(expr, {})
