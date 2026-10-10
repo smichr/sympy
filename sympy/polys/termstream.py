@@ -458,19 +458,47 @@ class _PolynomialPowersStream(_TermStream):
 class _AddStream(_TermStream):
     """Merge descending child streams, combining equal degree layers."""
 
-    def __init__(self, children, stats=None):
+    def __init__(self, children, upper_bounds, stats=None):
         self.children = children
+        self.upper_bounds = upper_bounds
         super().__init__(stats)
 
     def _generate(self):
         heap = []
-        for child_index, child in enumerate(self.children):
-            term = self._child_term(child, 0)
+        pending = []
+
+        for child_index, bound in enumerate(self.upper_bounds):
+            if bound is not None:
+                heappush(pending, (-bound, child_index))
+
+        def activate():
+            """Activate the child with the highest remaining upper bound."""
+            _, child_index = heappop(pending)
+            term = self._child_term(self.children[child_index], 0)
+
             if term is not None:
                 degree, coeff = term
                 heappush(heap, (-degree, child_index, 0, coeff))
 
-        while heap:
+        while pending or heap:
+            # Find at least one actual term.
+            while not heap and pending:
+                activate()
+
+            if not heap:
+                return
+
+            # Before closing the current highest degree, activate every
+            # remaining child whose structural upper bound could reach it.
+            while pending:
+                degree = -heap[0][0]
+                bound = -pending[0][0]
+
+                if bound < degree:
+                    break
+
+                activate()
+
             degree = -heap[0][0]
             coeff = S.Zero
 
@@ -618,8 +646,15 @@ def _stream_from_expr(expr, gen, stats=None):
         return _MonomialStream(0, expr, stats)
 
     if expr.is_Add:
-        return _AddStream(
-            [_stream_from_expr(arg, gen, stats) for arg in expr.args], stats)
+        children = [
+            _stream_from_expr(arg, gen, stats)
+            for arg in expr.args
+        ]
+        upper_bounds = [
+            exponent_runs(arg, gen).hi
+            for arg in expr.args
+        ]
+        return _AddStream(children, upper_bounds, stats)
 
     if expr.is_Mul:
         stream = _special_product_stream(expr, gen, stats)

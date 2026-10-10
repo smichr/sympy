@@ -408,3 +408,37 @@ def test_possible_support_cancellation():
 
     assert 1 in stream.possible_support
     assert stream.degree() is S.NegativeInfinity
+
+
+def test_add_stream_uses_exponent_support():
+    x = symbols('x')
+
+    expr = (
+        (x + 1)**1000 +
+        (x + 1)**100 +
+        (x + 1)**10 +
+        1
+    )
+
+    stream = PolyTermStream(expr, x, collect_stats=True)
+
+    assert stream.take(1) == [(1000, 1)]
+
+    # Only the degree-1000 child needs to be inspected.  Its first
+    # term is requested to activate it and its second while closing
+    # the degree-1000 layer.
+    assert stream.stats['child_requests'] == 2
+
+
+def test_add_stream_support_bound_with_cancellation():
+    x = symbols('x')
+
+    expr = (
+        (x + 1)**100 -
+        (x - 1)**100 +
+        (x + 1)**10
+    )
+
+    stream = PolyTermStream(expr, x)
+
+    assert stream.take(1) == [(99, 200)]
