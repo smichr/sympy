@@ -526,9 +526,10 @@ class _AddStream(_TermStream):
 class _MulStream(_TermStream):
     """Lazily merge the ordered Cartesian product of two term streams."""
 
-    def __init__(self, left, right, stats=None):
+    def __init__(self, left, right, stats=None, *, collision_free=False):
         self.left = left
         self.right = right
+        self.collision_free = collision_free
         super().__init__(stats)
 
     def _state(self, left_index, right_index):
@@ -547,13 +548,42 @@ class _MulStream(_TermStream):
         seen = {(0, 0)}
 
         while heap:
+            if self.collision_free:
+                neg_degree, left_index, right_index, coeff = heappop(heap)
+
+                if self._stats is not None:
+                    self._stats.mul_states_popped += 1
+
+                neighbors = (
+                    (left_index + 1, right_index),
+                    (left_index, right_index + 1),
+                )
+                for neighbor in neighbors:
+                    if neighbor in seen:
+                        continue
+                    seen.add(neighbor)
+
+                    state = self._state(*neighbor)
+                    if state is not None:
+                        heappush(
+                            heap,
+                            (-state[0], *neighbor, state[1]),
+                        )
+
+                if not _is_zero(coeff):
+                    yield -neg_degree, coeff
+
+                continue
+
             degree = -heap[0][0]
             coeff = S.Zero
 
             while heap and -heap[0][0] == degree:
                 _, left_index, right_index, state_coeff = heappop(heap)
+
                 if self._stats is not None:
                     self._stats.mul_states_popped += 1
+
                 coeff += state_coeff
 
                 neighbors = (
@@ -564,9 +594,13 @@ class _MulStream(_TermStream):
                     if neighbor in seen:
                         continue
                     seen.add(neighbor)
+
                     state = self._state(*neighbor)
                     if state is not None:
-                        heappush(heap, (-state[0], *neighbor, state[1]))
+                        heappush(
+                            heap,
+                            (-state[0], *neighbor, state[1]),
+                        )
 
             if _is_zero(coeff):
                 if self._stats is not None:
@@ -583,9 +617,9 @@ def _power_stream(base, exponent, stats=None):
         return base
 
     half = _power_stream(base, exponent // 2, stats)
-    square = _MulStream(half, half, stats)
+    square = _MulStream(half, half, stats=stats)
     if exponent % 2:
-        return _MulStream(square, base, stats)
+        return _MulStream(square, base, stats=stats)
     return square
 
 
@@ -669,12 +703,30 @@ def _stream_from_expr(expr, gen, stats=None):
             else:
                 scale *= arg
 
-        children = [_stream_from_expr(arg, gen, stats) for arg in dependent]
+        children = [
+            _stream_from_expr(arg, gen, stats)
+            for arg in dependent
+        ]
+        supports = [
+            exponent_runs(arg, gen)
+            for arg in dependent
+        ]
+
         stream = children[0]
-        for child in children[1:]:
-            stream = _MulStream(stream, child, stats)
+        support = supports[0]
+
+        for child, child_support in zip(children[1:], supports[1:]):
+            stream = _MulStream(
+                stream,
+                child,
+                stats=stats,
+                collision_free=support.is_direct_sum(child_support),
+            )
+            support = support + child_support
+
         if scale != 1:
             stream = _ScaleStream(scale, stream, stats)
+
         return stream
 
     if expr.is_Pow:

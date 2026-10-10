@@ -320,13 +320,11 @@ def test_termstream_handpicked_against_poly():
 
 
 def test_termstream_rejects_nonpolynomial_nodes():
-    z = symbols('z')
-
     for expr in (
         sin(x),
         1/x,
         x**Rational(1, 2),
-        x**z,
+        x**y,
         (x + 1)**-2,
     ):
         raises(PolynomialError, lambda expr=expr: PolyTermStream(expr, x))
@@ -350,17 +348,15 @@ def test_polynomial_zero_nonzero_witness():
 
 
 def test_polynomial_zero_by_stream_exhaustion():
-    a = symbols('a')
     expr = Add(
-        -a**2, -2*a, Pow(a + 1, 2, evaluate=False), -1,
+        -x**2, -2*x, Pow(x + 1, 2, evaluate=False), -1,
         evaluate=False,
     )
     assert polynomial_zero(expr) == (True, None)
 
 
 def test_polynomial_zero_unresolved_residual():
-    a = symbols('a')
-    coeff = sin(a)**2 + cos(a)**2 - 1
+    coeff = sin(y)**2 + cos(y)**2 - 1
     expr = Mul(x, coeff, evaluate=False)
     assert polynomial_zero(expr) == (
         None, ({x: 1}, coeff))
@@ -386,8 +382,6 @@ def test_polynomial_zero_leading_cancellation_chain():
 
 
 def test_possible_support():
-    x = symbols('x')
-
     stream = PolyTermStream((1 + x**3 + x**7)**1000000, x)
     support = stream.possible_support
 
@@ -401,7 +395,6 @@ def test_possible_support():
 
 
 def test_possible_support_cancellation():
-    x = symbols('x')
     expr = Add(x, -x, evaluate=False)
 
     stream = PolyTermStream(expr, x)
@@ -411,8 +404,6 @@ def test_possible_support_cancellation():
 
 
 def test_add_stream_uses_exponent_support():
-    x = symbols('x')
-
     expr = (
         (x + 1)**1000 +
         (x + 1)**100 +
@@ -431,8 +422,6 @@ def test_add_stream_uses_exponent_support():
 
 
 def test_add_stream_support_bound_with_cancellation():
-    x = symbols('x')
-
     expr = (
         (x + 1)**100 -
         (x - 1)**100 +
@@ -442,3 +431,21 @@ def test_add_stream_support_bound_with_cancellation():
     stream = PolyTermStream(expr, x)
 
     assert stream.take(1) == [(99, 200)]
+
+
+def test_mul_stream_direct_sum():
+    e = (1 + x + x**2)*(1 + x**100 + x**200)
+
+    stream = PolyTermStream(e, x)
+
+    assert stream.take(9) == [
+        (202, 1),
+        (201, 1),
+        (200, 1),
+        (102, 1),
+        (101, 1),
+        (100, 1),
+        (2, 1),
+        (1, 1),
+        (0, 1),
+    ]
