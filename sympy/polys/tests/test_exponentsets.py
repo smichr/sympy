@@ -208,6 +208,14 @@ def test_power_exhaustive():
             _assert_disjoint(powered)
 
 
+def test_large_stride_power_support():
+    E = ExponentRuns.from_values({0, 1_000_000})
+
+    assert (E**1_000_000).runs == (
+        (0, 1_000_000_000_000, 1_000_000),
+    )
+
+
 def test_large_sparse_power():
     R = ExponentRuns.from_values({0, 3, 7})**1_000_000
 
@@ -301,6 +309,20 @@ def test_power_stabilization_rejects_accidental_count_match():
 
     for n in range(1, 10):
         assert set(A**n) == _power_values({0, 1, 4, 5}, n)
+
+
+def test_affine_preserves_run_structure():
+    E = ExponentRuns([
+        (0, 10, 1),
+        (12, 20, 2),
+        (25, 25, 1),
+    ])
+
+    assert E._affine(100, 7).runs == (
+        (7, 1007, 100),
+        (1207, 2007, 200),
+        (2507, 2507, 1),
+    )
 
 
 def test_power_removes_exponent_gcd():

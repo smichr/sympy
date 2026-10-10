@@ -163,22 +163,31 @@ def _zip_runs(runs):
         for step in steps:
             same_step = [run for run in runs if run[2] == step]
 
+            # One residue class cannot be zipped to a smaller stride.  Apart
+            # from avoiding useless work, this is important when ``step`` is
+            # large because even enumerating its proper divisors can be
+            # expensive.
+            if len(same_step) < 2:
+                continue
+
             for newstep in _proper_divisors(step):
+                width = step // newstep
+                if len(same_step) < width:
+                    continue
+
                 buckets = defaultdict(list)
                 for run in same_step:
                     buckets[run[0] % newstep].append(run)
 
                 for residue, group in buckets.items():
-                    expected = {
-                        r for r in range(step)
-                        if r % newstep == residue
-                    }
-                    residues = [start % step for start, _, _ in group]
+                    # This bucket already contains only residues congruent to
+                    # ``residue`` modulo ``newstep``.  There are exactly
+                    # ``width`` such residue classes modulo ``step``, so a
+                    # complete family is characterized by ``width`` distinct
+                    # residues; there is no need to scan ``range(step)``.
+                    residues = {start % step for start, _, _ in group}
 
-                    if (
-                        set(residues) != expected or
-                        len(residues) != len(expected)
-                    ):
+                    if len(group) != width or len(residues) != width:
                         continue
 
                     replacement = _zip_group(
@@ -509,15 +518,33 @@ class ExponentRuns:
 
         return result
 
-    def _shift(self, amount):
-        """Return this exponent set translated by ``amount``."""
-        if not amount:
+    def _affine(self, scale=1, shift=0):
+        """Return ``scale*self + shift`` without re-normalizing runs.
+
+        A positive integral scale and a translation preserve disjointness
+        and the canonical run structure, so an already-normalized
+        ``ExponentRuns`` can be transformed directly.
+        """
+        if scale <= 0:
+            raise ValueError("positive scale expected")
+
+        if scale == 1 and shift == 0:
             return self
 
-        return ExponentRuns(
-            (start + amount, stop + amount, step)
+        result = object.__new__(ExponentRuns)
+        result.runs = tuple(
+            (
+                shift + scale*start,
+                shift + scale*stop,
+                scale*step if start != stop else 1,
+            )
             for start, stop, step in self.runs
         )
+        return result
+
+    def _shift(self, amount):
+        """Return this exponent set translated by ``amount``."""
+        return self._affine(shift=amount)
 
     def _stable_power(self, n):
         """Return the n-fold Minkowski sum, extrapolating stable powers.
@@ -643,16 +670,7 @@ class ExponentRuns:
         )
 
         result = normalized._stable_power(n)
-        shift = n*lo
-
-        return ExponentRuns(
-            (
-                shift + g*start,
-                shift + g*stop,
-                g*step if start != stop else 1,
-            )
-            for start, stop, step in result.runs
-        )
+        return result._affine(g, n*lo)
 
     def is_direct_sum(self, other):
         """Return whether the Minkowski sum with ``other`` is direct."""
