@@ -271,3 +271,30 @@ def test_summary_and_repr():
     assert "count=14, span=21, gaps=7" in summary
     assert "runs=4" in summary
     assert "support=0, 3, [6, 10; 2], [12, 20]" in summary
+
+
+def test_power_removes_exponent_gcd():
+    E = ExponentRuns.from_values({0, 100, 700})
+
+    assert E.lattice_gcd == 100
+
+    assert (E**40).runs == (
+        (0, 25000, 100),
+        (25200, 25600, 100),
+        (25900, 26200, 100),
+        (26600, 26800, 100),
+        (27300, 27400, 100),
+        (28000, 28000, 1),
+    )
+
+
+def test_power_removes_exponent_gcd_with_shift():
+    E = ExponentRuns.from_values({2, 6, 10})
+
+    assert E.lattice_gcd == 4
+    assert (E**3).runs == ((6, 30, 4),)
+
+
+def test_lattice_gcd_one():
+    E = ExponentRuns.from_values({0, 2, 4, 6, 9})
+    assert E.lattice_gcd == 1

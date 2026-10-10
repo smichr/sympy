@@ -496,12 +496,7 @@ class ExponentRuns:
 
     __add__ = minkowski
 
-    def __pow__(self, n):
-        """Return the n-fold Minkowski sum for nonnegative integer ``n``."""
-        n = index(n)
-        if n < 0:
-            raise ValueError("nonnegative power expected")
-
+    def _pow(self, n):
         result = ExponentRuns([(0, 0, 1)])
         base = self
 
@@ -513,6 +508,59 @@ class ExponentRuns:
                 base = base + base
 
         return result
+
+    def __pow__(self, n):
+        if n < 0:
+            raise ValueError("nonnegative power expected")
+
+        if n == 0:
+            return ExponentRuns([(0, 0, 1)])
+
+        if not self.runs:
+            return ExponentRuns()
+
+        lo = self.lo
+        g = self.lattice_gcd
+
+        if lo == 0 and g == 1:
+            return self._pow(n)
+
+        normalized = ExponentRuns(
+            (
+                (start - lo)//g,
+                (stop - lo)//g,
+                step//g if start != stop else 1,
+            )
+            for start, stop, step in self.runs
+        )
+
+        result = normalized._pow(n)
+        shift = n*lo
+
+        return ExponentRuns(
+            (
+                shift + g*start,
+                shift + g*stop,
+                g*step if start != stop else 1,
+            )
+            for start, stop, step in result.runs
+        )
+
+    @property
+    def lattice_gcd(self):
+        """Return the common lattice spacing of this support."""
+        if not self.runs:
+            return 1
+
+        lo = self.lo
+        g = 0
+
+        for start, stop, step in self.runs:
+            g = gcd(g, start - lo)
+            if start != stop:
+                g = gcd(g, step)
+
+        return g or 1
 
     def summary(self, max_runs=12):
         """Return a compact description of this exponent support."""
