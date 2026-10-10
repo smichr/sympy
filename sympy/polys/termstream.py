@@ -10,7 +10,10 @@ independent of that generator, Add, Mul, and Pow with a nonnegative
 integer exponent are supported.
 """
 
+from math import gcd
+from functools import reduce
 from heapq import heappop, heappush
+from math import gcd
 
 from sympy.core import S, sympify
 from sympy.core.function import count_ops
@@ -19,6 +22,7 @@ from sympy.core.exprtools import _decompose_exprs, factor_terms
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.recurrences import DifferentialRecurrence
+from sympy.polys.exponentsets import exponent_runs
 
 
 def _is_zero(coeff):
@@ -700,6 +704,7 @@ class PolyTermStream:
         self.gen = gen
         self._stats = _StreamStats() if collect_stats else None
         self._stream = _stream_from_expr(expr, gen, self._stats)
+        self._possible_support = None
 
     def term(self, index):
         """Return the *index*-th surviving term as ``(degree, coeff)``."""
@@ -722,6 +727,16 @@ class PolyTermStream:
         if term is None:
             return S.Zero
         return term[1]
+
+    @property
+    def possible_support(self):
+        """Return the structural set of possible exponent degrees.
+
+        Coefficient cancellation can make the actual support smaller.
+        """
+        if self._possible_support is None:
+            self._possible_support = exponent_runs(self.expr, self.gen)
+        return self._possible_support
 
     @property
     def stats(self):

@@ -3,7 +3,7 @@ from random import Random
 
 from sympy import (
     Add, Integer, Mul, Poly, Pow, Rational, S, binomial, expand, sin,
-    symbols,
+    cos, symbols,
 )
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.termstream import (
@@ -383,3 +383,28 @@ def test_polynomial_zero_leading_cancellation_chain():
         False,
         ({x: 8194, y: 6}, prod(range(195, 201))),
     )
+
+
+def test_possible_support():
+    x = symbols('x')
+
+    stream = PolyTermStream((1 + x**3 + x**7)**1000000, x)
+    support = stream.possible_support
+
+    assert support.lo == 0
+    assert support.hi == 7000000
+    assert len(support) == 6999986
+
+    assert 7000000 in support
+    assert 6999999 not in support
+    assert 6999996 in support
+
+
+def test_possible_support_cancellation():
+    x = symbols('x')
+    expr = Add(x, -x, evaluate=False)
+
+    stream = PolyTermStream(expr, x)
+
+    assert 1 in stream.possible_support
+    assert stream.degree() is S.NegativeInfinity
