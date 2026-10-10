@@ -509,6 +509,114 @@ class ExponentRuns:
 
         return result
 
+    def _shift(self, amount):
+        """Return this exponent set translated by ``amount``."""
+        if not amount:
+            return self
+
+        return ExponentRuns(
+            (start + amount, stop + amount, step)
+            for start, stop, step in self.runs
+        )
+
+    def _stable_power(self, n):
+        """Return the n-fold Minkowski sum, extrapolating stable powers.
+
+        This is called only for a normalized support: its minimum is 0 and
+        its lattice gcd is 1.
+
+        The ordinary binary-power walk naturally constructs
+
+            A, 2*A, 4*A, 8*A, ...
+
+        so stabilization is checked only at those already-needed powers.
+        If ``S = k*A`` and ``b = max(A)``, stability gives
+
+            (k + 1)*A = S | (S + b),
+
+        after which every later power is obtained from ``S`` by adding
+        multiples of ``b``.
+
+        Before checking that recurrence, use the cheap necessary signal that
+        doubling ``S`` increased its cardinality by exactly ``k*b``.  The
+        b-l theorem is used only when the binary walk naturally reaches its
+        bound; no large intermediate is constructed merely to reach it.
+        """
+        if n <= 1 or len(self) <= 1:
+            return self._pow(n)
+
+        b = self.hi
+        if not b:
+            return self._pow(n)
+
+        # For A = {0 = a0 < ... < a_(l+1) = b}, l = len(A) - 2.
+        bound = max(1, b - len(self) + 2)
+
+        def extrapolate(S, k):
+            if k == n:
+                return S
+
+            shift = (n - k)*b
+            runs = list(S.runs)
+
+            # In the stable regime there is a central contiguous run at
+            # least b terms long. Later powers leave the low fringe fixed,
+            # extend this middle run, and translate the high fringe.
+            for i, (start, stop, step) in enumerate(runs):
+                if step == 1 and stop - start + 1 >= b:
+                    return ExponentRuns(
+                        runs[:i]
+                        + [(start, stop + shift, 1)]
+                        + [
+                            (a + shift, z + shift, s)
+                            for a, z, s in runs[i + 1:]
+                        ]
+                    )
+
+            # Defensive exact fallback if a representation reaches here
+            # without the expected stable middle run.
+            return S + ExponentRuns([(0, shift, b)])
+
+        result = ExponentRuns([(0, 0, 1)])
+        base = self
+        k = 1
+        remaining = n
+
+        while remaining:
+            # If the normal binary walk has naturally reached the theorem
+            # bound, ``base = k*A`` is already in the stable regime.
+            if k >= bound:
+                return extrapolate(base, k)
+
+            if remaining & 1:
+                result = result + base
+
+            remaining >>= 1
+            if not remaining:
+                break
+
+            next_base = base + base
+
+            # Equal gap counts between k*A and 2k*A are a cheap signal that
+            # stabilization may already have occurred:
+            #
+            #     |2k*A| - |k*A| == k*b.
+            #
+            # Only then pay to verify the stronger adjacent recurrence.
+            if len(next_base) - len(base) == k*b:
+                adjacent = base + self
+                fringe = base | base._shift(b)
+
+                # ``fringe`` is a subset of ``adjacent`` because 0 and b
+                # belong to A. Equal sizes therefore prove equality.
+                if len(adjacent) == len(fringe):
+                    return extrapolate(base, k)
+
+            base = next_base
+            k *= 2
+
+        return result
+
     def __pow__(self, n):
         if n < 0:
             raise ValueError("nonnegative power expected")
@@ -523,7 +631,7 @@ class ExponentRuns:
         g = self.lattice_gcd
 
         if lo == 0 and g == 1:
-            return self._pow(n)
+            return self._stable_power(n)
 
         normalized = ExponentRuns(
             (
@@ -534,7 +642,7 @@ class ExponentRuns:
             for start, stop, step in self.runs
         )
 
-        result = normalized._pow(n)
+        result = normalized._stable_power(n)
         shift = n*lo
 
         return ExponentRuns(

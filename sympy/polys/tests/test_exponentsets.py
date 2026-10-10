@@ -273,6 +273,36 @@ def test_summary_and_repr():
     assert "support=0, 3, [6, 10; 2], [12, 20]" in summary
 
 
+
+def test_power_stabilization_recurrence():
+    A = ExponentRuns.from_values({0, 3, 7, 12})
+
+    # The support stabilizes well before the general b-l bound.
+    S = A**5
+    assert set(S + A) == set(S | S._shift(12))
+
+    R = A**1_000_000
+    assert R.lo == 0
+    assert R.hi == 12_000_000
+    assert len(R) == R.hi + 1 - 16
+
+
+def test_power_stabilization_rejects_accidental_count_match():
+    A = ExponentRuns.from_values({0, 1, 4, 5})
+
+    S1 = A
+    S2 = A**2
+
+    # The first cardinality increase looks stable ...
+    assert len(S2) - len(S1) == A.hi
+
+    # ... but the recurrence does not yet hold.
+    assert set(S2) != set(S1 | S1._shift(A.hi))
+
+    for n in range(1, 10):
+        assert set(A**n) == _power_values({0, 1, 4, 5}, n)
+
+
 def test_power_removes_exponent_gcd():
     E = ExponentRuns.from_values({0, 100, 700})
 
