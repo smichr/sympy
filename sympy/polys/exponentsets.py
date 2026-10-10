@@ -546,6 +546,12 @@ class ExponentRuns:
             for start, stop, step in result.runs
         )
 
+    def is_direct_sum(self, other):
+        """Return whether the Minkowski sum with ``other`` is direct."""
+        if not self or not other:
+            return True
+        return len(self + other) == len(self)*len(other)
+
     @property
     def lattice_gcd(self):
         """Return the common lattice spacing of this support."""
