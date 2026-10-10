@@ -730,14 +730,16 @@ def exponent_runs(expr, x):
     expr = sympify(expr)
     gen = sympify(x)
 
+    b, n = expr.as_base_exp()
+    if b == gen and n.is_Integer and n >= 0:
+        n = int(n)
+        return ExponentRuns([(n, n, 1)])
+
     if expr.is_zero is True:
         return ExponentRuns()
 
     if not expr.has(gen):
         return ExponentRuns([(0, 0, 1)])
-
-    if expr == gen:
-        return ExponentRuns([(1, 1, 1)])
 
     if expr.is_Add:
         result = ExponentRuns()

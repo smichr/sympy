@@ -350,3 +350,8 @@ def test_power_removes_exponent_gcd_with_shift():
 def test_lattice_gcd_one():
     E = ExponentRuns.from_values({0, 2, 4, 6, 9})
     assert E.lattice_gcd == 1
+
+
+def test_recognize_trivial_powers():
+    assert exponent_runs(x**10_000_000, x).runs == ((
+        10_000_000, 10_000_000, 1),)
