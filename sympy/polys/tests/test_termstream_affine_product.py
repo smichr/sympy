@@ -1,4 +1,5 @@
-from sympy import Add, Mul, Poly, Pow, S, symbols
+from __future__ import annotations
+from sympy import Add, Mul, Poly, Pow, symbols
 
 from sympy.polys.termstream import (
     PolyTermStream, _polynomial_product_data,

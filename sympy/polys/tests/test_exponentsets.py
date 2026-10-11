@@ -1,3 +1,4 @@
+from __future__ import annotations
 from itertools import combinations
 
 from sympy import Add, sin, symbols
@@ -103,6 +104,7 @@ def test_exponent_runs_basics():
     raises(ValueError, lambda: ExponentRuns([(0, 10, 3)]))
     raises(ValueError, lambda: ExponentRuns([(0, 10, 0)]))
     raises(ValueError, lambda: R**-1)
+    raises(ValueError, lambda: R**1.5)
 
 
 def test_zip_runs():
@@ -279,7 +281,6 @@ def test_summary_and_repr():
     assert "count=14, span=21, gaps=7" in summary
     assert "runs=4" in summary
     assert "support=0, 3, [6, 10; 2], [12, 20]" in summary
-
 
 
 def test_power_stabilization_recurrence():

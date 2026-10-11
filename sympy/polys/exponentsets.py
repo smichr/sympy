@@ -14,13 +14,14 @@ exponent support.  It deliberately does not try to prove that symbolic
 coefficients cancel; consumers such as a term stream can resolve those
 coefficients separately.
 """
+from __future__ import annotations
 
 from collections import defaultdict
 from math import gcd, isqrt
-from operator import index
 
 from sympy.core.sympify import sympify
 from sympy.polys.polyerrors import PolynomialError
+from sympy.utilities.misc import as_int
 
 
 __all__ = ["ExponentRuns", "exponent_runs"]
@@ -29,6 +30,8 @@ __all__ = ["ExponentRuns", "exponent_runs"]
 def _validate_run(run):
     """Validate an inclusive arithmetic run."""
     start, stop, step = run
+    if start < 0:
+        raise ValueError("start must be nonnegative")
     if step <= 0:
         raise ValueError("step must be positive")
     if start > stop or (stop - start) % step:
@@ -566,8 +569,9 @@ class ExponentRuns:
 
         Before checking that recurrence, use the cheap necessary signal that
         doubling ``S`` increased its cardinality by exactly ``k*b``.  The
-        b-l theorem is used only when the binary walk naturally reaches its
-        bound; no large intermediate is constructed merely to reach it.
+        Granville-Walker structure theorem (for ``N >= b - l``) is used
+        only when the binary walk naturally reaches its bound; no large
+        intermediate is constructed merely to reach it.
         """
         if n <= 1 or len(self) <= 1:
             return self._pow(n)
@@ -645,6 +649,8 @@ class ExponentRuns:
         return result
 
     def __pow__(self, n):
+        n = as_int(n)
+
         if n < 0:
             raise ValueError("nonnegative power expected")
 

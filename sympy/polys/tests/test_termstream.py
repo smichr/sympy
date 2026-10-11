@@ -1,3 +1,4 @@
+from __future__ import annotations
 from math import prod
 from random import Random
 
@@ -122,6 +123,10 @@ def test_add_stream_defers_child_construction():
 
     assert stream.term(2) == (3, 7*S.One)
     assert built == ["high", "low"]
+
+
+def test_termstream_rejects_negative_index():
+    raises(ValueError, lambda: PolyTermStream(x + 1, x).term(-1))
 
 
 def test_add_stream_defers_child_advance():
@@ -482,7 +487,6 @@ def test_termstream_nested_unevaluated_power_exponents():
 
     _assert_matches_poly(expr)
     assert PolyTermStream(expr, x).degree() == 6
-
 
 
 def test_polynomial_zero_nonzero_witness():

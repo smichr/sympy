@@ -1,4 +1,5 @@
 """Low-level helpers for coefficient recurrences."""
+from __future__ import annotations
 
 from sympy.core import S
 

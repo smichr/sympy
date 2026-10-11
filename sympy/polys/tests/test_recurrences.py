@@ -1,3 +1,4 @@
+from __future__ import annotations
 from sympy import S, symbols
 
 from sympy.polys.recurrences import DifferentialRecurrence

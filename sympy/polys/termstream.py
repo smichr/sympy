@@ -9,11 +9,9 @@ Only expressions built from a single Symbol generator, coefficients
 independent of that generator, Add, Mul, and Pow with a nonnegative
 integer exponent are supported.
 """
+from __future__ import annotations
 
-from math import gcd
-from functools import reduce
 from heapq import heappop, heappush
-from math import gcd
 
 from sympy.core import S, sympify
 from sympy.core.function import count_ops
@@ -258,6 +256,8 @@ class _TermStream:
 
     def term(self, index):
         """Return term *index*, generating only as much as necessary."""
+        if index < 0:
+            raise ValueError("nonnegative term index expected")
         stats = self._stats
         if stats is not None:
             stats.term_requests += 1
@@ -825,7 +825,6 @@ def _normalize_polynomial_ops(expr):
         lambda arg: arg.is_Add or arg.is_Mul or arg.is_Pow,
         lambda arg: arg.func(*arg.args),
     )
-
 
 
 class PolyTermStream:
