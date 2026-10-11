@@ -463,6 +463,14 @@ class _AddStream(_TermStream):
         self.upper_bounds = upper_bounds
         super().__init__(stats)
 
+    def _materialize_child(self, child_index):
+        """Return child *child_index*, constructing it on first use."""
+        child = self.children[child_index]
+        if not isinstance(child, _TermStream):
+            child = child()
+            self.children[child_index] = child
+        return child
+
     def _generate(self):
         heap = []
         pending = []
@@ -474,7 +482,8 @@ class _AddStream(_TermStream):
         def activate():
             """Activate the child with the highest remaining upper bound."""
             _, child_index = heappop(pending)
-            term = self._child_term(self.children[child_index], 0)
+            child = self._materialize_child(child_index)
+            term = self._child_term(child, 0)
 
             if term is not None:
                 degree, coeff = term
@@ -742,12 +751,12 @@ def _stream_from_expr(expr, gen, stats=None):
         return _MonomialStream(0, expr, stats)
 
     if expr.is_Add:
-        children = [
-            _stream_from_expr(arg, gen, stats)
-            for arg in expr.args
-        ]
         upper_bounds = [
             _exponent_upper_bound(arg, gen)
+            for arg in expr.args
+        ]
+        children = [
+            lambda arg=arg: _stream_from_expr(arg, gen, stats)
             for arg in expr.args
         ]
         return _AddStream(children, upper_bounds, stats)

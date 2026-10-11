@@ -84,6 +84,46 @@ def test_termstream_power():
     assert stream.LC() == 1
 
 
+def test_add_stream_defers_child_construction():
+    class ListStream(_TermStream):
+        def __init__(self, terms, stats):
+            self.terms = terms
+            super().__init__(stats)
+
+        def _generate(self):
+            yield from self.terms
+
+    stats = _StreamStats()
+    built = []
+
+    def factory(name, terms):
+        def build():
+            built.append(name)
+            return ListStream(terms, stats)
+        return build
+
+    stream = _AddStream(
+        [
+            factory("high", [(5, S.One), (4, 2*S.One)]),
+            factory("low", [(3, 7*S.One)]),
+        ],
+        [5, 3],
+        stats,
+    )
+
+    assert built == []
+    assert stats.streams_created == 1
+
+    assert stream.term(0) == (5, S.One)
+    assert built == ["high"]
+
+    assert stream.term(1) == (4, 2*S.One)
+    assert built == ["high"]
+
+    assert stream.term(2) == (3, 7*S.One)
+    assert built == ["high", "low"]
+
+
 def test_add_stream_defers_child_advance():
     class ListStream(_TermStream):
         def __init__(self, terms, stats):
@@ -516,6 +556,10 @@ def test_add_stream_uses_structural_bound():
     )
 
     stream = PolyTermStream(expr, x, collect_stats=True)
+
+    # Add children are not constructed until their structural bound makes
+    # them eligible for activation.
+    assert stream.stats['streams_created'] == 1
 
     assert stream.take(1) == [(1000, 1)]
 
