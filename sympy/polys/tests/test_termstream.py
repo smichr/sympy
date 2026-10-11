@@ -3,7 +3,7 @@ from math import prod
 from random import Random
 
 from sympy import (
-    Add, Integer, Mul, Poly, Pow, Rational, S, binomial, expand, sin,
+    Add, Integer, Mul, O, Poly, Pow, Rational, S, binomial, expand, sin,
     cos, symbols,
 )
 from sympy.polys.polyerrors import PolynomialError
@@ -109,6 +109,36 @@ def test_termstream_reverse_denominator_scale():
             (3, Rational(2, 3)),
         ],
     )
+
+
+def test_termstream_trailing_queries():
+    expr = x**5 + 3*x**2
+
+    for reverse in (False, True):
+        stream = PolyTermStream(expr, x, reverse=reverse)
+        assert stream.EC() == 3
+        assert stream.TC() == 0
+
+    expr = x**5 + 3*x**2 + 7
+    stream = PolyTermStream(expr, x)
+    assert stream.EC() == 7
+    assert stream.TC() == 7
+
+    zero = PolyTermStream(S.Zero, x)
+    assert zero.EC() == 0
+    assert zero.TC() == 0
+
+
+def test_termstream_series():
+    expr = (1 + x)**20
+    assert PolyTermStream(expr, x).series(6) == expr.series(x, 0, 6)
+
+    sparse = (1 + x**1000)**1000
+    assert PolyTermStream(sparse, x).series(20) == 1 + O(x**20)
+
+    exact = 1 + 2*x + x**3
+    assert PolyTermStream(exact, x).series(6) == exact
+    assert PolyTermStream(exact, x).series(0) == exact.series(x, 0, 0)
 
 
 def test_exponent_upper_bound():

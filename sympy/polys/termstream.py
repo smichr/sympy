@@ -20,6 +20,7 @@ from sympy.core.exprtools import _decompose_exprs, factor_terms
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.recurrences import DifferentialRecurrence
+from sympy.utilities.misc import as_int
 from sympy.polys.exponentsets import ExponentRuns, exponent_runs
 
 
@@ -933,9 +934,11 @@ class PolyTermStream:
         if reverse:
             self._stream = _reverse_stream(expr, gen, self._stats)
             self._leading_stream = None
+            self._trailing_stream = self._stream
         else:
             self._stream = _stream_from_expr(expr, gen, self._stats)
             self._leading_stream = self._stream
+            self._trailing_stream = None
         self._possible_support = None
 
     def term(self, index):
@@ -966,6 +969,53 @@ class PolyTermStream:
         if term is None:
             return S.Zero
         return term[1]
+
+    def _trailing_term(self):
+        """Return the lowest-degree nonzero term."""
+        if self._trailing_stream is None:
+            self._trailing_stream = _reverse_stream(
+                self.expr, self.gen, self._stats)
+        return self._trailing_stream.term(0)
+
+    def EC(self):
+        """Return the last nonzero coefficient, or zero if the polynomial is zero."""
+        term = self._trailing_term()
+        if term is None:
+            return S.Zero
+        return term[1]
+
+    def TC(self):
+        """Return the coefficient of degree zero."""
+        term = self._trailing_term()
+        if term is None or term[0] != 0:
+            return S.Zero
+        return term[1]
+
+    def series(self, n=6):
+        """Return the series at zero through ``O(gen**n)``."""
+        from sympy.series.order import Order
+
+        n = as_int(n)
+        if n < 0:
+            raise ValueError("number of terms should be nonnegative")
+
+        if self._trailing_stream is None:
+            self._trailing_stream = _reverse_stream(
+                self.expr, self.gen, self._stats)
+
+        terms = []
+        index = 0
+        while True:
+            term = self._trailing_stream.term(index)
+            if term is None:
+                return sum(terms, S.Zero)
+
+            degree, coeff = term
+            if degree >= n:
+                return sum(terms, S.Zero) + Order(self.gen**n, self.gen)
+
+            terms.append(coeff*self.gen**degree)
+            index += 1
 
     @property
     def possible_support(self):
