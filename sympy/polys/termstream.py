@@ -480,6 +480,18 @@ class _AddStream(_TermStream):
                 degree, coeff = term
                 heappush(heap, (-degree, child_index, 0, coeff))
 
+        def advance(states):
+            for child_index, term_index in states:
+                term = self._child_term(
+                    self.children[child_index], term_index + 1)
+                if term is not None:
+                    next_degree, next_coeff = term
+                    heappush(
+                        heap,
+                        (-next_degree, child_index, term_index + 1,
+                         next_coeff),
+                    )
+
         while pending or heap:
             # Find at least one actual term.
             while not heap and pending:
@@ -501,26 +513,23 @@ class _AddStream(_TermStream):
 
             degree = -heap[0][0]
             coeff = S.Zero
+            states = []
 
             while heap and -heap[0][0] == degree:
                 _, child_index, term_index, child_coeff = heappop(heap)
                 coeff += child_coeff
-
-                term = self._child_term(
-                    self.children[child_index], term_index + 1)
-                if term is not None:
-                    next_degree, next_coeff = term
-                    heappush(
-                        heap,
-                        (-next_degree, child_index, term_index + 1,
-                         next_coeff),
-                    )
+                states.append((child_index, term_index))
 
             if _is_zero(coeff):
                 if self._stats is not None:
                     self._stats.cancelled_layers += 1
             else:
+                # A child's next term has strictly smaller degree, so it
+                # cannot affect the layer already completed above.  Defer
+                # advancing children until another result is requested.
                 yield degree, coeff
+
+            advance(states)
 
 
 class _MulStream(_TermStream):

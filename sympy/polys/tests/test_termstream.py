@@ -7,8 +7,7 @@ from sympy import (
 )
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.termstream import (
-    PolyTermStream, _MulStream, _StreamStats, _TermStream,
-    _stream_from_expr, polynomial_zero,
+    PolyTermStream, _AddStream, _MulStream, _StreamStats, _TermStream,
 )
 from sympy.testing.pytest import raises
 
@@ -69,6 +68,51 @@ def test_termstream_power():
     ]
     assert stream.degree() == n
     assert stream.LC() == 1
+
+
+def test_add_stream_defers_child_advance():
+    class ListStream(_TermStream):
+        def __init__(self, terms, stats):
+            self.terms = terms
+            super().__init__(stats)
+
+        def _generate(self):
+            yield from self.terms
+
+    stats = _StreamStats()
+    high = ListStream([(5, S.One), (4, 2*S.One)], stats)
+    low = ListStream([(3, 7*S.One)], stats)
+    stream = _AddStream([high, low], [5, 3], stats)
+
+    assert stream.term(0) == (5, S.One)
+
+    # Only the leading term of the high child is needed.  Advancing it to
+    # term(1) is deferred until the Add stream itself is resumed.
+    assert stats.child_requests == 1
+
+    assert stream.term(1) == (4, 2*S.One)
+    assert stats.child_requests == 2
+
+
+def test_add_stream_advances_through_cancellation():
+    class ListStream(_TermStream):
+        def __init__(self, terms, stats):
+            self.terms = terms
+            super().__init__(stats)
+
+        def _generate(self):
+            yield from self.terms
+
+    stats = _StreamStats()
+    left = ListStream([(5, S.One), (4, 2*S.One)], stats)
+    right = ListStream([(5, -S.One), (4, 3*S.One)], stats)
+    stream = _AddStream([left, right], [5, 5], stats)
+
+    # The degree-5 layer cancels, so both children must be advanced
+    # immediately until the next surviving layer can be found.
+    assert stream.term(0) == (4, 5*S.One)
+    assert stats.cancelled_layers == 1
+    assert stats.child_requests == 4
 
 
 def test_termstream_add_cancellation():
@@ -462,9 +506,9 @@ def test_add_stream_uses_exponent_support():
     assert stream.take(1) == [(1000, 1)]
 
     # Only the degree-1000 child needs to be inspected.  Its first
-    # term is requested to activate it and its second while closing
-    # the degree-1000 layer.
-    assert stream.stats['child_requests'] == 2
+    # term is requested to activate it; advancing that child is deferred
+    # until another result is requested.
+    assert stream.stats['child_requests'] == 1
 
 
 def test_add_stream_support_bound_with_cancellation():
