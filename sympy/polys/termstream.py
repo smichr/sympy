@@ -11,6 +11,8 @@ integer exponent are supported.
 """
 from __future__ import annotations
 
+from operator import index as operator_index
+
 from heapq import heappop, heappush, merge
 
 from sympy.core import S, sympify
@@ -941,20 +943,96 @@ class PolyTermStream:
             self._trailing_stream = None
         self._possible_support = None
 
+    def _get_leading_stream(self):
+        """Return the high-to-low stream, constructing it only if needed."""
+        if self._leading_stream is None:
+            self._leading_stream = _stream_from_expr(
+                self.expr, self.gen, self._stats)
+        return self._leading_stream
+
+    def _get_trailing_stream(self):
+        """Return the low-to-high stream, constructing it only if needed."""
+        if self._trailing_stream is None:
+            self._trailing_stream = _reverse_stream(
+                self.expr, self.gen, self._stats)
+        return self._trailing_stream
+
+    def _back_stream(self):
+        """Return the stream that reads from the logical end of this instance."""
+        if self.reverse:
+            return self._get_leading_stream()
+        return self._get_trailing_stream()
+
     def term(self, index):
-        """Return the *index*-th surviving term as ``(degree, coeff)``."""
-        return self._stream.term(index)
+        """Return the indexed surviving term in this instance's direction."""
+        index = operator_index(index)
+        if index >= 0:
+            return self._stream.term(index)
+        return self._back_stream().term(-index - 1)
 
     def take(self, count):
         """Return at most the first *count* surviving terms."""
         return self._stream.take(count)
 
+    def __getitem__(self, item):
+        """Return a term or a lazily obtainable slice of terms."""
+        if not isinstance(item, slice):
+            term = self.term(item)
+            if term is None:
+                raise IndexError("term stream index out of range")
+            return term
+
+        if item.step not in (None, 1):
+            raise NotImplementedError("term stream slices require step 1")
+
+        start = item.start
+        stop = item.stop
+
+        if start is not None:
+            start = operator_index(start)
+        if stop is not None:
+            stop = operator_index(stop)
+
+        # Front-relative slice: [a:b], [a:], [:b], or [:].
+        if (start is None or start >= 0) and (stop is None or stop >= 0):
+            start = 0 if start is None else start
+            if stop is not None and stop <= start:
+                return []
+
+            result = []
+            index = start
+            while stop is None or index < stop:
+                term = self._stream.term(index)
+                if term is None:
+                    break
+                result.append(term)
+                index += 1
+            return result
+
+        # Back-relative slice: [-a:-b] or [-a:].
+        # The opposite stream reads these terms in reverse logical order.
+        if start is not None and start < 0 and (stop is None or stop < 0):
+            back_start = 0 if stop is None else -stop
+            back_stop = -start
+            if back_stop <= back_start:
+                return []
+
+            result = []
+            for index in range(back_start, back_stop):
+                term = self._back_stream().term(index)
+                if term is None:
+                    break
+                result.append(term)
+            result.reverse()
+            return result
+
+        raise NotImplementedError(
+            "mixed positive and negative slice bounds are not supported"
+        )
+
     def _leading_term(self):
         """Return the actual leading term, independent of stream direction."""
-        if self._leading_stream is None:
-            self._leading_stream = _stream_from_expr(
-                self.expr, self.gen, self._stats)
-        return self._leading_stream.term(0)
+        return self._get_leading_stream().term(0)
 
     def degree(self):
         """Return the degree, or negative infinity for the zero polynomial."""
@@ -972,10 +1050,7 @@ class PolyTermStream:
 
     def _trailing_term(self):
         """Return the lowest-degree nonzero term."""
-        if self._trailing_stream is None:
-            self._trailing_stream = _reverse_stream(
-                self.expr, self.gen, self._stats)
-        return self._trailing_stream.term(0)
+        return self._get_trailing_stream().term(0)
 
     def EC(self):
         """Return the last nonzero coefficient, or zero if the polynomial is zero."""
@@ -999,14 +1074,12 @@ class PolyTermStream:
         if n < 0:
             raise ValueError("number of terms should be nonnegative")
 
-        if self._trailing_stream is None:
-            self._trailing_stream = _reverse_stream(
-                self.expr, self.gen, self._stats)
+        trailing_stream = self._get_trailing_stream()
 
         terms = []
         index = 0
         while True:
-            term = self._trailing_stream.term(index)
+            term = trailing_stream.term(index)
             if term is None:
                 return sum(terms, S.Zero)
 

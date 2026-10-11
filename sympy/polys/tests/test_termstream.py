@@ -111,6 +111,32 @@ def test_termstream_reverse_denominator_scale():
     )
 
 
+def test_termstream_indexing_and_slicing():
+    expr = 5*x**7 + 3*x**4 + 2*x + 1
+    expected = [(7, 5), (4, 3), (1, 2), (0, 1)]
+
+    stream = PolyTermStream(expr, x)
+    assert stream[0] == expected[0]
+    assert stream[-1] == expected[-1]
+    assert stream.term(-2) == expected[-2]
+    assert stream[:2] == expected[:2]
+    assert stream[1:3] == expected[1:3]
+    assert stream[-2:] == expected[-2:]
+    assert stream[-4:-1] == expected[-4:-1]
+    assert stream[:] == expected
+
+    reverse = PolyTermStream(expr, x, reverse=True)
+    reversed_expected = list(reversed(expected))
+    assert reverse[0] == reversed_expected[0]
+    assert reverse[-1] == reversed_expected[-1]
+    assert reverse[:3] == reversed_expected[:3]
+    assert reverse[-2:] == reversed_expected[-2:]
+
+    raises(IndexError, lambda: stream[10])
+    raises(NotImplementedError, lambda: stream[:-1])
+    raises(NotImplementedError, lambda: stream[::2])
+
+
 def test_termstream_trailing_queries():
     expr = x**5 + 3*x**2
 
@@ -205,10 +231,6 @@ def test_add_stream_defers_child_construction():
 
     assert stream.term(2) == (3, 7*S.One)
     assert built == ["high", "low"]
-
-
-def test_termstream_rejects_negative_index():
-    raises(ValueError, lambda: PolyTermStream(x + 1, x).term(-1))
 
 
 def test_add_stream_defers_child_advance():
