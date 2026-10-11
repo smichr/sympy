@@ -7,8 +7,8 @@ from sympy import (
 )
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.termstream import (
-    PolyTermStream, _MulStream, _StreamStats, _stream_from_expr,
-    polynomial_zero,
+    PolyTermStream, _MulStream, _StreamStats, _TermStream,
+    _stream_from_expr, polynomial_zero,
 )
 from sympy.testing.pytest import raises
 
@@ -188,6 +188,52 @@ def test_termstream_factorized_identity_cancellation():
         stream = PolyTermStream(expr, x)
         assert stream.term(0) == (1, 1)
         assert stream.take(2) == [(1, 1)]
+
+
+def test_mul_stream_defers_collision_free_neighbors():
+    class ListStream(_TermStream):
+        def __init__(self, terms, stats):
+            self.terms = terms
+            super().__init__(stats)
+
+        def _generate(self):
+            yield from self.terms
+
+    stats = _StreamStats()
+    left = ListStream([(2, S.One), (1, S.One)], stats)
+    right = ListStream([(10, S.One), (0, S.One)], stats)
+    stream = _MulStream(left, right, stats, collision_free=True)
+
+    assert stream.term(0) == (12, S.One)
+    assert stats.child_requests == 2
+    assert stats.mul_states_popped == 1
+
+    assert stream.term(1) == (11, S.One)
+    assert stats.child_requests > 2
+
+
+def test_mul_stream_defers_neighbors_through_cancellation():
+    class ListStream(_TermStream):
+        def __init__(self, terms, stats):
+            self.terms = terms
+            super().__init__(stats)
+
+        def _generate(self):
+            yield from self.terms
+
+    stats = _StreamStats()
+    left = ListStream([(2, S.One), (1, S.One)], stats)
+    right = ListStream([(2, S.One), (1, -S.One)], stats)
+    stream = _MulStream(left, right, stats)
+
+    assert stream.term(0) == (4, S.One)
+    assert stats.child_requests == 2
+    assert stats.mul_states_popped == 1
+
+    # On resumption the degree-3 neighbors cancel, so the stream must
+    # continue eagerly through that zero layer to the next surviving term.
+    assert stream.term(1) == (2, -S.One)
+    assert stats.cancelled_layers == 1
 
 
 def test_termstream_mul():

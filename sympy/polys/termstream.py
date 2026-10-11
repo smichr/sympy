@@ -547,6 +547,24 @@ class _MulStream(_TermStream):
         heap = [(-first[0], 0, 0, first[1])]
         seen = {(0, 0)}
 
+        def push_neighbors(states):
+            for left_index, right_index in states:
+                neighbors = (
+                    (left_index + 1, right_index),
+                    (left_index, right_index + 1),
+                )
+                for neighbor in neighbors:
+                    if neighbor in seen:
+                        continue
+                    seen.add(neighbor)
+
+                    state = self._state(*neighbor)
+                    if state is not None:
+                        heappush(
+                            heap,
+                            (-state[0], *neighbor, state[1]),
+                        )
+
         while heap:
             if self.collision_free:
                 neg_degree, left_index, right_index, coeff = heappop(heap)
@@ -554,30 +572,21 @@ class _MulStream(_TermStream):
                 if self._stats is not None:
                     self._stats.mul_states_popped += 1
 
-                neighbors = (
-                    (left_index + 1, right_index),
-                    (left_index, right_index + 1),
-                )
-                for neighbor in neighbors:
-                    if neighbor in seen:
-                        continue
-                    seen.add(neighbor)
-
-                    state = self._state(*neighbor)
-                    if state is not None:
-                        heappush(
-                            heap,
-                            (-state[0], *neighbor, state[1]),
-                        )
-
+                # Every neighbor has strictly smaller degree. Yield the
+                # current term before preparing work needed only if the
+                # caller asks for another term.
                 if not _is_zero(coeff):
                     yield -neg_degree, coeff
 
+                push_neighbors(((left_index, right_index),))
                 continue
 
             degree = -heap[0][0]
             coeff = S.Zero
+            states = []
 
+            # All states of the current degree are already in the heap:
+            # advancing either child strictly lowers total degree.
             while heap and -heap[0][0] == degree:
                 _, left_index, right_index, state_coeff = heappop(heap)
 
@@ -585,28 +594,17 @@ class _MulStream(_TermStream):
                     self._stats.mul_states_popped += 1
 
                 coeff += state_coeff
-
-                neighbors = (
-                    (left_index + 1, right_index),
-                    (left_index, right_index + 1),
-                )
-                for neighbor in neighbors:
-                    if neighbor in seen:
-                        continue
-                    seen.add(neighbor)
-
-                    state = self._state(*neighbor)
-                    if state is not None:
-                        heappush(
-                            heap,
-                            (-state[0], *neighbor, state[1]),
-                        )
+                states.append((left_index, right_index))
 
             if _is_zero(coeff):
                 if self._stats is not None:
                     self._stats.cancelled_layers += 1
             else:
+                # Execution resumes below the yield only if another term is
+                # requested, so lower-degree neighbors remain genuinely lazy.
                 yield degree, coeff
+
+            push_neighbors(states)
 
 
 def _power_stream(base, exponent, stats=None):
