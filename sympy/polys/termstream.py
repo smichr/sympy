@@ -11,7 +11,7 @@ integer exponent are supported.
 """
 from __future__ import annotations
 
-from heapq import heappop, heappush
+from heapq import heappop, heappush, merge
 
 from sympy.core import S, sympify
 from sympy.core.function import count_ops
@@ -20,7 +20,7 @@ from sympy.core.exprtools import _decompose_exprs, factor_terms
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.recurrences import DifferentialRecurrence
-from sympy.polys.exponentsets import exponent_runs
+from sympy.polys.exponentsets import ExponentRuns, exponent_runs
 
 
 def _is_zero(coeff):
@@ -217,13 +217,21 @@ def _polynomial_product_annihilator(factors):
     return p, q
 
 
+def _polynomial_product_support(factors):
+    """Return structural coefficient support for reversed product factors."""
+    support = ExponentRuns([(0, 0, 1)])
+    for coeffs, _, exponent in factors:
+        support += ExponentRuns.from_values(coeffs) ** exponent
+    return support
+
+
 class _StreamStats:
     """Optional counters for studying the amount of lazy stream work."""
 
     __slots__ = (
         'term_requests', 'child_requests', 'cache_hits', 'cache_misses',
         'generated_terms', 'mul_states_popped', 'cancelled_layers',
-        'streams_created',
+        'recurrence_steps', 'streams_created',
     )
 
     def __init__(self):
@@ -234,6 +242,7 @@ class _StreamStats:
         self.generated_terms = 0
         self.mul_states_popped = 0
         self.cancelled_layers = 0
+        self.recurrence_steps = 0
         self.streams_created = 0
 
     def as_dict(self):
@@ -433,26 +442,42 @@ class _PolynomialPowersStream(_TermStream):
         for poly, _, exponent in factors:
             coeff *= poly[0]**exponent
 
-        coefficients = [coeff]
+        coefficients = {0: coeff}
         if not _is_zero(coeff):
             yield total, coeff
 
+        # The recurrence can solve coefficient a[j] directly at n = j - 1:
+        # its largest shift is 1, so every other term refers only to earlier
+        # coefficients. Walk only structurally possible coefficient indices;
+        # skipped indices are known zeros and need not be generated.
+        support = _polynomial_product_support(factors)
         history_shifts = [
             shift for shift in recurrence.shifts if shift != 1
         ]
-        for r in range(total):
+        ordered_runs = (
+            range(start, stop + 1, step)
+            for start, stop, step in support.runs
+        )
+        for index in merge(*ordered_runs):
+            if index == 0:
+                continue
+
+            r = index - 1
             numerator = S.Zero
             for shift in history_shifts:
-                index = r + shift
-                if index >= 0:
+                history_index = r + shift
+                history_coeff = coefficients.get(history_index)
+                if history_coeff is not None:
                     numerator += (
-                        recurrence.coefficient(shift, r)*coefficients[index]
+                        recurrence.coefficient(shift, r)*history_coeff
                     )
 
             next_coeff = -numerator/recurrence.coefficient(1, r)
-            coefficients.append(next_coeff)
+            if self._stats is not None:
+                self._stats.recurrence_steps += 1
             if not _is_zero(next_coeff):
-                yield total - r - 1, next_coeff
+                coefficients[index] = next_coeff
+                yield total - index, next_coeff
 
 
 class _AddStream(_TermStream):

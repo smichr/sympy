@@ -1,5 +1,5 @@
 from __future__ import annotations
-from sympy import Add, Mul, Poly, Pow, symbols
+from sympy import Add, Mul, Poly, Pow, binomial, symbols
 
 from sympy.polys.termstream import (
     PolyTermStream, _polynomial_product_data,
@@ -79,6 +79,19 @@ def test_termstream_symbolic_product_falls_back_to_convolution():
 
     assert stream.take(8) == _poly_terms(expr)[:8]
     assert stream.stats['mul_states_popped'] > 0
+
+
+def test_termstream_polynomial_power_skips_impossible_coefficients():
+    exponent = 1000
+    stride = 1000
+    expr = Pow(1 + x**stride, exponent, evaluate=False)
+    stream = PolyTermStream(expr, x, collect_stats=True)
+
+    assert stream.take(5) == [
+        (stride*(exponent - i), binomial(exponent, i))
+        for i in range(5)
+    ]
+    assert stream.stats['recurrence_steps'] == 4
 
 
 def test_termstream_polynomial_power_recurrence():
