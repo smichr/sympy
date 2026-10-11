@@ -658,6 +658,61 @@ def _special_product_stream(expr, gen, stats=None):
     return _scale_shift_stream(stream, scale, degree_shift, stats)
 
 
+def _exponent_upper_bound(expr, gen):
+    """Return a structural upper bound on the exponent of ``gen``.
+
+    The bound follows the expression tree without constructing an
+    ``ExponentRuns`` object.  It may overestimate the actual degree when
+    coefficients cancel, which is harmless for stream activation.  ``None``
+    denotes an expression that is structurally zero.
+    """
+    expr = sympify(expr)
+
+    if expr is S.Zero:
+        return None
+
+    if expr == gen:
+        return 1
+
+    if not expr.has(gen):
+        return 0
+
+    if expr.is_Add:
+        bounds = [
+            _exponent_upper_bound(arg, gen)
+            for arg in expr.args
+        ]
+        bounds = [bound for bound in bounds if bound is not None]
+        if not bounds:
+            return None
+        return max(bounds)
+
+    if expr.is_Mul:
+        degree = 0
+        for arg in expr.args:
+            bound = _exponent_upper_bound(arg, gen)
+            if bound is None:
+                return None
+            degree += bound
+        return degree
+
+    if expr.is_Pow:
+        if expr.exp.is_Integer and expr.exp.is_nonnegative:
+            exponent = int(expr.exp)
+            if exponent == 0:
+                return 0
+
+            bound = _exponent_upper_bound(expr.base, gen)
+            if bound is None:
+                return None
+            return exponent*bound
+
+    raise PolynomialError(
+        "%s is not supported as a polynomial expression in %s"
+        % (expr, gen)
+    )
+
+
 def _stream_from_expr(expr, gen, stats=None):
     """Build the most specific lazy stream available for ``expr``.
 
@@ -692,7 +747,7 @@ def _stream_from_expr(expr, gen, stats=None):
             for arg in expr.args
         ]
         upper_bounds = [
-            exponent_runs(arg, gen).hi
+            _exponent_upper_bound(arg, gen)
             for arg in expr.args
         ]
         return _AddStream(children, upper_bounds, stats)

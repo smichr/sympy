@@ -8,6 +8,7 @@ from sympy import (
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.termstream import (
     PolyTermStream, _AddStream, _MulStream, _StreamStats, _TermStream,
+    _exponent_upper_bound, _stream_from_expr, polynomial_zero,
 )
 from sympy.testing.pytest import raises
 
@@ -55,6 +56,19 @@ def _finite_difference_power(n, k):
         (-1)**(k - j)*binomial(k, j)*Pow(x + j, n, evaluate=False)
         for j in range(k + 1)
     ), evaluate=False)
+
+
+def test_exponent_upper_bound():
+    assert _exponent_upper_bound(S.Zero, x) is None
+    assert _exponent_upper_bound(7, x) == 0
+    assert _exponent_upper_bound(x, x) == 1
+    assert _exponent_upper_bound(x**7 + x**3 + 1, x) == 7
+    assert _exponent_upper_bound((x**7 + x + 1)**1000000, x) == 7000000
+    assert _exponent_upper_bound(
+        (x**3 + 1)**5*(x**2 + 1)**7, x) == 29
+
+    # This is a structural upper bound, so cancellation need not reduce it.
+    assert _exponent_upper_bound(Add(x**5, -x**5, evaluate=False), x) == 5
 
 
 def test_termstream_power():
@@ -493,7 +507,7 @@ def test_possible_support_cancellation():
     assert stream.degree() is S.NegativeInfinity
 
 
-def test_add_stream_uses_exponent_support():
+def test_add_stream_uses_structural_bound():
     expr = (
         (x + 1)**1000 +
         (x + 1)**100 +
