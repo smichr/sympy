@@ -59,6 +59,58 @@ def _finite_difference_power(n, k):
     ), evaluate=False)
 
 
+def test_termstream_reverse():
+    expr = 1 + 2*x**2 + 3*x**5
+    stream = PolyTermStream(expr, x, reverse=True)
+
+    assert stream.take(4) == [
+        (0, 1),
+        (2, 2),
+        (5, 3),
+    ]
+    assert stream.term(0) == (0, 1)
+    assert stream.expr == expr
+    assert stream.reverse is True
+
+
+def test_termstream_reverse_cancellation():
+    expr = (1 + x)**10 - 1
+    stream = PolyTermStream(expr, x, reverse=True)
+
+    assert stream.take(5) == [
+        (1, 10),
+        (2, 45),
+        (3, 120),
+        (4, 210),
+        (5, 252),
+    ]
+    assert stream.degree() == 10
+    assert stream.LC() == 1
+
+
+def test_termstream_reverse_degree_resolves_leading_cancellation():
+    expr = (1 + x)**2 - x**2
+    stream = PolyTermStream(expr, x, reverse=True)
+
+    assert stream.term(0) == (0, 1)
+    assert stream.degree() == 1
+    assert stream.LC() == 2
+
+
+def test_termstream_reverse_denominator_scale():
+    expr = 1 + x/y + Rational(2, 3)*x**3
+    stream = PolyTermStream(expr, x, reverse=True)
+
+    assert_stream_equal(
+        stream.take(4),
+        [
+            (0, S.One),
+            (1, 1/y),
+            (3, Rational(2, 3)),
+        ],
+    )
+
+
 def test_exponent_upper_bound():
     assert _exponent_upper_bound(S.Zero, x) is None
     assert _exponent_upper_bound(7, x) == 0

@@ -357,6 +357,47 @@ class _ShiftStream(_TermStream):
             index += 1
 
 
+class _ReverseStream(_TermStream):
+    """Reflect reciprocal numerator terms back to original polynomial terms."""
+
+    def __init__(self, degree, scale, child, stats=None):
+        self.degree = degree
+        self.scale = scale
+        self.child = child
+        super().__init__(stats)
+
+    def _generate(self):
+        index = 0
+        while True:
+            term = self._child_term(self.child, index)
+            if term is None:
+                return
+            degree, coeff = term
+            yield self.degree - degree, coeff/self.scale
+            index += 1
+
+
+def _reverse_stream(expr, gen, stats=None):
+    """Return a low-to-high stream for polynomial *expr* in *gen*."""
+    rev, den = expr.subs(gen, 1/gen).together().as_numer_denom()
+
+    exponent = den.as_powers_dict().get(gen, S.Zero)
+    if not (exponent.is_Integer and exponent.is_nonnegative):
+        raise PolynomialError(
+            "reciprocal denominator is not a nonnegative monomial in %s"
+            % gen
+        )
+
+    scale = den/gen**exponent
+    if scale.has(gen):
+        raise PolynomialError(
+            "reciprocal denominator is not a monomial in %s" % gen
+        )
+
+    child = _stream_from_expr(rev, gen, stats)
+    return _ReverseStream(int(exponent), scale, child, stats)
+
+
 def _scale_shift_stream(stream, scale, degree_shift, stats=None):
     """Apply structural scalar and monomial factors to a stream."""
     if degree_shift:
@@ -853,7 +894,10 @@ def _normalize_polynomial_ops(expr):
 
 
 class PolyTermStream:
-    """Lazy descending term stream for a univariate polynomial expression.
+    """Lazy term stream for a univariate polynomial expression.
+
+    Terms are emitted from highest to lowest degree by default.  With
+    ``reverse=True`` they are emitted from lowest to highest degree instead.
 
     This is an experimental helper for studying polynomial queries that do
     not require complete expansion.  Coefficients are expressions independent
@@ -877,15 +921,21 @@ class PolyTermStream:
     99999
     """
 
-    def __init__(self, expr, gen, collect_stats=False):
+    def __init__(self, expr, gen, collect_stats=False, *, reverse=False):
         expr = sympify(expr)
         gen = sympify(gen)
         if not gen.is_Symbol:
             raise TypeError("the prototype requires a Symbol generator")
         self.expr = expr
         self.gen = gen
+        self.reverse = reverse
         self._stats = _StreamStats() if collect_stats else None
-        self._stream = _stream_from_expr(expr, gen, self._stats)
+        if reverse:
+            self._stream = _reverse_stream(expr, gen, self._stats)
+            self._leading_stream = None
+        else:
+            self._stream = _stream_from_expr(expr, gen, self._stats)
+            self._leading_stream = self._stream
         self._possible_support = None
 
     def term(self, index):
@@ -896,16 +946,23 @@ class PolyTermStream:
         """Return at most the first *count* surviving terms."""
         return self._stream.take(count)
 
+    def _leading_term(self):
+        """Return the actual leading term, independent of stream direction."""
+        if self._leading_stream is None:
+            self._leading_stream = _stream_from_expr(
+                self.expr, self.gen, self._stats)
+        return self._leading_stream.term(0)
+
     def degree(self):
         """Return the degree, or negative infinity for the zero polynomial."""
-        term = self.term(0)
+        term = self._leading_term()
         if term is None:
             return S.NegativeInfinity
         return term[0]
 
     def LC(self):
         """Return the leading coefficient, or zero for the zero polynomial."""
-        term = self.term(0)
+        term = self._leading_term()
         if term is None:
             return S.Zero
         return term[1]
