@@ -1,7 +1,7 @@
 """Tests for the implementation of RootOf class and related tools. """
 from __future__ import annotations
 
-from sympy.polys.polytools import Poly
+from sympy.polys.polytools import Poly, PurePoly
 import sympy.polys.rootoftools as rootoftools
 from sympy.polys.rootoftools import (rootof, RootOf, CRootOf, RootSum,
     _pure_key_dict as D)
@@ -112,6 +112,26 @@ def test_CRootOf___new__():
     raises(NotImplementedError, lambda: rootof(x**3 + x + 2*y, x, 0))
 
     assert rootof(x**3 + x + 1, 0).is_commutative is True
+
+
+def test_CRootOf_anonymous_poly():
+    r = CRootOf(x**5 - x + 1, 0)
+    s = CRootOf(y**5 - y + 1, 0)
+
+    assert isinstance(r.poly, PurePoly)
+    assert r.poly == s.poly
+    assert r.args == (r.poly, S.Zero)
+    assert r.func(*r.args) == r
+    assert r.free_symbols == set()
+    assert not r.has_free(x)
+    assert not r.has_free(y)
+    assert not r.has_free(r.poly.gen)
+    assert r.xreplace({x: y}) == r
+    assert r.as_dummy() == r
+
+    r._reset()
+    assert r.poly in rootoftools._reals_cache
+    assert r.evalf(10) == s.evalf(10)
 
 
 def test_CRootOf_attributes():
