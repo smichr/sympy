@@ -9,7 +9,8 @@ from sympy import (
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.termstream import (
     PolyTermStream, _AddStream, _MulStream, _StreamStats, _TermStream,
-    _exponent_upper_bound, _stream_from_expr, polynomial_zero,
+    _exponent_upper_bound, _stream_from_expr, _termstream_cost,
+    polynomial_zero,
 )
 from sympy.testing.pytest import raises
 
@@ -178,6 +179,38 @@ def test_exponent_upper_bound():
 
     # This is a structural upper bound, so cancellation need not reduce it.
     assert _exponent_upper_bound(Add(x**5, -x**5, evaluate=False), x) == 5
+
+
+def test_termstream_cost():
+    cost = _termstream_cost(
+        (1 + x)**80 + (1 + x**2)**40, x)
+    assert cost.as_dict() == {
+        'lattice_capacity': 81,
+        'span': 80,
+        'max_add_arity': 2,
+        'top_bound_multiplicity': 2,
+        'support_signature_multiplicity': 1,
+        'nested_power_setup': 0,
+    }
+
+    cost = _termstream_cost(
+        (1 + x)**80 + (1 - x)**80, x)
+    assert cost.as_dict() == {
+        'lattice_capacity': 81,
+        'span': 80,
+        'max_add_arity': 2,
+        'top_bound_multiplicity': 2,
+        'support_signature_multiplicity': 2,
+        'nested_power_setup': 0,
+    }
+
+    cost = _termstream_cost(
+        ((x + 1)**5 + (x**4 + 1)**5)**4, x)
+    assert cost.nested_power_setup == 21
+
+    cost = _termstream_cost(
+        ((x + 1)**5 + (x**4 + 1)**5)**12, x)
+    assert cost.nested_power_setup == 21
 
 
 def test_termstream_power():

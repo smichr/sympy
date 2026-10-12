@@ -11,6 +11,7 @@ integer exponent are supported.
 """
 from __future__ import annotations
 
+from math import gcd
 from operator import index as operator_index
 
 from heapq import heapify, heappop, heappush, merge
@@ -236,6 +237,50 @@ def _polynomial_product_support(factors):
     for coeffs, _, exponent in factors:
         support += ExponentRuns.from_values(coeffs) ** exponent
     return support
+
+
+class _TermStreamCost:
+    """Structural facts relevant to lazy term-stream dispatch.
+
+    This object contains measurements only. The policy deciding whether to
+    prefer a term stream belongs elsewhere so the measurements can be tested
+    independently of any crossover thresholds.
+
+    ``top_bound_multiplicity`` is the largest number of children at an Add
+    node sharing its maximum structural exponent bound.
+
+    ``support_signature_multiplicity`` is the largest number of children at
+    an Add node sharing the same cheap support signature. It is a warning for
+    repeated degree collisions as more terms are requested.
+
+    ``nested_power_setup`` is reserved for a cheap structural estimate of
+    setup work for generator-dependent nonmonomial powers.
+    """
+
+    __slots__ = (
+        'lattice_capacity',
+        'span',
+        'max_add_arity',
+        'top_bound_multiplicity',
+        'support_signature_multiplicity',
+        'nested_power_setup',
+    )
+
+    def __init__(
+            self, lattice_capacity=1, span=0, max_add_arity=0,
+            top_bound_multiplicity=1, support_signature_multiplicity=1,
+            nested_power_setup=0):
+        self.lattice_capacity = lattice_capacity
+        self.span = span
+        self.max_add_arity = max_add_arity
+        self.top_bound_multiplicity = top_bound_multiplicity
+        self.support_signature_multiplicity = (
+            support_signature_multiplicity
+        )
+        self.nested_power_setup = nested_power_setup
+
+    def as_dict(self):
+        return {name: getattr(self, name) for name in self.__slots__}
 
 
 class _StreamStats:
@@ -779,83 +824,183 @@ def _special_product_stream(expr, gen, stats=None, bounds=None):
     return _scale_shift_stream(stream, scale, degree_shift, stats)
 
 
-def _exponent_upper_bound(expr, gen, bounds=None):
-    """Return a structural upper bound on the exponent of ``gen``.
+def _structural_support(expr, gen, support, cost=None):
+    """Return ``(lo, hi, gcd)`` for the structural exponent support.
 
-    The bound follows the expression tree without constructing an
-    ``ExponentRuns`` object.  It may overestimate the actual degree when
-    coefficients cancel, which is harmless for stream activation.  ``None``
+    The signature describes the smallest lattice interval implied by the
+    expression tree. It is intentionally cheaper than ``ExponentRuns`` and
+    may include lattice points not present in the exact support. ``None``
     denotes an expression that is structurally zero.
 
-    Bounds are cached locally and shared with stream construction.  A bound
-    of zero also establishes that the expression is independent of ``gen``
-    for the purposes of polynomial decomposition.
+    When *cost* is supplied, facts useful for term-stream dispatch are
+    accumulated during this same traversal.
     """
-    if bounds is None:
-        expr = sympify(expr)
-        bounds = {}
-
     try:
-        return bounds[expr]
+        return support[expr]
     except KeyError:
         pass
 
     if expr is S.Zero:
-        bound = None
+        signature = None
 
     elif expr == gen:
-        bound = 1
+        signature = (1, 1, 0)
 
     elif not expr.args:
-        bound = 0
+        signature = (0, 0, 0)
 
     elif expr.is_Add:
-        child_bounds = [
-            _exponent_upper_bound(arg, gen, bounds)
+        child_signatures = [
+            _structural_support(arg, gen, support, cost)
             for arg in expr.args
         ]
-        child_bounds = [
-            child_bound
-            for child_bound in child_bounds
-            if child_bound is not None
+        nonzero = [
+            signature
+            for signature in child_signatures
+            if signature is not None
         ]
-        bound = max(child_bounds) if child_bounds else None
+
+        if not nonzero:
+            signature = None
+        else:
+            lo = min(item[0] for item in nonzero)
+            hi = max(item[1] for item in nonzero)
+
+            ref = nonzero[0][0]
+            lattice_gcd = 0
+            for child_lo, _, child_gcd in nonzero:
+                lattice_gcd = gcd(lattice_gcd, child_gcd)
+                lattice_gcd = gcd(lattice_gcd, child_lo - ref)
+
+            signature = (lo, hi, lattice_gcd)
+
+            if cost is not None:
+                cost.max_add_arity = max(
+                    cost.max_add_arity, len(expr.args))
+
+                top_bound = max(item[1] for item in nonzero)
+                top_count = sum(
+                    item[1] == top_bound for item in nonzero)
+                cost.top_bound_multiplicity = max(
+                    cost.top_bound_multiplicity, top_count)
+
+                counts = {}
+                for item in nonzero:
+                    counts[item] = counts.get(item, 0) + 1
+                cost.support_signature_multiplicity = max(
+                    cost.support_signature_multiplicity,
+                    max(counts.values()),
+                )
 
     elif expr.is_Mul:
-        bound = 0
-        for arg in expr.args:
-            child_bound = _exponent_upper_bound(arg, gen, bounds)
-            if child_bound is None:
-                bound = None
-                break
-            bound += child_bound
+        child_signatures = [
+            _structural_support(arg, gen, support, cost)
+            for arg in expr.args
+        ]
 
-    elif expr.is_Pow and             expr.exp.is_Integer and expr.exp.is_nonnegative:
+        if any(item is None for item in child_signatures):
+            signature = None
+        else:
+            lo = sum(item[0] for item in child_signatures)
+            hi = sum(item[1] for item in child_signatures)
+            lattice_gcd = 0
+            for _, _, child_gcd in child_signatures:
+                lattice_gcd = gcd(lattice_gcd, child_gcd)
+            signature = (lo, hi, lattice_gcd)
+
+    elif expr.is_Pow and \
+            expr.exp.is_Integer and expr.exp.is_nonnegative:
         exponent = int(expr.exp)
         if exponent == 0:
-            bound = 0
+            signature = (0, 0, 0)
         else:
-            child_bound = _exponent_upper_bound(expr.base, gen, bounds)
-            bound = (
-                None if child_bound is None
-                else exponent*child_bound
-            )
+            base = _structural_support(
+                expr.base, gen, support, cost)
+            if base is None:
+                signature = None
+            else:
+                lo, hi, lattice_gcd = base
+
+                if cost is not None and exponent > 1 and expr.base.is_Add:
+                    child_signatures = [
+                        support[arg] for arg in expr.base.args
+                    ]
+                    if any(
+                            item is not None and item[1] > item[0]
+                            for item in child_signatures):
+                        span = hi - lo
+                        capacity = (
+                            span // lattice_gcd + 1
+                            if lattice_gcd else 1
+                        )
+                        cost.nested_power_setup = max(
+                            cost.nested_power_setup, capacity)
+
+                signature = (
+                    exponent*lo,
+                    exponent*hi,
+                    lattice_gcd,
+                )
 
     else:
-        # Unsupported structures are valid coefficients when none of their
-        # arguments depends polynomially on gen.  Otherwise the expression is
-        # not supported as a polynomial expression in gen.
-        for arg in expr.args:
-            child_bound = _exponent_upper_bound(arg, gen, bounds)
-            if child_bound not in (None, 0):
-                raise PolynomialError(
-                    "%s is not supported as a polynomial expression in %s"
-                    % (expr, gen)
-                )
-        bound = 0
+        # Unsupported structures are valid coefficients only when all of
+        # their arguments are structurally constant in gen. A structurally
+        # zero argument is harmless here as well.
+        child_signatures = [
+            _structural_support(arg, gen, support, cost)
+            for arg in expr.args
+        ]
+        if any(
+                item is not None and (item[0] != 0 or item[1] != 0)
+                for item in child_signatures):
+            raise PolynomialError(
+                "%s is not supported as a polynomial expression in %s"
+                % (expr, gen)
+            )
+        signature = (0, 0, 0)
 
-    bounds[expr] = bound
-    return bound
+    support[expr] = signature
+    return signature
+
+
+def _exponent_upper_bound(expr, gen, bounds=None, cost=None):
+    """Return a structural upper bound on the exponent of ``gen``.
+
+    ``bounds`` is a shared cache of cheap structural support signatures.
+    The name is retained for now because callers use it as the upper-bound
+    cache; each cached value is now ``(lo, hi, gcd)`` rather than only ``hi``.
+    """
+    expr = sympify(expr)
+    if bounds is None:
+        bounds = {}
+
+    signature = _structural_support(expr, gen, bounds, cost)
+    if signature is None:
+        return None
+    return signature[1]
+
+
+def _termstream_cost(expr, gen):
+    """Return cheap structural facts relevant to term-stream dispatch."""
+    expr = sympify(expr)
+    gen = sympify(gen)
+
+    cost = _TermStreamCost()
+    support = {}
+    signature = _structural_support(expr, gen, support, cost)
+
+    if signature is None:
+        cost.lattice_capacity = 0
+        cost.span = 0
+    else:
+        lo, hi, lattice_gcd = signature
+        cost.span = hi - lo
+        cost.lattice_capacity = (
+            cost.span // lattice_gcd + 1
+            if lattice_gcd else 1
+        )
+
+    return cost
 
 
 def _stream_from_expr(expr, gen, stats=None, bounds=None):
