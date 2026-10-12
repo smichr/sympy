@@ -9,8 +9,8 @@ from sympy import (
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.termstream import (
     PolyTermStream, _AddStream, _MulStream, _StreamStats, _TermStream,
-    _exponent_upper_bound, _stream_from_expr, _termstream_cost,
-    polynomial_zero,
+    _exponent_upper_bound, _prefer_termstream, _stream_from_expr,
+    _termstream_cost, polynomial_zero,
 )
 from sympy.testing.pytest import raises
 
@@ -211,6 +211,55 @@ def test_termstream_cost():
     cost = _termstream_cost(
         ((x + 1)**5 + (x**4 + 1)**5)**12, x)
     assert cost.nested_power_setup == 21
+
+
+def test_prefer_termstream():
+    def prefer(expr, query, k=None):
+        return _prefer_termstream(
+            _termstream_cost(expr, x), query, k)
+
+    small = (1 + x)**20
+    large = (1 + x)**80
+
+    for query in ('degree', 'LC'):
+        assert prefer(small, query) is False
+        assert prefer(large, query) is True
+    assert prefer(small, 'take', 1) is False
+    assert prefer(large, 'take', 1) is True
+
+    sparse = (1 + x**512)**20
+    assert prefer(sparse, 'degree') is False
+    assert prefer(sparse, 'LC') is False
+    assert prefer(sparse, 'take', 1) is True
+
+    nested_small = ((x + 1)**5 + (x**4 + 1)**5)**4
+    nested_large = ((x + 1)**5 + (x**4 + 1)**5)**12
+    assert prefer(nested_small, 'degree') is False
+    assert prefer(nested_small, 'take', 1) is False
+    assert prefer(nested_large, 'degree') is True
+    assert prefer(nested_large, 'take', 1) is True
+
+    a = (1 + x)**80
+    b = (1 + x**2)**40
+    tied = a + b
+    shifted = a + x*b
+
+    assert prefer(tied, 'degree') is False
+    assert prefer(tied, 'LC') is False
+    assert prefer(tied, 'take', 1) is False
+
+    assert prefer(shifted, 'degree') is True
+    assert prefer(shifted, 'LC') is True
+    assert prefer(shifted, 'take', 1) is True
+
+    wide = Add(*((i + 1)*x**i for i in range(101)))
+    assert prefer(wide, 'degree') is True
+    assert prefer(wide, 'LC') is True
+    assert prefer(wide, 'take', 1) is True
+
+    # Queries not yet modeled by the policy remain on the ordinary path.
+    assert prefer(large, 'take', 2) is False
+    assert prefer(large, 'EC') is False
 
 
 def test_termstream_power():

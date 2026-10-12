@@ -1003,6 +1003,54 @@ def _termstream_cost(expr, gen):
     return cost
 
 
+def _prefer_termstream(cost, query, k=None):
+    """Return whether current structural evidence favors a term stream.
+
+    This is an experimental policy layer over ``_TermStreamCost``.  The
+    thresholds are intentionally simple and conservative so that structural
+    measurements and dispatch policy remain independently testable.
+
+    Only ``degree``, ``LC``, and ``take(1)`` are modeled for now.
+    """
+    if query in ('degree', 'LC'):
+        threshold = 51
+    elif query == 'take' and k == 1:
+        threshold = 38
+    else:
+        return False
+
+    # A nested powered base has a fixed setup cost. Require the available
+    # lattice capacity to be large enough to amortize that work.
+    if cost.nested_power_setup:
+        if cost.lattice_capacity < 10*cost.nested_power_setup:
+            return False
+
+    # A wide Add with a unique highest bound is particularly favorable:
+    # the lazy stream need only activate the children that can reach the
+    # requested leading layer.
+    if cost.max_add_arity >= 17 and cost.top_bound_multiplicity == 1:
+        return True
+
+    # Very large lattice stride can make even a small-capacity polynomial
+    # expensive for Poly-based leading-term materialization.  Round 5 only
+    # established this clearly for take(1), so keep it query-specific.
+    if query == 'take' and cost.lattice_capacity > 1:
+        lattice_step = cost.span // (cost.lattice_capacity - 1)
+        if lattice_step >= 256:
+            return True
+
+    # Tied highest bounds force multiple Add children onto the critical path
+    # for the first emitted layer. Round 6 measured this as approximately a
+    # multiplicative setup penalty, so raise the required capacity in direct
+    # proportion to the multiplicity.
+    if query == 'take' and k == 1:
+        threshold *= 1 + 1.25*(cost.top_bound_multiplicity - 1)
+    else:
+        threshold *= cost.top_bound_multiplicity
+
+    return cost.lattice_capacity >= threshold
+
+
 def _stream_from_expr(expr, gen, stats=None, bounds=None):
     """Build the most specific lazy stream available for ``expr``.
 
