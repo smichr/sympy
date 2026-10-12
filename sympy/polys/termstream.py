@@ -365,7 +365,6 @@ class _ReverseStream(_TermStream):
 
     def __init__(self, degree, scale, child, stats=None):
         self.degree = degree
-        self.scale = scale
         self.child = child
         super().__init__(stats)
 
@@ -376,29 +375,62 @@ class _ReverseStream(_TermStream):
             if term is None:
                 return
             degree, coeff = term
-            yield self.degree - degree, coeff/self.scale
+            yield self.degree - degree, coeff
             index += 1
 
 
+def _reciprocal_polynomial(expr, gen):
+    """Return ``(n, rev)`` where ``rev = gen**n*expr.subs(gen, 1/gen)``.
+
+    The transformation is performed structurally without introducing a
+    rational expression.  ``n`` is a structural degree bound and need not
+    equal the actual degree when leading terms cancel.
+    """
+    expr = sympify(expr)
+
+    if expr is S.Zero:
+        return 0, S.Zero
+
+    if expr == gen:
+        return 1, S.One
+
+    if not expr.has(gen):
+        return 0, expr
+
+    if expr.is_Add:
+        parts = [_reciprocal_polynomial(arg, gen) for arg in expr.args]
+        degree = max(n for n, _ in parts)
+        rev = expr.func(*(
+            r*gen**(degree - n)
+            for n, r in parts
+        ))
+        return degree, rev
+
+    if expr.is_Mul:
+        parts = [_reciprocal_polynomial(arg, gen) for arg in expr.args]
+        degree = sum(n for n, _ in parts)
+        rev = expr.func(*(r for _, r in parts))
+        return degree, rev
+
+    if expr.is_Pow:
+        if expr.exp.is_Integer and expr.exp.is_nonnegative:
+            exponent = int(expr.exp)
+            if exponent == 0:
+                return 0, S.One
+
+            degree, rev = _reciprocal_polynomial(expr.base, gen)
+            return degree*exponent, rev**exponent
+
+    raise PolynomialError(
+        "%s is not supported as a polynomial expression in %s"
+        % (expr, gen)
+    )
+
+
 def _reverse_stream(expr, gen, stats=None):
-    """Return a low-to-high stream for polynomial *expr* in *gen*."""
-    rev, den = expr.subs(gen, 1/gen).together().as_numer_denom()
-
-    exponent = den.as_powers_dict().get(gen, S.Zero)
-    if not (exponent.is_Integer and exponent.is_nonnegative):
-        raise PolynomialError(
-            "reciprocal denominator is not a nonnegative monomial in %s"
-            % gen
-        )
-
-    scale = den/gen**exponent
-    if scale.has(gen):
-        raise PolynomialError(
-            "reciprocal denominator is not a monomial in %s" % gen
-        )
-
+    degree, rev = _reciprocal_polynomial(expr, gen)
     child = _stream_from_expr(rev, gen, stats)
-    return _ReverseStream(int(exponent), scale, child, stats)
+    return _ReverseStream(degree, S.One, child, stats)
 
 
 def _scale_shift_stream(stream, scale, degree_shift, stats=None):
