@@ -705,3 +705,9 @@ def test_mul_stream_direct_sum():
         (1, 1),
         (0, 1),
     ]
+
+
+def test_termstream_zero_bound_with_generator_debris():
+    expr = Mul(x**5, Pow(0, 2, evaluate=False), evaluate=False
+        ) + Add(*[-2,-1,3], evaluate=False)**2
+    assert PolyTermStream(expr, x).take(1) == []

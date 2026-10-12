@@ -35,7 +35,7 @@ def _is_zero(coeff):
     return coeff.is_zero is True
 
 
-def _polynomial_coeffs(expr, gen):
+def _polynomial_coeffs(expr, gen, bounds=None):
     """Return sparse coefficients of a structural polynomial in ``gen``.
 
     The result maps powers of ``gen`` to coefficients.  ``_decompose_exprs``
@@ -44,8 +44,13 @@ def _polynomial_coeffs(expr, gen):
     ``None`` is returned when a generator-dependent factor is not a power of
     ``gen`` with a nonnegative integer exponent.
     """
+    if bounds is None:
+        bounds = {}
+
     (terms,), _ = _decompose_exprs(
-        (expr,), is_coeff=lambda factor: not factor.has(gen))
+        (expr,),
+        is_coeff=lambda factor:
+            _exponent_upper_bound(factor, gen, bounds) in (None, 0))
 
     coeffs = {}
     for coeff_factors, powers in terms:
@@ -68,7 +73,7 @@ def _polynomial_coeffs(expr, gen):
     return coeffs
 
 
-def _polynomial_power_data(expr, gen):
+def _polynomial_power_data(expr, gen, bounds=None):
     """Return reversed polynomial data for ``base**n`` when structural."""
     exponent = 1
     base = expr
@@ -80,7 +85,7 @@ def _polynomial_power_data(expr, gen):
             return {0: S.One}, 0, 0
         base = expr.base
 
-    coeffs = _polynomial_coeffs(base, gen)
+    coeffs = _polynomial_coeffs(base, gen, bounds)
     if not coeffs:
         return None
 
@@ -96,7 +101,7 @@ def _polynomial_power_data(expr, gen):
     return reversed_coeffs, degree, exponent
 
 
-def _polynomial_product_data(expr, gen):
+def _polynomial_product_data(expr, gen, bounds=None):
     """Return structural data for a product of polynomial powers.
 
     ``factor_terms`` first exposes common monomial and polynomial factors.
@@ -105,9 +110,14 @@ def _polynomial_product_data(expr, gen):
     ``(scale, degree_shift, factors)``, where ``factors`` contains reversed
     polynomial data ``(coeffs, degree, exponent)``.
     """
+    if bounds is None:
+        bounds = {}
+
     expr = factor_terms(expr)
     (terms,), _ = _decompose_exprs(
-        (expr,), is_coeff=lambda factor: not factor.has(gen))
+        (expr,),
+        is_coeff=lambda factor:
+            _exponent_upper_bound(factor, gen, bounds) in (None, 0))
 
     if len(terms) != 1:
         return None
@@ -130,7 +140,7 @@ def _polynomial_product_data(expr, gen):
             degree_shift += exponent
             continue
 
-        data = _polynomial_power_data(base, gen)
+        data = _polynomial_power_data(base, gen, bounds)
         if data is None:
             return None
         coeffs, degree, base_exponent = data
@@ -741,9 +751,9 @@ def _power_stream(base, exponent, stats=None):
     return square
 
 
-def _special_product_stream(expr, gen, stats=None):
+def _special_product_stream(expr, gen, stats=None, bounds=None):
     """Return a normalized polynomial-power stream when one is available."""
-    data = _polynomial_product_data(expr, gen)
+    data = _polynomial_product_data(expr, gen, bounds)
     if data is None:
         return None
 
@@ -769,62 +779,86 @@ def _special_product_stream(expr, gen, stats=None):
     return _scale_shift_stream(stream, scale, degree_shift, stats)
 
 
-def _exponent_upper_bound(expr, gen):
+def _exponent_upper_bound(expr, gen, bounds=None):
     """Return a structural upper bound on the exponent of ``gen``.
 
     The bound follows the expression tree without constructing an
     ``ExponentRuns`` object.  It may overestimate the actual degree when
     coefficients cancel, which is harmless for stream activation.  ``None``
     denotes an expression that is structurally zero.
+
+    Bounds are cached locally and shared with stream construction.  A bound
+    of zero also establishes that the expression is independent of ``gen``
+    for the purposes of polynomial decomposition.
     """
-    expr = sympify(expr)
+    if bounds is None:
+        expr = sympify(expr)
+        bounds = {}
+
+    try:
+        return bounds[expr]
+    except KeyError:
+        pass
 
     if expr is S.Zero:
-        return None
+        bound = None
 
-    if expr == gen:
-        return 1
+    elif expr == gen:
+        bound = 1
 
-    if not expr.has(gen):
-        return 0
+    elif not expr.args:
+        bound = 0
 
-    if expr.is_Add:
-        bounds = [
-            _exponent_upper_bound(arg, gen)
+    elif expr.is_Add:
+        child_bounds = [
+            _exponent_upper_bound(arg, gen, bounds)
             for arg in expr.args
         ]
-        bounds = [bound for bound in bounds if bound is not None]
-        if not bounds:
-            return None
-        return max(bounds)
+        child_bounds = [
+            child_bound
+            for child_bound in child_bounds
+            if child_bound is not None
+        ]
+        bound = max(child_bounds) if child_bounds else None
 
-    if expr.is_Mul:
-        degree = 0
+    elif expr.is_Mul:
+        bound = 0
         for arg in expr.args:
-            bound = _exponent_upper_bound(arg, gen)
-            if bound is None:
-                return None
-            degree += bound
-        return degree
+            child_bound = _exponent_upper_bound(arg, gen, bounds)
+            if child_bound is None:
+                bound = None
+                break
+            bound += child_bound
 
-    if expr.is_Pow:
-        if expr.exp.is_Integer and expr.exp.is_nonnegative:
-            exponent = int(expr.exp)
-            if exponent == 0:
-                return 0
+    elif expr.is_Pow and             expr.exp.is_Integer and expr.exp.is_nonnegative:
+        exponent = int(expr.exp)
+        if exponent == 0:
+            bound = 0
+        else:
+            child_bound = _exponent_upper_bound(expr.base, gen, bounds)
+            bound = (
+                None if child_bound is None
+                else exponent*child_bound
+            )
 
-            bound = _exponent_upper_bound(expr.base, gen)
-            if bound is None:
-                return None
-            return exponent*bound
+    else:
+        # Unsupported structures are valid coefficients when none of their
+        # arguments depends polynomially on gen.  Otherwise the expression is
+        # not supported as a polynomial expression in gen.
+        for arg in expr.args:
+            child_bound = _exponent_upper_bound(arg, gen, bounds)
+            if child_bound not in (None, 0):
+                raise PolynomialError(
+                    "%s is not supported as a polynomial expression in %s"
+                    % (expr, gen)
+                )
+        bound = 0
 
-    raise PolynomialError(
-        "%s is not supported as a polynomial expression in %s"
-        % (expr, gen)
-    )
+    bounds[expr] = bound
+    return bound
 
 
-def _stream_from_expr(expr, gen, stats=None):
+def _stream_from_expr(expr, gen, stats=None, bounds=None):
     """Build the most specific lazy stream available for ``expr``.
 
     Multiplication first looks for a favorable structure that can be emitted
@@ -846,38 +880,48 @@ def _stream_from_expr(expr, gen, stats=None):
     degree diagonal at a time, and stops as soon as the consumer has enough
     output.
     """
+    if bounds is None:
+        bounds = {}
+
     if expr == gen:
         return _MonomialStream(1, S.One, stats)
 
-    if not expr.has(gen):
-        return _MonomialStream(0, expr, stats)
+    bound = _exponent_upper_bound(expr, gen, bounds)
+
+    if bound is None:
+        return _MonomialStream(0, S.Zero, stats)
+
+    if bound == 0:
+        return _MonomialStream(
+            0, expr.xreplace({gen: S.Zero}), stats)
 
     if expr.is_Add:
         upper_bounds = [
-            _exponent_upper_bound(arg, gen)
+            _exponent_upper_bound(arg, gen, bounds)
             for arg in expr.args
         ]
         children = [
-            lambda arg=arg: _stream_from_expr(arg, gen, stats)
+            lambda arg=arg: _stream_from_expr(arg, gen, stats, bounds)
             for arg in expr.args
         ]
         return _AddStream(children, upper_bounds, stats)
 
     if expr.is_Mul:
-        stream = _special_product_stream(expr, gen, stats)
+        stream = _special_product_stream(expr, gen, stats, bounds)
         if stream is not None:
             return stream
 
         scale = S.One
         dependent = []
         for arg in expr.args:
-            if arg.has(gen):
+            child_bound = _exponent_upper_bound(arg, gen, bounds)
+            if child_bound not in (None, 0):
                 dependent.append(arg)
             else:
                 scale *= arg
 
         children = [
-            _stream_from_expr(arg, gen, stats)
+            _stream_from_expr(arg, gen, stats, bounds)
             for arg in dependent
         ]
         supports = [
@@ -904,7 +948,7 @@ def _stream_from_expr(expr, gen, stats=None):
 
     if expr.is_Pow:
         if expr.exp.is_Integer and expr.exp.is_nonnegative:
-            stream = _special_product_stream(expr, gen, stats)
+            stream = _special_product_stream(expr, gen, stats, bounds)
             if stream is not None:
                 return stream
 
@@ -912,7 +956,7 @@ def _stream_from_expr(expr, gen, stats=None):
             if exponent == 0:
                 return _MonomialStream(0, S.One, stats)
 
-            base = _stream_from_expr(expr.base, gen, stats)
+            base = _stream_from_expr(expr.base, gen, stats, bounds)
             return _power_stream(base, exponent, stats)
 
     raise PolynomialError(
