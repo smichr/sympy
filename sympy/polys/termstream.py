@@ -1093,10 +1093,8 @@ class PolyTermStream:
 
     def TC(self):
         """Return the coefficient of degree zero."""
-        term = self._trailing_term()
-        if term is None or term[0] != 0:
-            return S.Zero
-        return term[1]
+        # we don't need term stream for this
+        return self.expr.xreplace({self.gen: S.Zero})
 
     def series(self, n=6):
         """Return the series at zero through ``O(gen**n)``."""
