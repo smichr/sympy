@@ -134,6 +134,30 @@ def test_CRootOf_anonymous_poly():
     assert r.evalf(10) == s.evalf(10)
 
 
+def test_CRootOf_reconstruction():
+    from pickle import HIGHEST_PROTOCOL, dumps, loads
+
+    from sympy.core.sympify import sympify
+    from sympy.printing.repr import srepr
+
+    for index in (0, 2):
+        r = CRootOf(x**5 - x + 1, index)
+
+        assert isinstance(r.args[0], PurePoly)
+
+        reconstructed = (
+            r.func(*r.args),
+            sympify(srepr(r)),
+            loads(dumps(r, protocol=2)),
+            loads(dumps(r, protocol=HIGHEST_PROTOCOL)),
+        )
+        for s in reconstructed:
+            assert isinstance(s, CRootOf)
+            assert s.args == r.args
+            assert s == r
+            assert hash(s) == hash(r)
+
+
 def test_CRootOf_attributes():
     r = rootof(x**3 + x + 3, 0)
     assert r.is_number
