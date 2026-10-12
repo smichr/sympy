@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from operator import index as operator_index
 
-from heapq import heappop, heappush, merge
+from heapq import heapify, heappop, heappush, merge
 
 from sympy.core import S, sympify
 from sympy.core.function import count_ops
@@ -574,11 +574,12 @@ class _AddStream(_TermStream):
 
     def _generate(self):
         heap = []
-        pending = []
-
-        for child_index, bound in enumerate(self.upper_bounds):
-            if bound is not None:
-                heappush(pending, (-bound, child_index))
+        pending = [
+            (-bound, child_index)
+            for child_index, bound in enumerate(self.upper_bounds)
+            if bound is not None
+        ]
+        heapify(pending)
 
         def activate():
             """Activate the child with the highest remaining upper bound."""
