@@ -105,7 +105,6 @@ def _polifyit(func):
     return wrapper
 
 
-
 @public
 class Poly(Basic):
     """
@@ -4911,6 +4910,75 @@ def _update_args(args, key, value):
         args[key] = value
 
     return args
+
+
+def _obvious_leading(expr, gen):
+    """Return (degree, LC) when structurally obvious, else None."""
+    if expr is S.Zero:
+        return S.NegativeInfinity, S.Zero
+
+    if expr == gen:
+        return S.One, S.One
+
+    if not expr.has(gen):
+        return S.Zero, expr
+
+    if expr.is_Pow:
+        base, exp = expr.as_base_exp()
+
+        if exp.is_Integer and exp >= 0:
+            if exp == 0:
+                return S.Zero, S.One
+
+            result = _obvious_leading(base, gen)
+            if result is None:
+                return None
+
+            degree, lc = result
+            if degree is S.NegativeInfinity:
+                return degree, S.Zero
+
+            return exp*degree, lc**exp
+
+        return None
+
+    if expr.is_Mul:
+        degree = S.Zero
+        lc = S.One
+
+        for arg in expr.args:
+            result = _obvious_leading(arg, gen)
+            if result is None:
+                return None
+
+            d, c = result
+            if d is S.NegativeInfinity:
+                return d, S.Zero
+
+            degree += d
+            lc *= c
+
+        return degree, lc
+
+    if expr.is_Add:
+        best = None
+
+        for arg in expr.args:
+            result = _obvious_leading(arg, gen)
+            if result is None:
+                return None
+
+            degree, lc = result
+
+            if best is None or degree > best[0]:
+                best = degree, lc
+            elif degree == best[0]:
+                # Possible cancellation: deliberately give up.
+                return None
+
+        return best
+
+    return None
 
 
 @public
