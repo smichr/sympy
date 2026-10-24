@@ -287,30 +287,7 @@ class Mul(Expr, AssocOp):
 
         from sympy.calculus.accumulationbounds import AccumBounds
         from sympy.matrices.expressions import MatrixExpr
-        rv = None
-        if len(seq) == 2:
-            a, b = seq
-            if b.is_Rational:
-                a, b = b, a
-                seq = [a, b]
-            assert a is not S.One
-            if a.is_Rational and not a.is_zero:
-                r, b = b.as_coeff_Mul()
-                if b.is_Add:
-                    if r is not S.One:  # 2-arg hack
-                        # leave the Mul as a Mul?
-                        ar = a*r
-                        if ar is S.One:
-                            arb = b
-                        else:
-                            arb = cls(a*r, b, evaluate=False)
-                        rv = [arb], [], None
-                    elif global_parameters.distribute and b.is_commutative:
-                        newb = Add(*[_keep_coeff(a, bi) for bi in b.args])
-                        rv = [newb], [], None
-            if rv:
-                return rv
-
+        # EXPERIMENT: process two factors through the general path.
         # apply associativity, separate commutative part of seq
         c_part = []         # out: commutative factors
         nc_part = []        # out: non-commutative factors
