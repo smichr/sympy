@@ -208,6 +208,12 @@ class Add(Expr, AssocOp):
         def args(self) -> tuple[Expr, ...]:
             ...
 
+    def _hashable_content(self):
+        # EXPERIMENT: keep commutative terms in construction order while
+        # retaining order-independent structural identity. The sort is
+        # deferred until a hash or equality comparison needs the key.
+        return tuple(sorted(self.args, key=_args_sortkey))
+
     @classmethod
     def flatten(cls, seq: list[Expr]) -> tuple[list[Expr], list[Expr], None]:
         """
@@ -400,8 +406,8 @@ class Add(Expr, AssocOp):
                     coeff = S.Zero
                     break
 
-        # order args canonically
-        _addsort(newseq)
+        # EXPERIMENT: leave the terms in collection order. Coefficients
+        # still occupy slot 0 to preserve existing accessors.
 
         # current code expects coeff to be first
         if coeff is not S.Zero:
