@@ -1814,6 +1814,34 @@ def test_as_ordered_factors():
     assert (B*A).as_ordered_factors() == [B, A]
 
 
+def test_unsorted_add_structural_identity_experiment():
+    # Construction order need not determine equality or hashing.
+    lhs = Add(x, y)
+    rhs = Add(y, x)
+    assert lhs == rhs
+    assert hash(lhs) == hash(rhs)
+    assert lhs.args != rhs.args
+
+    # Numeric coefficients remain accessible by existing methods.
+    expr = Add(y, S(3), x)
+    coeff, rest = expr.as_coeff_Add()
+    assert coeff == 3
+    assert rest == x + y
+    assert expr == Add(x, y, S(3))
+    assert hash(expr) == hash(Add(x, y, S(3)))
+
+
+def test_two_factor_mul_general_path_experiment():
+    from sympy.core.parameters import distribute
+
+    with distribute(False):
+        assert 2*(x + 1) == Mul(2, x + 1)
+        assert 2*(x + 1)*y == Mul(2, x + 1, y)
+        assert 2*(x + 1) + 3*(1 + x) == 5*(x + 1)
+    with distribute(True):
+        assert 2*(x + 1) == 2*x + 2
+
+
 def test_as_terms_repeated_bases():
     # The exponent should not depend on the order of unevaluated factors.
     for factors, exponent in (
