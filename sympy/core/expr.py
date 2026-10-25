@@ -1195,10 +1195,20 @@ class Expr(Basic, EvalfMixin):
             def body(term):
                 return term.as_coeff_Mul()[1]
 
+            def kind(term):
+                expr = body(term)
+                if expr.is_Atom:
+                    return (0,)
+                if expr.is_Function:
+                    # Keep terms of the same function together even if
+                    # their arguments have different structural sizes.
+                    return (1, expr.func.class_key())
+                return (2,)
+
             return list(ordered(Add.make_args(self), keys=(
                 lambda term: not term.is_number,
+                kind,
                 lambda term: _nodes(body(term)),
-                lambda term: body(term).func.class_key(),
                 lambda term: default_sort_key(body(term)),
             )))
 
