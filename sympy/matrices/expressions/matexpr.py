@@ -527,6 +527,20 @@ def get_postprocessor(cls):
         if mat_class == MatAdd:
             return mat_class(*matrices).doit(deep=False)
         return mat_class(cls._from_args(nonmatrices), *matrices).doit(deep=False)
+
+    def _unevaluate(expr):
+        # Dispatch to the matrix operation without calling doit().
+        # The scalar/NC ordering was handled by AssocOp.__new__.
+        if cls == Mul:
+            return MatMul(*expr.args)
+        matrices = [a for a in expr.args if isinstance(a, MatrixExpr)]
+        nonmatrices = [a for a in expr.args if not isinstance(a, MatrixExpr)]
+        mat = MatAdd(*matrices)
+        if nonmatrices:
+            return Add._from_args(nonmatrices + [mat])
+        return mat
+
+    _postprocessor._unevaluate = _unevaluate
     return _postprocessor
 
 

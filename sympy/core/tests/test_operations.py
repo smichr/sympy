@@ -159,10 +159,11 @@ def test_unevaluate_assocop():
     raises(ValueError, lambda: Mul(x, y, evaluate=True, unevaluate=True))
 
 
-def test_post_process_with_unevaluate():
+def test_unevaluate_matrix_dispatch():
     from sympy import MatAdd, MatMul, MatrixSymbol
 
     A = MatrixSymbol('A', 2, 2)
+    B = MatrixSymbol('B', 2, 2)
 
     a = Add(A, A, unevaluate=True)
     assert isinstance(a, MatAdd)
@@ -171,3 +172,11 @@ def test_post_process_with_unevaluate():
     m = Mul(A, A, unevaluate=True)
     assert isinstance(m, MatMul)
     assert m.args == (A, A)
+
+    # A normal construction still evaluates.
+    assert Add(A, A) == 2*A
+    assert Mul(A, A) == A**2
+
+    # Matrix operand order is significant for multiplication.
+    assert Mul(A, B, unevaluate=True).args == (A, B)
+    assert Mul(B, A, unevaluate=True).args == (B, A)

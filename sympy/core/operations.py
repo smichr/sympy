@@ -122,7 +122,7 @@ this object, use the * or + operator instead.
                 raise NotImplementedError("unevaluate is only supported for Add/Mul")
 
             obj = cls._from_args(flat)
-            return cls._exec_constructor_postprocessors(obj)
+            return cls._exec_constructor_postprocessors(obj, unevaluate=True)
 
         if evaluate is None:
             evaluate = global_parameters.evaluate

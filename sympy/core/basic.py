@@ -2251,7 +2251,7 @@ class Basic(Printable):
     _constructor_postprocessor_mapping = {}  # type: ignore
 
     @classmethod
-    def _exec_constructor_postprocessors(cls, obj):
+    def _exec_constructor_postprocessors(cls, obj, *, unevaluate=False):
         # WARNING: This API is experimental.
 
         # This is an experimental API that introduces constructor
@@ -2264,7 +2264,17 @@ class Basic(Printable):
         postprocessors = {f for i in obj.args
                             for f in _get_postprocessors(clsname, type(i))}
         for f in postprocessors:
-            obj = f(obj)
+            if unevaluate:
+                # Existing postprocessors may perform algebraic evaluation.
+                # Require an explicit unevaluated implementation rather than
+                # silently violating the construction policy.
+                handler = getattr(f, '_unevaluate', None)
+                if handler is None:
+                    raise NotImplementedError(
+                        "unevaluate=True is not supported by postprocessor %r" % f)
+                obj = handler(obj)
+            else:
+                obj = f(obj)
 
         return obj
 
