@@ -1233,6 +1233,22 @@ class Expr(Basic, EvalfMixin):
 
         """
 
+        if order is None and not data:
+            # Experiment: a staged structural ordering rather than extracting
+            # numeric coefficient values or imposing a monomial order.
+            from .sorting import _nodes
+
+            def body(term):
+                return term.as_coeff_Mul()[1]
+
+            return list(ordered(Add.make_args(self), keys=(
+                lambda term: not term.is_number,
+                lambda term: _nodes(body(term)),
+                lambda term: body(term).func.class_key(),
+                lambda term: default_sort_key(body(term)),
+                lambda term: default_sort_key(term),
+            )))
+
         from .numbers import Number, NumberSymbol
 
         if order is None and self.is_Add:
