@@ -1864,6 +1864,23 @@ def test_as_ordered_terms():
     assert k.as_ordered_terms(data=True) == ([(k, (((S.One,), ()), (1,), ()))], [k]) # type: ignore
 
 
+def test_staged_default_term_ordering():
+    from sympy import cos, exp, log, pi
+
+    expr = x**2 + 3*x + sqrt(3) + 1 + x*y**4
+    assert expr.as_ordered_terms() == [1, sqrt(3), 3*x, x**2, x*y**4]
+
+    terms = [exp(I*x)/2, -exp(-I*x)/2, cos(4), cos(3), pi, S.One]
+    expected = [S.One, pi, cos(3), cos(4), exp(I*x)/2,
+                -exp(-I*x)/2]
+    for ts in (terms, terms[::-1]):
+        assert Add(*ts, evaluate=False).as_ordered_terms() == expected
+
+    assert Add(log(3), log(2), evaluate=False).as_ordered_terms() == [
+        log(2), log(3)]
+    assert (x + pi).as_ordered_terms() == [pi, x]
+
+
 def test_as_ordered_terms_simple_degree_and_generator_order():
     a, b, c, d = symbols('a b c d')
     theta = symbols('theta')
