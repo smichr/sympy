@@ -1106,74 +1106,28 @@ class Expr(Basic, EvalfMixin):
 
     @classmethod
     def _parse_order(cls, order):
-        """Parse and configure the ordering of terms. """
+        """Parse an explicit monomial order without evaluating coefficients."""
         from sympy.polys.orderings import monomial_key
-        from sympy.functions.elementary.exponential import exp
 
-        startswith = getattr(order, "startswith", None)
-        if startswith is None:
-            reverse = False
-        else:
-            reverse = startswith('rev-')
-            if reverse:
-                order = order[4:]
-
+        reverse = isinstance(order, str) and order.startswith('rev-')
+        if reverse:
+            order = order[4:]
         monom_key = monomial_key(order)
-        simple_first = order is None
 
         def neg(monom):
             return tuple(neg(m) if isinstance(m, tuple) else -m for m in monom)
 
-        def explicit_i_key(term):
-            # Do not infer whether a term is real or imaginary.
-            return bool(term[1][0][1])
-
         def monom_sort_key(term):
-            monom = monom_key(term[1][1])
-            if simple_first:
-                # Compare total degree first, then retain generator order
-                # for terms of equal degree.
-                return sum(monom), neg(monom)
-            return neg(monom)
+            return neg(monom_key(term[1][1]))
 
         def nc_sort_key(term):
             return tuple(e.sort_key(order=order) for e in term[1][2])
 
-        def numeric_factors(term):
-            # The leading numeric multiplier and I do not distinguish
-            # the mathematical structure of a numeric term.
-            re, im = term[1][0]
-            return tuple(f for f in (im or re)[1:]
-                         if f is not S.ImaginaryUnit)
-
-        def function_type_key(term):
-            return tuple(f.func.class_key() for f in numeric_factors(term))
-
-        def argument_keys(f):
-            # Negative integer powers and exp(-n) read more naturally
-            # in increasing order of exponent magnitude. Other
-            # function arguments retain their ordinary structural order.
-            args = f.args
-            index = -1 if f.is_Pow else 0 if f.func is exp else None
-            result = []
-            for i, arg in enumerate(args):
-                if index is not None and i == index % len(args) and arg.is_Integer:
-                    result.append((default_sort_key(abs(arg), order=order),
-                                   bool(arg.is_negative)))
-                else:
-                    result.append((default_sort_key(arg, order=order), False))
-            return tuple(result)
-
-        def function_args_key(term):
-            return tuple(argument_keys(f) for f in numeric_factors(term))
-
         def coeff_sort_key(term):
             re, im = term[1][0]
-            factors = im or re
-            return bool(im), bool(factors[0].is_nonnegative), default_sort_key(factors)
+            return bool(im), default_sort_key(im or re)
 
-        return (explicit_i_key, monom_sort_key, nc_sort_key,
-                function_type_key, function_args_key, coeff_sort_key), reverse
+        return (monom_sort_key, nc_sort_key, coeff_sort_key), reverse
 
     def as_ordered_factors(self, order=None):
         """Return list of ordered factors (if Mul) else [self]."""
@@ -1246,31 +1200,7 @@ class Expr(Basic, EvalfMixin):
                 lambda term: _nodes(body(term)),
                 lambda term: body(term).func.class_key(),
                 lambda term: default_sort_key(body(term)),
-                lambda term: default_sort_key(term),
             )))
-
-        from .numbers import Number, NumberSymbol
-
-        if order is None and self.is_Add:
-            # Spot the special case of Add(Number, Mul(Number, expr)) with the
-            # first number positive and the second number negative
-            key = lambda x:not isinstance(x, (Number, NumberSymbol))
-            add_args = sorted(Add.make_args(self), key=key)
-            if (len(add_args) == 2
-                and isinstance(add_args[0], Number)
-                and add_args[0].is_negative
-                and not add_args[1].could_extract_minus_sign()):
-                # Keep simple subtraction as x - 2, not -2 + x.
-                return add_args[::-1]
-            if (len(add_args) == 2
-                and isinstance(add_args[0], (Number, NumberSymbol))
-                and isinstance(add_args[1], Mul)):
-                mul_args = sorted(Mul.make_args(add_args[1]), key=key)
-                if (len(mul_args) == 2
-                    and isinstance(mul_args[0], Number)
-                    and add_args[0].is_positive
-                    and mul_args[0].is_negative):
-                    return add_args
 
         keys, reverse = self._parse_order(order)
         terms, gens = self.as_terms()
