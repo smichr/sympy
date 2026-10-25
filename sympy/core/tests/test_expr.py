@@ -1880,6 +1880,14 @@ def test_staged_default_term_ordering():
         log(2), log(3)]
     assert (x + pi).as_ordered_terms() == [pi, x]
 
+    mixed = [-2*f(x), -2*sin(x), f(x - 1), f(x + 1),
+             sin(x - 1), sin(x + 1)]
+    grouped = [-2*f(x), f(x - 1), f(x + 1),
+               -2*sin(x), sin(x - 1), sin(x + 1)]
+    for terms in (mixed, mixed[::-1]):
+        assert Add(*terms, evaluate=False).as_ordered_terms() == grouped
+
+
 
 def test_as_ordered_terms_simple_degree_and_generator_order():
     a, b, c, d = symbols('a b c d')
