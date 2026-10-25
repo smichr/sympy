@@ -51,6 +51,10 @@ class AssocOp(Basic):
 
     evaluate : bool, optional
         Evaluate the operation. If not passed, refer to ``global_parameters.evaluate``.
+
+    unevaluate : bool, optional
+        Flatten associative arguments and order commutative arguments without
+        simplifying them. Cannot be combined with ``evaluate``.
     """
 
     # for performance reason, we don't let is_commutative go to assumptions,
@@ -60,7 +64,7 @@ class AssocOp(Basic):
     _args_type: type[Basic] | None = None
 
     @cacheit
-    def __new__(cls, *args, evaluate=None, _sympify=True):
+    def __new__(cls, *args, evaluate=None, unevaluate=False, _sympify=True):
         # Allow faster processing by passing ``_sympify=False``, if all arguments
         # are already sympified.
         if _sympify:
@@ -90,6 +94,35 @@ this object, use the * or + operator instead.
                         active_deprecations_target="non-expr-args-deprecated",
                         stacklevel=4,
                     )
+
+        if unevaluate:
+            if evaluate is not None:
+                raise ValueError("unevaluate=True conflicts with evaluate")
+
+            # Associative normalization is not mathematical evaluation:
+            # flatten the same operation, and reorder commutative args only.
+            from .basic import _args_sortkey
+            pending = list(reversed(args))
+            flat = []
+            while pending:
+                a = pending.pop()
+                if a.__class__ is cls:
+                    pending.extend(reversed(a.args))
+                else:
+                    flat.append(a)
+
+            if cls.is_Add:
+                flat.sort(key=_args_sortkey)
+            elif cls.is_Mul:
+                cargs = [a for a in flat if a.is_commutative]
+                ncargs = [a for a in flat if not a.is_commutative]
+                cargs.sort(key=_args_sortkey)
+                flat = cargs + ncargs
+            else:
+                raise NotImplementedError("unevaluate is only supported for Add/Mul")
+
+            obj = cls._from_args(flat)
+            return cls._exec_constructor_postprocessors(obj)
 
         if evaluate is None:
             evaluate = global_parameters.evaluate

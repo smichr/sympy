@@ -109,3 +109,65 @@ def test_mul_dispatcher():
 
     # selection by registered priority
     assert mul(a,b,a) == NewMul(a**2, b)
+
+
+def test_unevaluate_assocop():
+    from sympy import evaluate
+    from collections import Counter
+
+    x, y, z = symbols('x y z')
+    A, B = symbols('A B', commutative=False)
+
+    for op, args in [
+        (Add, (x, y, z)), (Add, (x, x, y)), (Add, (S.One, S(2), x)),
+        (Mul, (x, y, z)), (Mul, (x, x, y)), (Mul, (S(2), S(3), x)),
+    ]:
+        f = op(*args, unevaluate=True)
+        g = op(*reversed(args), unevaluate=True)
+        assert f == g
+        assert f.args == g.args
+        assert Counter(f.args) == Counter(args)
+        assert f.func is op
+        nested = op(args[0], op(*args[1:], evaluate=False), unevaluate=True)
+        assert nested == f
+        assert nested.args == f.args
+
+    # Literal ordering is unchanged.
+    assert Mul(y, x, evaluate=False).args == (y, x)
+    assert Add(y, x, evaluate=False).args == (y, x)
+
+    # Flattening removes associative groupings, not operands.
+    assert Mul(x, Mul(y, z, evaluate=False), unevaluate=True) == Mul(z, y, x, unevaluate=True)
+    assert Add(x, Add(y, z, evaluate=False), unevaluate=True) == Add(z, y, x, unevaluate=True)
+
+    # These are objects, not the evaluated results.
+    assert Add(x, x, unevaluate=True).args == (x, x)
+    assert Mul(x, x, unevaluate=True).args == (x, x)
+    assert Add(S(2), S(3), unevaluate=True).args == (S(2), S(3))
+    assert Mul(S(2), S(3), unevaluate=True).args == (S(2), S(3))
+    assert Add(x, S.Zero, unevaluate=True).is_Add
+    assert Mul(x, S.One, unevaluate=True).is_Mul
+    # No automatic distribution, even when an ordinary Add is provided.
+    assert Mul(S(2), Add(x, S.One), unevaluate=True).is_Mul
+    assert Mul(A, B, unevaluate=True) != Mul(B, A, unevaluate=True)
+    assert Mul(y, A, x, B, unevaluate=True) == Mul(x, A, y, B, unevaluate=True)
+
+    with evaluate(False):
+        assert Add(y, x, unevaluate=True) == Add(x, y, unevaluate=True)
+
+    raises(ValueError, lambda: Add(x, y, evaluate=False, unevaluate=True))
+    raises(ValueError, lambda: Mul(x, y, evaluate=True, unevaluate=True))
+
+
+def test_post_process_with_unevaluate():
+    from sympy import MatAdd, MatMul, MatrixSymbol
+
+    A = MatrixSymbol('A', 2, 2)
+
+    a = Add(A, A, unevaluate=True)
+    assert isinstance(a, MatAdd)
+    assert a.args == (A, A)
+
+    m = Mul(A, A, unevaluate=True)
+    assert isinstance(m, MatMul)
+    assert m.args == (A, A)
