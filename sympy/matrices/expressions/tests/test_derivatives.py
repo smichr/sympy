@@ -7,6 +7,7 @@ from __future__ import annotations
 from sympy import KroneckerProduct, Matrix, diag, diff, eye, Array, MatPow
 from sympy.combinatorics import Permutation
 from sympy.concrete.summations import Sum
+from sympy.core.function import Derivative
 from sympy.core.numbers import Rational
 from sympy.core.singleton import S
 from sympy.core.symbol import symbols, Symbol
@@ -882,3 +883,10 @@ def test_derivative_object_routing():
     assert Derivative(Trace(A2*X2), X2).doit() == A2.T
     assert Derivative(Trace(X2*X2), X2, 2).doit() == \
         Trace(X2*X2).diff(X2).diff(X2)
+
+
+def test_derivative_subs_matrix_expr():
+    assert Derivative(Determinant(A**j), A).subs(j, 3) == \
+        Derivative(Determinant(A**3), A)
+    assert Derivative(A**j, A).subs(j, 3) == Derivative(A**3, A)
+    assert Derivative(A**j, A).subs(j, i) == Derivative(A**i, A)

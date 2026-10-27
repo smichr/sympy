@@ -848,6 +848,18 @@ def test_diff_wrt_func_subs():
     assert f(g(x)).diff(x).subs(g, Lambda(x, 2*x)).doit() == f(2*x).diff(x)
 
 
+def test_derivative_subs_wrt_symbol_inside_wrt_function():
+    d = Derivative(f(g(x), y), g(x), x)
+    assert d.subs(y, x) == Subs(d, y, x)
+    assert d.subs(y, x).doit() == d.doit().subs(y, x)
+
+
+def test_derivative_subs_function_with_lambda():
+    d = Derivative(f(x) + g(y), y)
+    assert d.subs(f, Lambda(t, t*y)) == Subs(d, f, Lambda(t, t*y))
+    assert d.subs(f, Lambda(t, t**2)) == Derivative(x**2 + g(y), y)
+
+
 def test_subs_in_derivative():
     expr = sin(x*exp(y))
     u = Function('u')

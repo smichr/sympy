@@ -1825,13 +1825,11 @@ class Derivative(Expr):
             # for Derivative(f(x, g(y)), y), x cannot be replaced with
             # anything that has y in it; for f(g(x), g(y)).diff(g(y))
             # g(x) cannot be replaced with anything that has g(y)
-            syms = {vi: Dummy() for vi in self._wrt_variables
-                if not vi.is_Symbol}
-            wrt = {syms.get(vi, vi) for vi in self._wrt_variables}
-            forbidden = args[0].xreplace(syms).free_symbols & wrt
-            nfree = new.xreplace(syms).free_symbols
-            ofree = old.xreplace(syms).free_symbols
-            if (nfree - ofree) & forbidden:
+            def has(e, vi):
+                return isinstance(e, Basic) and e.has_xfree({vi})
+            forbidden = {vi for vi in self._wrt_variables
+                if has(args[0], vi)}
+            if any(has(new, vi) and not has(old, vi) for vi in forbidden):
                 return Subs(self, old, new)
 
         viter = ((i, j) for ((i, _), (j, _)) in zip(newargs[1:], args[1:]))
