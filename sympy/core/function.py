@@ -1820,13 +1820,14 @@ class Derivative(Expr):
 
         if newargs[0] != args[0]:
             # case (1) can't change expr by introducing something that is in
-            # the _wrt_variables if it was already in the expr, or by
-            # replacing an expression of such a variable unless that
-            # expression is an undefined function or a _wrt_variable
+            # the _wrt_variables, or by replacing an expression of such a
+            # variable unless that expression is an undefined function or
+            # a _wrt_variable
             # e.g.
             # for Derivative(f(x, g(y)), y), x cannot be replaced with
             # anything that has y in it; for f(g(x), g(y)).diff(g(y))
             # g(x) cannot be replaced with anything that has g(y);
+            # for Derivative(f(y), x), y cannot be replaced with x;
             # for Derivative(x**2 + x, x), x**2 cannot be replaced but
             # for Derivative(f(x) + x, x), f(x) can
             def changes_derivative(diff_var):
@@ -1835,9 +1836,7 @@ class Derivative(Expr):
                         or old in self._wrt_variables)
                 return _depends_on(new, diff_var)
 
-            diff_vars_in_expr = [v for v in self._wrt_variables
-                if _depends_on(args[0], v)]
-            if any(changes_derivative(v) for v in diff_vars_in_expr):
+            if any(changes_derivative(v) for v in self._wrt_variables):
                 return Subs(self, old, new)
 
         viter = ((i, j) for ((i, _), (j, _)) in zip(newargs[1:], args[1:]))
@@ -2456,11 +2455,19 @@ class Subs(Expr):
                         expr = expr.diff((vi, ci))
                     else:
                         wrt.append((vi, ci))
-                # inject remaining subs
-                rv = expr.subs(undone)
+                # a variable of differentiation replaced by an expression
+                # is a change of variables, so absent variables are
+                # differentiated after it; any other substitution is
+                # done after all differentiation
+                subs_before_diff = [(vi, pi) for vi, pi in undone
+                    if vi in e._wrt_variables]
+                subs_after_diff = [(vi, pi) for vi, pi in undone
+                    if vi not in e._wrt_variables]
+                rv = expr.subs(subs_before_diff)
                 # do remaining differentiation *in order given*
                 for vc in wrt:
                     rv = rv.diff(vc)
+                rv = rv.subs(subs_after_diff)
             else:
                 # inject remaining subs
                 rv = e.subs(undone)

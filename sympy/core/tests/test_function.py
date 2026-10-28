@@ -873,9 +873,11 @@ def test_derivative_subs_expression_of_wrt_variable():
     assert Derivative(f(x) + fx, x).subs(fx, x).doit() == x + 1
 
 
-@XFAIL
 def test_derivative_subs_introduces_absent_wrt_variable():
-    assert Derivative(f(y), x).subs(y, x).doit() == 0
+    # subs and doit must commute, a design goal set in PR #15049
+    d = Derivative(f(y), x)
+    assert d.subs(y, x) == Subs(d, y, x)
+    assert d.subs(y, x).doit() == d.doit().subs(y, x) == 0
 
 
 def test_subs_doit_derivative_unmatched_old():
