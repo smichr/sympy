@@ -1,7 +1,7 @@
 from __future__ import annotations
 from sympy.core import symbols, Symbol, Tuple, oo, Dummy
 from sympy.tensor.indexed import IndexException
-from sympy.testing.pytest import XFAIL, raises
+from sympy.testing.pytest import raises
 from sympy.utilities.iterables import iterable
 
 # import test:
@@ -512,7 +512,6 @@ def test_IndexedBase_commutative():
     assert t[0]*u[0] != u[0]*t[0]
 
 
-@XFAIL
 def test_derivative_subs_indexed_with_other_index():
     X = IndexedBase('X')
     i, j = symbols('i j', integer=True)

@@ -1829,17 +1829,14 @@ class Derivative(Expr):
             # g(x) cannot be replaced with anything that has g(y);
             # for Derivative(x**2 + x, x), x**2 cannot be replaced but
             # for Derivative(f(x) + x, x), f(x) can
-            def contains(e, diff_var):
-                return isinstance(e, Basic) and e.has_xfree({diff_var})
-
             def changes_derivative(diff_var):
-                if contains(old, diff_var):
+                if _depends_on(old, diff_var):
                     return not (isinstance(old, AppliedUndef)
                         or old in self._wrt_variables)
-                return contains(new, diff_var)
+                return _depends_on(new, diff_var)
 
             diff_vars_in_expr = [v for v in self._wrt_variables
-                if contains(args[0], v)]
+                if _depends_on(args[0], v)]
             if any(changes_derivative(v) for v in diff_vars_in_expr):
                 return Subs(self, old, new)
 
@@ -2257,6 +2254,16 @@ class Lambda(Expr):
 
 
 
+def _depends_on(expr, v):
+    """Return True if ``expr`` may depend on the variable of
+    differentiation ``v``, using the same test as ``Derivative``."""
+    if not isinstance(expr, Basic):
+        return False
+    if isinstance(v, (Symbol, AppliedUndef, Derivative)):
+        return expr.has_xfree({v})
+    return bool(expr.free_symbols & v.free_symbols)
+
+
 class Subs(Expr):
     """
     Represents unevaluated substitutions of an expression.
@@ -2431,24 +2438,21 @@ class Subs(Expr):
             if isinstance(e, Derivative):
                 # do Subs that aren't related to differentiation
                 undone2 = []
-                D = Dummy()
                 arg = e.args[0]
                 for vi, pi in undone:
-                    if D not in e.xreplace({vi: D}).free_symbols:
-                        if arg.has(vi):
-                            e = e.subs(vi, pi)
+                    if not e.has_xfree({vi}) and arg.has(vi):
+                        e = e.subs(vi, pi)
                     else:
                         undone2.append((vi, pi))
                 undone = undone2
                 # differentiate wrt variables that are present
                 wrt = []
-                D = Dummy()
                 expr = e.expr
                 free = expr.free_symbols
                 for vi, ci in e.variable_count:
                     if isinstance(vi, Symbol) and vi in free:
                         expr = expr.diff((vi, ci))
-                    elif D in expr.subs(vi, D).free_symbols:
+                    elif _depends_on(expr, vi):
                         expr = expr.diff((vi, ci))
                     else:
                         wrt.append((vi, ci))
