@@ -1820,17 +1820,27 @@ class Derivative(Expr):
 
         if newargs[0] != args[0]:
             # case (1) can't change expr by introducing something that is in
-            # the _wrt_variables if it was already in the expr
+            # the _wrt_variables if it was already in the expr, or by
+            # replacing an expression of such a variable unless that
+            # expression is an undefined function or a _wrt_variable
             # e.g.
             # for Derivative(f(x, g(y)), y), x cannot be replaced with
             # anything that has y in it; for f(g(x), g(y)).diff(g(y))
-            # g(x) cannot be replaced with anything that has g(y)
+            # g(x) cannot be replaced with anything that has g(y);
+            # for Derivative(x**2 + x, x), x**2 cannot be replaced but
+            # for Derivative(f(x) + x, x), f(x) can
             def contains(e, diff_var):
                 return isinstance(e, Basic) and e.has_xfree({diff_var})
+
+            def changes_derivative(diff_var):
+                if contains(old, diff_var):
+                    return not (isinstance(old, AppliedUndef)
+                        or old in self._wrt_variables)
+                return contains(new, diff_var)
+
             diff_vars_in_expr = [v for v in self._wrt_variables
                 if contains(args[0], v)]
-            if any(contains(new, diff_var) and not contains(old, diff_var)
-                    for diff_var in diff_vars_in_expr):
+            if any(changes_derivative(v) for v in diff_vars_in_expr):
                 return Subs(self, old, new)
 
         viter = ((i, j) for ((i, _), (j, _)) in zip(newargs[1:], args[1:]))

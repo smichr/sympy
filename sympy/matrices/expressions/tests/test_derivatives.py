@@ -7,7 +7,7 @@ from __future__ import annotations
 from sympy import KroneckerProduct, Matrix, diag, diff, eye, Array, MatPow
 from sympy.combinatorics import Permutation
 from sympy.concrete.summations import Sum
-from sympy.core.function import Derivative
+from sympy.core.function import Derivative, Subs
 from sympy.core.numbers import Rational
 from sympy.core.singleton import S
 from sympy.core.symbol import symbols, Symbol
@@ -890,3 +890,5 @@ def test_derivative_subs_matrix_expr():
         Derivative(Determinant(A**3), A)
     assert Derivative(A**j, A).subs(j, 3) == Derivative(A**3, A)
     assert Derivative(A**j, A).subs(j, i) == Derivative(A**i, A)
+    d = Derivative(A[0, 0]*Trace(A), A)
+    assert d.subs(A[0, 0], 1) == Subs(d, A[0, 0], 1)

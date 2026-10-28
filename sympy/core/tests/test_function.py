@@ -860,6 +860,19 @@ def test_derivative_subs_function_with_lambda():
     assert d.subs(f, Lambda(t, t**2)) == Derivative(x**2 + g(y), y)
 
 
+def test_derivative_subs_expression_of_wrt_variable():
+    d = Derivative(x**2 + x, x)
+    assert d.subs(x**2, x) == Subs(d, x**2, x)
+    assert d.subs(x**2, x).doit() == 2*x + 1
+    assert d.subs(x**2, 2).doit() == 2*x + 1
+    assert Derivative(x**3 + x**2, x).subs(x**2, x).doit() == 5*x
+    assert Derivative(sin(x) + x, x).subs(sin(x), y).doit() == cos(x) + 1
+    assert Derivative(f(x) + x, x).subs(f(x), x**2) == \
+        Derivative(x**2 + x, x)
+    fx = f(x).diff(x)
+    assert Derivative(f(x) + fx, x).subs(fx, x).doit() == x + 1
+
+
 def test_subs_in_derivative():
     expr = sin(x*exp(y))
     u = Function('u')
