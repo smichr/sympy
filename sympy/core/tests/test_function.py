@@ -880,9 +880,9 @@ def test_derivative_subs_introduces_absent_wrt_variable():
     assert d.subs(y, x).doit() == d.doit().subs(y, x) == 0
 
 
-@XFAIL
 def test_derivative_subs_whole_expr_introduces_wrt_variable():
     d = Derivative(f(x), x, y)
+    assert d.subs(f(x), x**2*y) == Subs(d, f(x), x**2*y)
     assert d.subs(f(x), x**2*y).doit() == d.doit().subs(f(x), x**2*y) == 0
 
 
@@ -891,10 +891,10 @@ def test_subs_doit_derivative_unmatched_old():
     assert Subs(Derivative(x**2 + x + y, x), x + y, z).doit() == 2*x + 1
 
 
-@XFAIL
 def test_derivative_subs_symbol_introduces_wrt_variable():
-    d = Derivative(y, x)
-    assert d.subs(y, x).doit() == d.doit().subs(y, x) == 0
+    for s in (y, Dummy('y')):
+        d = Derivative(s, x)
+        assert d.subs(s, x).doit() == d.doit().subs(s, x) == 0
 
 
 def test_subs_in_derivative():

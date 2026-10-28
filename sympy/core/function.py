@@ -1516,7 +1516,7 @@ class Derivative(Expr):
 
             if not is_symbol:
                 old_v = v
-                v = Dummy('xi')
+                v = _DiffPlaceholder('xi')
                 expr = expr.xreplace({old_v: v})
                 # Derivatives and UndefinedFunctions are independent
                 # of all others
@@ -1815,7 +1815,14 @@ class Derivative(Expr):
         if args[0] == old:
             # complete replacement of self.expr
             # we already checked that the new is valid so we know
-            # it won't be a problem should it appear in variables
+            # it won't be a problem should it appear in variables;
+            # the placeholder that differentiation wrt e.g. f(x) uses for
+            # f(x) may stand for it, but anything else cannot introduce a
+            # _wrt_variable that it lacks
+            if not isinstance(old, _DiffPlaceholder) and any(
+                    _depends_on(new, v) and not _depends_on(old, v)
+                    for v in self._wrt_variables):
+                return Subs(self, old, new)
             return _derivative_dispatch(*newargs)
 
         if newargs[0] != args[0]:
@@ -3582,3 +3589,12 @@ def nfloat(expr, n=15, exponent=False, dkeys=False):
 
 
 from .symbol import Dummy, Symbol
+
+
+class _DiffPlaceholder(Dummy):
+    """A Dummy that stands for a non-Symbol variable of differentiation
+    while Derivative differentiates with respect to it."""
+
+    @classmethod
+    def class_key(cls):
+        return Dummy.class_key()
