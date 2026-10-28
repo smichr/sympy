@@ -1812,25 +1812,9 @@ class Derivative(Expr):
 
         args = list(self.args)
         newargs = [x._subs(old, new) for x in args]
-        if args[0] == old:
-            # complete replacement of self.expr
-            # we already checked that the new is valid so we know
-            # it won't be a problem should it appear in variables;
-            # the placeholder that differentiation wrt e.g. f(x) uses for
-            # f(x) may stand for it, but anything else cannot introduce a
-            # _wrt_variable that it lacks
-            if not isinstance(old, _DiffPlaceholder) and any(
-                    _depends_on(new, v) and not _depends_on(old, v)
-                    for v in self._wrt_variables):
-                return Subs(self, old, new)
-            return _derivative_dispatch(*newargs)
-
         if newargs[0] != args[0]:
-            # case (1) can't change expr by introducing something that is in
-            # the _wrt_variables, or by replacing an expression of such a
-            # variable unless that expression is an undefined function or
-            # a _wrt_variable
-            # e.g.
+            # case (1) changing expr must not change how it depends on
+            # the _wrt_variables, e.g.
             # for Derivative(f(x, g(y)), y), x cannot be replaced with
             # anything that has y in it; for f(g(x), g(y)).diff(g(y))
             # g(x) cannot be replaced with anything that has g(y);
@@ -1839,12 +1823,23 @@ class Derivative(Expr):
             # for Derivative(f(x) + x, x), f(x) can
             def changes_derivative(diff_var):
                 if _depends_on(old, diff_var):
+                    # replacing an undefined function, a _wrt_variable or
+                    # the whole expr only changes what it stands for
                     return not (isinstance(old, AppliedUndef)
-                        or old in self._wrt_variables)
-                return _depends_on(new, diff_var)
+                        or old in self._wrt_variables or old == args[0])
+                # only the placeholder that differentiation wrt e.g. f(x)
+                # uses for f(x) may stand for something that depends on it
+                return _depends_on(new, diff_var) and not (
+                    isinstance(old, _DiffPlaceholder) and old == args[0])
 
             if any(changes_derivative(v) for v in self._wrt_variables):
                 return Subs(self, old, new)
+
+        if args[0] == old:
+            # complete replacement of self.expr
+            # we already checked that the new is valid so we know
+            # it won't be a problem should it appear in variables
+            return _derivative_dispatch(*newargs)
 
         viter = ((i, j) for ((i, _), (j, _)) in zip(newargs[1:], args[1:]))
         if any(i != j for i, j in viter):  # a wrt-variable change
