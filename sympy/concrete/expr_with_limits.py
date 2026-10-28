@@ -405,8 +405,9 @@ class ExprWithLimits(Expr):
                     sub_into_func = False
                     break
             if isinstance(old, (AppliedUndef, UndefinedFunction)):
-                sy2 = set(self.variables).intersection(set(new.atoms(Symbol)))
-                sy1 = set(self.variables).intersection(set(old.args))
+                sy2 = set(self.variables).intersection(new.free_symbols)
+                sy1 = set(self.variables).intersection(
+                    old.args if isinstance(old, AppliedUndef) else ())
                 if not sy2.issubset(sy1):
                     raise ValueError(
                         "substitution cannot create dummy dependencies")

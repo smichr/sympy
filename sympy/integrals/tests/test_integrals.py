@@ -39,7 +39,7 @@ from sympy.functions.elementary.integers import floor
 from sympy.integrals.integrals import Integral, _add_atan_floor_terms
 from sympy.integrals.risch import NonElementaryIntegral
 from sympy.physics import units
-from sympy.testing.pytest import XFAIL, raises, slow, warns_deprecated_sympy, warns
+from sympy.testing.pytest import raises, slow, warns_deprecated_sympy, warns
 from sympy.utilities.exceptions import SymPyDeprecationWarning
 from sympy.core.random import verify_numerically
 
@@ -2212,11 +2212,15 @@ def test_issue_20781():
         ) == 2*x - 2*Min(0, x)
 
 
-@XFAIL
 def test_issue_19220():
     # <https://github.com/sympy/sympy/issues/19220>
     g = Function('g')
     assert Integral(f(x), (x, 0, 1)).subs(f, g) == Integral(g(x), (x, 0, 1))
+    assert Integral(f(x), (x, 0, 1)).subs(f, Lambda(x, x**2)) == \
+        Integral(x**2, (x, 0, 1))
+    assert Sum(f(x), (x, 0, 3)).subs(f, cos) == Sum(cos(x), (x, 0, 3))
+    raises(ValueError, lambda: Integral(f(y), (x, 0, 1)).subs(
+        f, Lambda(t, t*x)))
 
 
 @slow
