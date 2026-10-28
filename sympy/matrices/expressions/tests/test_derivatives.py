@@ -26,6 +26,7 @@ from sympy.matrices.expressions.matadd import MatAdd
 from sympy.matrices.expressions.matmul import MatMul
 from sympy.matrices.expressions.special import (Identity, ZeroMatrix)
 from sympy.tensor.array.array_derivatives import ArrayDerivative
+from sympy.testing.pytest import XFAIL
 from sympy.matrices.expressions import hadamard_power
 from sympy.tensor.array.expressions.array_expressions import ArrayAdd, ArrayTensorProduct, PermuteDims, ArrayContraction
 
@@ -892,3 +893,16 @@ def test_derivative_subs_matrix_expr():
     assert Derivative(A**j, A).subs(j, i) == Derivative(A**i, A)
     d = Derivative(A[0, 0]*Trace(A), A)
     assert d.subs(A[0, 0], 1) == Subs(d, A[0, 0], 1)
+
+
+@XFAIL
+def test_subs_doit_derivative_matrix_element():
+    d = Derivative(A[0, 0]*Trace(A), A)
+    assert Subs(d, A[0, 0], 1).doit() == \
+        Trace(A)*MatrixUnit(k, k, 0, 0) + Identity(k)
+
+
+@XFAIL
+def test_subs_doit_derivative_matrix_transpose():
+    d = Derivative(Trace(A*A.T), A)
+    assert Subs(d, A.T, Identity(k)).doit() == 2*A

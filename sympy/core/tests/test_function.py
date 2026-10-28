@@ -873,6 +873,16 @@ def test_derivative_subs_expression_of_wrt_variable():
     assert Derivative(f(x) + fx, x).subs(fx, x).doit() == x + 1
 
 
+@XFAIL
+def test_derivative_subs_introduces_absent_wrt_variable():
+    assert Derivative(f(y), x).subs(y, x).doit() == 0
+
+
+@XFAIL
+def test_subs_doit_derivative_unmatched_old():
+    assert Subs(Derivative(x**2*y, x), x*y, t).doit() == 2*t
+
+
 def test_subs_in_derivative():
     expr = sin(x*exp(y))
     u = Function('u')
