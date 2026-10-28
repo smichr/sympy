@@ -2435,15 +2435,6 @@ class Subs(Expr):
             if not isinstance(e, Derivative):
                 e = e.doit()
             if isinstance(e, Derivative):
-                # do Subs that aren't related to differentiation
-                undone2 = []
-                arg = e.args[0]
-                for vi, pi in undone:
-                    if not e.has_xfree({vi}) and arg.has(vi):
-                        e = e.subs(vi, pi)
-                    else:
-                        undone2.append((vi, pi))
-                undone = undone2
                 # differentiate wrt variables that are present
                 wrt = []
                 expr = e.expr
