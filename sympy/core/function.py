@@ -1858,28 +1858,25 @@ class Derivative(Expr):
             # more arg-wise checks
             vc = newargs[1:]
             oldv = self._wrt_variables
+            # old variable -> (dummy, new invalid variable)
             dummies = {}
-            subs = []
             for i, (vi, ci) in enumerate(vc):
                 if not vi._diff_wrt:
                     # case (3) invalid differentiation expression so
-                    # create a replacement dummy, one per old variable
-                    # even if it appears more than once
+                    # replace it with a dummy, one per old variable even
+                    # if it appears more than once
                     if oldv[i] not in dummies:
-                        xi = Dummy('xi_%i' % i)
-                        dummies[oldv[i]] = xi
-                        # and record the dummy with the new (invalid)
-                        # differentiation expression
-                        subs.append((xi, vi))
-                    # and replace the bad variable with the dummy
-                    vc[i] = (dummies[oldv[i]], ci)
+                        dummies[oldv[i]] = (Dummy('xi_%i' % i), vi)
+                    vc[i] = (dummies[oldv[i]][0], ci)
 
-            if subs:
+            if dummies:
+                subs = list(dummies.values())
+                xis = {xi for xi, _ in subs}
                 # replace the old valid variables with the dummies in
                 # the expression and handle any residual substitution
-                newe = self.expr.xreplace(dummies)._subs(old, new)
-                inner = [(v, c) for v, c in vc if v in dummies.values()]
-                outer = [(v, c) for v, c in vc if v not in dummies.values()]
+                newe = self.expr.xreplace(
+                    {v: xi for v, (xi, _) in dummies.items()})._subs(old, new)
+                inner, outer = sift(vc, lambda i: i[0] in xis, binary=True)
                 if outer and all(isinstance(v, (Symbol, AppliedUndef))
                         or v.is_Indexed for v in oldv):
                     # a dummy does not depend on the other variables
@@ -2458,11 +2455,8 @@ class Subs(Expr):
                 # differentiate wrt variables that are present
                 wrt = []
                 expr = e.expr
-                free = expr.free_symbols
                 for vi, ci in e.variable_count:
-                    if isinstance(vi, Symbol) and vi in free:
-                        expr = expr.diff((vi, ci))
-                    elif _depends_on(expr, vi):
+                    if _depends_on(expr, vi):
                         expr = expr.diff((vi, ci))
                     else:
                         wrt.append((vi, ci))
@@ -2470,10 +2464,8 @@ class Subs(Expr):
                 # is a change of variables, so absent variables are
                 # differentiated after it; any other substitution is
                 # done after all differentiation
-                subs_before_diff = [(vi, pi) for vi, pi in undone
-                    if vi in e._wrt_variables]
-                subs_after_diff = [(vi, pi) for vi, pi in undone
-                    if vi not in e._wrt_variables]
+                subs_before_diff, subs_after_diff = sift(undone,
+                    lambda i: i[0] in e._wrt_variables, binary=True)
                 rv = expr.subs(subs_before_diff)
                 # do remaining differentiation *in order given*
                 for vc in wrt:
