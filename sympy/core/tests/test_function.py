@@ -901,7 +901,7 @@ def test_subs_in_derivative():
     expr = sin(x*exp(y))
     u = Function('u')
     v = Function('v')
-    assert Derivative(expr, y).subs(expr, y) == Derivative(y, y)
+    assert Derivative(expr, y).subs(expr, y) == Subs(Derivative(expr, y), expr, y)
     assert Derivative(expr, y).subs(y, x).doit() == \
         Derivative(expr, y).doit().subs(y, x)
     assert Derivative(f(x, y), y).subs(y, x) == Subs(Derivative(f(x, y), y), y, x)

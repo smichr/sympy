@@ -1823,10 +1823,10 @@ class Derivative(Expr):
             # for Derivative(f(x) + x, x), f(x) can
             def changes_derivative(diff_var):
                 if _depends_on(old, diff_var):
-                    # replacing an undefined function, a _wrt_variable or
-                    # the whole expr only changes what it stands for
+                    # replacing an undefined function or a _wrt_variable
+                    # only changes what it stands for
                     return not (isinstance(old, AppliedUndef)
-                        or old in self._wrt_variables or old == args[0])
+                        or old in self._wrt_variables)
                 # only the placeholder that differentiation wrt e.g. f(x)
                 # uses for f(x) may stand for something that depends on it
                 return _depends_on(new, diff_var) and not (
@@ -1834,12 +1834,6 @@ class Derivative(Expr):
 
             if any(changes_derivative(v) for v in self._wrt_variables):
                 return Subs(self, old, new)
-
-        if args[0] == old:
-            # complete replacement of self.expr
-            # we already checked that the new is valid so we know
-            # it won't be a problem should it appear in variables
-            return _derivative_dispatch(*newargs)
 
         viter = ((i, j) for ((i, _), (j, _)) in zip(newargs[1:], args[1:]))
         if any(i != j for i, j in viter):  # a wrt-variable change
