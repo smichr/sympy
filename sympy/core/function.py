@@ -1198,9 +1198,12 @@ class Derivative(Expr):
 
     When differentiation wrt a non-Symbol is attempted, the non-Symbol
     is temporarily converted to a Symbol while the differentiation
-    is performed and the same answer is obtained:
+    is performed and the same answer is obtained. The conversion is a
+    plain replacement, so it is done here with ``xreplace``; ``subs``
+    would not put ``f(t)`` back into ``Derivative(x, t)`` because a
+    symbol is independent of ``t``:
 
-        >>> indirect = F(t, U, V).subs(U, x).diff(x).subs(x, U)
+        >>> indirect = F(t, U, V).xreplace({U: x}).diff(x).xreplace({x: U})
         >>> assert direct == indirect
 
     The implication of this non-symbol replacement is that all
