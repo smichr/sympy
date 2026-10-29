@@ -853,6 +853,24 @@ def test_derivative_subs_repeated_invalid_wrt_variable():
     assert d.subs(g, cos).doit() == d.doit().subs(g, cos).doit()
 
 
+def test_derivative_subs_invalid_wrt_variable_chain_rule():
+    # the placeholder for g(x) must not hide that g(x) depends on x
+    sq = Lambda(t, t**2)
+    d = Derivative(f(g(x))*x, g(x), x, g(x))
+    assert d.subs(g, sq).doit() == (
+        Subs(Derivative(f(t), (t, 2)), t, x**2) +
+        2*x**2*Subs(Derivative(f(t), (t, 3)), t, x**2))
+    d = Derivative(x*y*f(g(x, y)), g(x, y), x, y)
+    xy = Lambda((x, y), x*y)
+    assert d.subs(g, xy).doit() == d.doit().subs(g, xy).doit()
+    # d.doit() is wrong when a variable contains another one, so
+    # check the form instead
+    xi = Dummy('xi')
+    d = Derivative(x*f(g(x), h(g(x))), g(x), h(g(x)), x)
+    assert d.subs(g, sq) == Derivative(
+        Subs(Derivative(x*f(xi, h(xi)), xi), xi, x**2), h(x**2), x)
+
+
 def test_derivative_subs_wrt_symbol_inside_wrt_function():
     d = Derivative(f(g(x), y), g(x), x)
     assert d.subs(y, x) == Subs(d, y, x)

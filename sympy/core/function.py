@@ -1875,6 +1875,20 @@ class Derivative(Expr):
                 # replace the old valid variables with the dummies in
                 # the expression and handle any residual substitution
                 newe = self.expr.xreplace(dummies)._subs(old, new)
+                inner = [(v, c) for v, c in vc if v in dummies.values()]
+                outer = [(v, c) for v, c in vc if v not in dummies.values()]
+                if outer and all(isinstance(v, (Symbol, AppliedUndef))
+                        or v.is_Indexed for v in oldv):
+                    # a dummy does not depend on the other variables
+                    # although the variable it replaces may, e.g. g(x)
+                    # on x, so only differentiate wrt the dummies inside
+                    # Subs and wrt the other variables outside it; this
+                    # reorders them, which is allowed because symbols,
+                    # functions and Indexed objects commute during
+                    # differentiation
+                    return Derivative(
+                        Subs(Derivative(newe, *inner), *zip(*subs)),
+                        *outer)
                 # return the Subs-wrapped derivative
                 return Subs(Derivative(newe, *vc), *zip(*subs))
 
