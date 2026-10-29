@@ -869,6 +869,13 @@ def test_derivative_subs_invalid_wrt_variable_chain_rule():
     d = Derivative(x*f(g(x), h(g(x))), g(x), h(g(x)), x)
     assert d.subs(g, sq) == Derivative(
         Subs(Derivative(x*f(xi, h(xi)), xi), xi, x**2), h(x**2), x)
+    # a Derivative variable doesn't commute with the others, so the
+    # substitution is done after differentiating
+    d = Derivative(x*f(g(x))*f(x).diff(x), g(x), x, f(x).diff(x))
+    assert d.subs(g, sq) == Subs(d, g, sq)
+    assert d.subs(g, sq).doit() == (
+        Subs(Derivative(f(t), t), t, x**2) +
+        2*x**2*Subs(Derivative(f(t), (t, 2)), t, x**2))
 
 
 def test_derivative_subs_wrt_symbol_inside_wrt_function():

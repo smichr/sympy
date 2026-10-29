@@ -1877,7 +1877,9 @@ class Derivative(Expr):
                 newe = self.expr.xreplace(
                     {v: xi for v, (xi, _) in dummies.items()})._subs(old, new)
                 inner, outer = sift(vc, lambda i: i[0] in xis, binary=True)
-                if outer and all(isinstance(v, (Symbol, AppliedUndef))
+                if not outer:
+                    return Subs(Derivative(newe, *inner), *zip(*subs))
+                if all(isinstance(v, (Symbol, AppliedUndef))
                         or v.is_Indexed for v in oldv):
                     # a dummy does not depend on the other variables
                     # although the variable it replaces may, e.g. g(x)
@@ -1889,8 +1891,8 @@ class Derivative(Expr):
                     return Derivative(
                         Subs(Derivative(newe, *inner), *zip(*subs)),
                         *outer)
-                # return the Subs-wrapped derivative
-                return Subs(Derivative(newe, *vc), *zip(*subs))
+                # otherwise substitute after differentiating
+                return Subs(self, old, new)
 
         # everything was ok
         return _derivative_dispatch(*newargs)
