@@ -1805,8 +1805,16 @@ class Derivative(Expr):
             def _subset(a, b):
                 return all((a[i] <= b[i]) == True for i in a)
 
-            old_vars = Counter(dict(reversed(old.variable_count)))
-            self_vars = Counter(dict(reversed(self.variable_count)))
+            def _counts(d):
+                # a variable can appear more than once, e.g. in
+                # Derivative(f(x, y), x, y, x)
+                counts = Counter()
+                for v, c in d.variable_count:
+                    counts[v] += c
+                return counts
+
+            old_vars = _counts(old)
+            self_vars = _counts(self)
             if _subset(old_vars, self_vars):
                 return _derivative_dispatch(new, *(self_vars - old_vars).items()).canonical
 
