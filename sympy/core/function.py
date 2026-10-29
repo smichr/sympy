@@ -1804,22 +1804,16 @@ class Derivative(Expr):
             if self.canonical == old.canonical:
                 return new
 
-            # collections.Counter doesn't have __le__
-            def _subset(a, b):
-                return all((a[i] <= b[i]) == True for i in a)
-
-            def _counts(d):
-                # a variable can appear more than once, e.g. in
-                # Derivative(f(x, y), x, y, x)
-                counts = Counter()
-                for v, c in d.variable_count:
-                    counts[v] += c
-                return counts
-
-            old_vars = _counts(old)
-            self_vars = _counts(self)
-            if _subset(old_vars, self_vars):
-                return _derivative_dispatch(new, *(self_vars - old_vars).items()).canonical
+            # count each variable of differentiation, which can appear
+            # more than once, e.g. in Derivative(f(x, y), x, y, x)
+            rest = Counter()
+            for v, c in self.variable_count:
+                rest[v] += c
+            for v, c in old.variable_count:
+                rest[v] -= c
+            if all((c >= 0) == True for c in rest.values()):
+                return _derivative_dispatch(new, *[
+                    (v, c) for v, c in rest.items() if c != 0]).canonical
 
         args = list(self.args)
         newargs = [x._subs(old, new) for x in args]

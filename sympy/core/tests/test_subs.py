@@ -561,6 +561,9 @@ def test_derivative_subs_repeated_variable():
     assert d.subs(Derivative(f(x, y), (x, n), y), z) == Derivative(z, x)
     assert Derivative(f(x), (x, n + m)).subs(Derivative(f(x), (x, n)), z) == \
         Derivative(z, (x, m))
+    k = symbols('k', integer=True, nonnegative=True)
+    assert Derivative(f(x), (x, n + k)).subs(Derivative(f(x), (x, n)), z) == \
+        Derivative(z, (x, k))
 
 
 def test_issue_5284():
