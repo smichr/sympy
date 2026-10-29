@@ -1855,25 +1855,26 @@ class Derivative(Expr):
             # more arg-wise checks
             vc = newargs[1:]
             oldv = self._wrt_variables
-            newe = self.expr
+            dummies = {}
             subs = []
             for i, (vi, ci) in enumerate(vc):
                 if not vi._diff_wrt:
                     # case (3) invalid differentiation expression so
-                    # create a replacement dummy
-                    xi = Dummy('xi_%i' % i)
-                    # replace the old valid variable with the dummy
-                    # in the expression
-                    newe = newe.xreplace({oldv[i]: xi})
+                    # create a replacement dummy, one per old variable
+                    # even if it appears more than once
+                    if oldv[i] not in dummies:
+                        xi = Dummy('xi_%i' % i)
+                        dummies[oldv[i]] = xi
+                        # and record the dummy with the new (invalid)
+                        # differentiation expression
+                        subs.append((xi, vi))
                     # and replace the bad variable with the dummy
-                    vc[i] = (xi, ci)
-                    # and record the dummy with the new (invalid)
-                    # differentiation expression
-                    subs.append((xi, vi))
+                    vc[i] = (dummies[oldv[i]], ci)
 
             if subs:
-                # handle any residual substitution in the expression
-                newe = newe._subs(old, new)
+                # replace the old valid variables with the dummies in
+                # the expression and handle any residual substitution
+                newe = self.expr.xreplace(dummies)._subs(old, new)
                 # return the Subs-wrapped derivative
                 return Subs(Derivative(newe, *vc), *zip(*subs))
 
