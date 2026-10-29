@@ -1832,10 +1832,16 @@ class Derivative(Expr):
                     # only changes what it stands for
                     return not (isinstance(old, AppliedUndef)
                         or old in self._wrt_variables)
-                # only the placeholder that differentiation wrt e.g. f(x)
-                # uses for f(x) may stand for something that depends on it
-                return _depends_on(new, diff_var) and not (
-                    isinstance(old, _DiffPlaceholder) and old == args[0])
+                if _depends_on(new, diff_var):
+                    # only the placeholder that differentiation wrt e.g.
+                    # f(x) uses for f(x) may stand for something that
+                    # depends on it
+                    return not (isinstance(old, _DiffPlaceholder)
+                        and old == args[0])
+                # neither depends on it, but the substitution can still
+                # create it, e.g. g(y) becomes g(x) with y -> x
+                return not diff_var.is_Symbol and (
+                    newargs[0].count(diff_var) > args[0].count(diff_var))
 
             if any(changes_derivative(v) for v in self._wrt_variables):
                 return Subs(self, old, new)

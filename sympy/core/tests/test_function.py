@@ -878,6 +878,20 @@ def test_derivative_subs_invalid_wrt_variable_chain_rule():
         2*x**2*Subs(Derivative(f(t), (t, 2)), t, x**2))
 
 
+def test_derivative_subs_creates_wrt_variable():
+    # y -> x turns g(y) into g(x), which is a variable of differentiation
+    d = Derivative(f(x)*g(y), g(x))
+    assert d.subs(y, x) == Subs(d, y, x)
+    assert d.subs(y, x).doit() == d.doit().subs(y, x) == 0
+    d = Derivative(f(g(x))*g(y), g(x))
+    assert d.subs(y, x).doit() == d.doit().subs(y, x)
+    d = Derivative(f(x)*h(x), g(x))
+    assert d.subs(h, g).doit() == d.doit().subs(h, g) == 0
+    # nothing is created
+    assert Derivative(f(x)*g(y), g(x)).subs(y, 2) == \
+        Derivative(f(x)*g(2), g(x))
+
+
 def test_derivative_subs_wrt_symbol_inside_wrt_function():
     d = Derivative(f(g(x), y), g(x), x)
     assert d.subs(y, x) == Subs(d, y, x)
