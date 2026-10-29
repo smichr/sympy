@@ -1843,17 +1843,15 @@ class Derivative(Expr):
             if any(changes_derivative(v) for v in self._wrt_variables):
                 return Subs(self, old, new)
 
-        viter = ((i, j) for ((i, _), (j, _)) in zip(newargs[1:], args[1:]))
-        if any(i != j for i, j in viter):  # a wrt-variable change
+        changed = [vi for (vi, _), (v, _) in zip(newargs[1:], args[1:])
+            if vi != v]
+        if changed:  # a wrt-variable change
             # case (2) can't change vars by introducing a variable
             # that is contained in expr, e.g.
             # for Derivative(f(z, g(h(x), y)), y), y cannot be changed to
             # x, h(x), or g(h(x), y)
-            for a in _atomic(self.expr, recursive=True):
-                for i in range(1, len(newargs)):
-                    vi, _ = newargs[i]
-                    if a == vi and vi != args[i][0]:
-                        return Subs(self, old, new)
+            if any(args[0].has_xfree({vi}) for vi in changed):
+                return Subs(self, old, new)
             # more arg-wise checks
             vc = newargs[1:]
             oldv = self._wrt_variables

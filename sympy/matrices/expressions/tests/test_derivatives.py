@@ -903,3 +903,12 @@ def test_subs_doit_derivative_matrix_element():
 def test_subs_doit_derivative_matrix_transpose():
     d = Derivative(Trace(A*A.T), A)
     assert Subs(d, A.T, Identity(k)).doit() == 2*A
+
+
+def test_derivative_subs_wrt_variable_captured():
+    A2 = MatrixSymbol("A", 2, 2)
+    B2 = MatrixSymbol("B", 2, 2)
+    d = Derivative(Trace(A2*B2), A2)
+    assert d.subs(A2, B2) == Subs(d, A2, B2)
+    d = Derivative(A2[0, 0]*A2[1, 1], A2[0, 0])
+    assert d.subs(A2[0, 0], A2[1, 1]) == Subs(d, A2[0, 0], A2[1, 1])

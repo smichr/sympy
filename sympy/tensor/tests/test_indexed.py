@@ -518,3 +518,10 @@ def test_derivative_subs_indexed_with_other_index():
     y = Symbol('y')
     d = Derivative(X[j]**2, X[i])
     assert d.subs(X[j], y).doit() == 2*y*KroneckerDelta(i, j)
+
+
+def test_derivative_subs_wrt_indexed_captured():
+    X = IndexedBase('X')
+    i, j = symbols('i j', integer=True)
+    d = Derivative(X[i]*X[j], X[i])
+    assert d.subs(X[i], X[j]) == Subs(d, X[i], X[j])
