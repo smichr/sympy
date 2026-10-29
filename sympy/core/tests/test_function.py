@@ -909,6 +909,14 @@ def test_derivative_subs_whole_expr_introduces_wrt_variable():
     assert d.subs(f(x), x**2*y).doit() == d.doit().subs(f(x), x**2*y) == 0
 
 
+def test_subs_doit_refused_function_substitution():
+    # Derivative.subs refuses these, so Subs.doit must not retry them
+    # before differentiating
+    assert Subs(Derivative(f(y), x), f, Lambda(t, t*x)).doit() == 0
+    d = Derivative(f(x)*g(x), x, y, (x, 2))
+    assert d.subs(g, Lambda(t, t*x)).doit() == 0
+
+
 def test_subs_doit_derivative_unmatched_old():
     assert Subs(Derivative(x**2*y, x), x*y, t).doit() == 2*t
     assert Subs(Derivative(x**2 + x + y, x), x + y, z).doit() == 2*x + 1

@@ -2446,9 +2446,12 @@ class Subs(Expr):
             undone = []
             for i, vi in enumerate(v):
                 if isinstance(vi, FunctionClass):
-                    e = e.subs(vi, p[i])
-                else:
-                    undone.append((vi, p[i]))
+                    r = e.subs(vi, p[i])
+                    if not isinstance(r, Subs):
+                        e = r
+                        continue
+                    # the Derivative refused it, so do it later
+                undone.append((vi, p[i]))
             if not isinstance(e, Derivative):
                 e = e.doit()
             if isinstance(e, Derivative):
