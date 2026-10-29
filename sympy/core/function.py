@@ -1519,7 +1519,7 @@ class Derivative(Expr):
 
             if not is_symbol:
                 old_v = v
-                v = _DiffPlaceholder('xi')
+                v = Dummy('xi')
                 expr = expr.xreplace({old_v: v})
                 # Derivatives and UndefinedFunctions are independent
                 # of all others
@@ -1542,7 +1542,11 @@ class Derivative(Expr):
             if old_v is not None:
                 if obj is not None:
                     # remove the dummy that was used
-                    obj = obj.subs(v, old_v)
+                    _restoring_dummies.add(v)
+                    try:
+                        obj = obj.subs(v, old_v)
+                    finally:
+                        _restoring_dummies.discard(v)
                 # restore expr
                 expr = old_expr
 
@@ -1833,10 +1837,9 @@ class Derivative(Expr):
                     return not (isinstance(old, AppliedUndef)
                         or old in self._wrt_variables)
                 if _depends_on(new, diff_var):
-                    # only the placeholder that differentiation wrt e.g.
-                    # f(x) uses for f(x) may stand for something that
-                    # depends on it
-                    return not (isinstance(old, _DiffPlaceholder)
+                    # only a Dummy that __new__ used for a non-Symbol, e.g.
+                    # f(x), may be replaced back with it
+                    return not (old in _restoring_dummies
                         and old == args[0])
                 # neither depends on it, but the substitution can still
                 # create it, e.g. g(y) becomes g(x) with y -> x
@@ -2020,6 +2023,11 @@ class Derivative(Expr):
         # object, the default in `Basic` will call a loop over
         # `_eval_derivative`:
         return expr._eval_derivative_n_times(v, count)
+
+
+# the Dummy symbols that Derivative.__new__ is replacing back with the
+# non-Symbol variables of differentiation they stood for
+_restoring_dummies: set[Dummy] = set()
 
 
 def _derivative_dispatch(expr, *variables, **kwargs):
@@ -3600,11 +3608,3 @@ def nfloat(expr, n=15, exponent=False, dkeys=False):
 
 from .symbol import Dummy, Symbol
 
-
-class _DiffPlaceholder(Dummy):
-    """A Dummy that stands for a non-Symbol variable of differentiation
-    while Derivative differentiates with respect to it."""
-
-    @classmethod
-    def class_key(cls):
-        return Dummy.class_key()
