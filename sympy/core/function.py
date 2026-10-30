@@ -2323,7 +2323,12 @@ def _has_free_variable(expr, v):
     ``Integral``, and is False for a function class such as ``f``,
     which contains no variable.
     """
-    return isinstance(expr, Basic) and expr.has_free(v)
+    if not isinstance(expr, Basic):
+        return False
+    if v.is_Symbol:
+        # the same answer, without renaming bound symbols with as_dummy
+        return v in expr.free_symbols
+    return expr.has_free(v)
 
 
 def _depends_on(expr, v):
