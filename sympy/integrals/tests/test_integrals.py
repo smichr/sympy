@@ -2246,6 +2246,14 @@ def test_integral_subs_renames_captured_variable():
     assert Integral(f(y), (x, 0, 1)).subs(f, Lambda(t, t*x)).doit() == x*y
 
 
+def test_integral_factor_non_symbol_variable():
+    g = Function('g')
+    assert Integral(2*f(x)*g(y), f(x)).factor() == \
+        2*g(y)*Integral(f(x), f(x))
+    assert Sum(2*f(x)*g(y), (f(x), 0, 1)).factor() == \
+        2*g(y)*Sum(f(x), (f(x), 0, 1))
+
+
 @XFAIL
 def test_integral_subs_captures_integration_variable():
     i = Integral(x*y, (x, 0, 1))

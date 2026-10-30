@@ -583,7 +583,8 @@ class AddWithLimits(ExprWithLimits):
             summand = self.function.factor(**hints)
             if summand.is_Mul:
                 out = sift(summand.args, lambda w: w.is_commutative \
-                    and not set(self.variables) & w.free_symbols)
+                    and not any(_has_free_variable(w, v)
+                        for v in self.variables))
                 return Mul(*out[True])*self.func(Mul(*out[False]), \
                     *self.limits)
         else:
