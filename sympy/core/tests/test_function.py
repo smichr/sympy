@@ -916,6 +916,15 @@ def test_derivative_subs_function_whose_image_contains_wrt_variable():
         1 + Derivative(f(g(x)), g(x))
 
 
+def test_derivative_subs_function_in_derivative_wrt_variable():
+    # h(x, y).diff(y) becomes an expression that does not mention z
+    u, v = symbols('u v')
+    H = Lambda((u, v), u**2*v + cos(u*v))
+    d = Derivative(h(z, h(x, y).diff(y)), z, h(x, y).diff(y))
+    assert d.subs(h, H).doit() == \
+        diff(H(z, t), z, t).subs(t, H(x, y).diff(y))
+
+
 def test_derivative_subs_creates_wrt_variable():
     # y -> x turns g(y) into g(x), which is a variable of differentiation
     d = Derivative(f(x)*g(y), g(x))

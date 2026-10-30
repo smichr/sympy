@@ -1893,8 +1893,19 @@ class Derivative(Expr):
                 inner, outer = sift(vc, lambda i: i[0] in xis, binary=True)
                 if not outer:
                     return Subs(Derivative(newe, *inner), *zip(*subs))
-                if all(isinstance(v, (Symbol, AppliedUndef))
-                        or v.is_Indexed for v in oldv):
+                outer_free = set().union(*[v.free_symbols for v, _ in outer])
+
+                def commutes(v):
+                    if isinstance(v, (Symbol, AppliedUndef)) or v.is_Indexed:
+                        return True
+                    # a replaced Derivative, e.g. f(x).diff(x), is independent
+                    # of the variables outside Subs if neither it nor what
+                    # replaces it shares a symbol with them
+                    return isinstance(v, Derivative) and v in dummies and not (
+                        (v.free_symbols | dummies[v][1].free_symbols)
+                        & outer_free)
+
+                if all(commutes(v) for v in oldv):
                     # a dummy does not depend on the other variables
                     # although the variable it replaces may, e.g. g(x)
                     # on x, so only differentiate wrt the dummies inside
