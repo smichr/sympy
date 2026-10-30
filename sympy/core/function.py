@@ -1842,8 +1842,20 @@ class Derivative(Expr):
                         and old == args[0])
                 # neither depends on it, but the substitution can still
                 # create it, e.g. g(y) becomes g(x) with y -> x
-                return not diff_var.is_Symbol and (
-                    newargs[0].count(diff_var) > args[0].count(diff_var))
+                if diff_var.is_Symbol:
+                    return False
+                # hide diff_var so that only what does not depend on it is
+                # checked; the mask is of the same kind, so that e.g. a
+                # variable like f(x).diff(x) or a matrix power stays valid
+                from sympy.matrices.expressions.matexpr import (MatrixExpr,
+                    MatrixSymbol)
+                mask = Dummy()
+                if isinstance(diff_var, AppliedUndef):
+                    mask = UndefinedFunction(mask.name)(*diff_var.args)
+                elif isinstance(diff_var, MatrixExpr):
+                    mask = MatrixSymbol(mask.name, *diff_var.shape)
+                rest = args[0].xreplace({diff_var: mask})._subs(old, new)
+                return _has_free_variable(rest, diff_var._subs(old, new))
 
             if any(changes_derivative(v) for v in self._wrt_variables):
                 return Subs(self, old, new)

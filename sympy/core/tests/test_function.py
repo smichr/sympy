@@ -897,6 +897,25 @@ def test_derivative_subs_inside_derivative_wrt_variable():
     assert d.subs(y, df).doit() == d.doit().subs(y, df) == 0
 
 
+def test_derivative_subs_function_class_kept_in_subs():
+    # the substitution leaves Subs(Derivative(f(x), x), f, xt) in the
+    # expression, which has the function class f as a variable
+    xt = Lambda(t, x*t)
+    d = Derivative(x*f(x).diff(x), f(x).diff(x))
+    assert d.subs(f, xt).doit() == d.doit().subs(f, xt).doit() == x
+
+
+def test_derivative_subs_function_whose_image_contains_wrt_variable():
+    # g(x) in g(x) + f(g(x)) comes from f(g(x)), which depends on g(x),
+    # so no variable of differentiation is created
+    L = Lambda(t, t + f(t))
+    for d in (Derivative(f(g(x)), g(x)), Derivative(f(f(g(x))), f(g(x)))):
+        assert not d.subs(f, L).doit().has(Subs(d, f, L))
+        assert d.subs(f, L).doit() == d.doit().subs(f, L).doit()
+    assert Derivative(f(g(x)), g(x)).subs(f, L).doit() == \
+        1 + Derivative(f(g(x)), g(x))
+
+
 def test_derivative_subs_creates_wrt_variable():
     # y -> x turns g(y) into g(x), which is a variable of differentiation
     d = Derivative(f(x)*g(y), g(x))
