@@ -920,6 +920,14 @@ def test_derivative_subs_function_whose_image_contains_wrt_variable():
         1 + Derivative(f(g(x)), g(x))
 
 
+def test_diff_wrt_function_inside_derivative_wrt_variable():
+    df = f(x).diff(x)
+    assert (g(df).diff(df)*f(x)).diff(f(x)) == g(df).diff(df)
+    assert Derivative(g(df), df).diff(f(x)) == 0
+    d = Derivative(y*g(x).diff(x), f(x), x)
+    assert d.subs(x, df).doit() == d.doit().subs(x, df).doit() == 0
+
+
 def test_derivative_subs_function_in_derivative_wrt_variable():
     # h(x, y).diff(y) becomes an expression that does not mention z
     u, v = symbols('u v')

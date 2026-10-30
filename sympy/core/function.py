@@ -1516,10 +1516,17 @@ class Derivative(Expr):
             is_symbol = v.is_symbol or isinstance(v,
                 (Iterable, Tuple, MatrixBase, NDimArray))
 
+            hidden = {}
             if not is_symbol:
                 old_v = v
                 v = Dummy('xi')
-                expr = expr.xreplace({old_v: v})
+                # a Derivative variable of differentiation that contains
+                # old_v, e.g. f(x).diff(x) for f(x), would be invalid with
+                # v in it, and is independent of old_v, so it is hidden
+                hidden = {w: Dummy() for d in expr.atoms(Derivative)
+                    for w in d._wrt_variables if isinstance(w, Derivative)
+                    and _has_free_variable(w, old_v)}
+                expr = expr.xreplace({**hidden, old_v: v})
                 # Derivatives and UndefinedFunctions are independent
                 # of all others
                 clashing = not (isinstance(old_v, (Derivative, AppliedUndef)))
@@ -1546,6 +1553,7 @@ class Derivative(Expr):
                         obj = obj.subs(v, old_v)
                     finally:
                         _restoring_dummies.discard(v)
+                    obj = obj.xreplace({d: w for w, d in hidden.items()})
                 # restore expr
                 expr = old_expr
 
