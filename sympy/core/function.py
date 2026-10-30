@@ -1855,7 +1855,8 @@ class Derivative(Expr):
                 elif isinstance(diff_var, MatrixExpr):
                     mask = MatrixSymbol(mask.name, *diff_var.shape)
                 rest = args[0].xreplace({diff_var: mask})._subs(old, new)
-                return _has_free_variable(rest, diff_var._subs(old, new))
+                # has, as has_free fails on e.g. Subs(f(x).diff(x), f, g)
+                return rest.has(diff_var._subs(old, new))
 
             if any(changes_derivative(v) for v in self._wrt_variables):
                 return Subs(self, old, new)

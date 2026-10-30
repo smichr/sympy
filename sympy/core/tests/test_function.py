@@ -25,7 +25,7 @@ from sympy.integrals import Integral
 from sympy.matrices.dense import Matrix
 from sympy.printing.str import sstr
 from sympy.series.order import O
-from sympy.tensor.indexed import Indexed
+from sympy.tensor.indexed import Indexed, IndexedBase
 from sympy.core.function import (PoleError, _mexpand, arity,
         BadSignatureError, BadArgumentsError)
 from sympy.core.parameters import _exp_is_pow
@@ -903,6 +903,10 @@ def test_derivative_subs_function_class_kept_in_subs():
     xt = Lambda(t, x*t)
     d = Derivative(x*f(x).diff(x), f(x).diff(x))
     assert d.subs(f, xt).doit() == d.doit().subs(f, xt).doit() == x
+    assert Subs(f(x).diff(x), f, xt).has(y) is False
+    A = IndexedBase('A')
+    d = Derivative(x*f(x).diff(x), f(x).diff(x), f(x).diff(x), A[y])
+    assert d.subs(f, xt).doit() == d.doit().subs(f, xt).doit() == 0
 
 
 def test_derivative_subs_function_whose_image_contains_wrt_variable():
