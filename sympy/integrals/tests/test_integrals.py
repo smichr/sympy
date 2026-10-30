@@ -2236,6 +2236,17 @@ def test_integral_subs_non_symbol_variable():
 
 
 @XFAIL
+def test_integral_subs_renames_captured_variable():
+    # instead of raising ValueError, the variable of integration could be
+    # renamed so that it does not capture new, as for Lambda
+    g = Function('g')
+    i = Integral(g(y), (f(x), 0, 1))
+    assert i.subs(g, Lambda(t, t*f(x))).doit() == y*f(x)
+    assert i.subs(g(y), f(x)).doit() == f(x)
+    assert Integral(f(y), (x, 0, 1)).subs(f, Lambda(t, t*x)).doit() == x*y
+
+
+@XFAIL
 def test_integral_subs_captures_integration_variable():
     i = Integral(x*y, (x, 0, 1))
     assert i.subs(y, x).doit() == i.doit().subs(y, x) == x/2
