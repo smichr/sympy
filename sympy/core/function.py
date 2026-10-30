@@ -1856,7 +1856,7 @@ class Derivative(Expr):
             # that is contained in expr, e.g.
             # for Derivative(f(z, g(h(x), y)), y), y cannot be changed to
             # x, h(x), or g(h(x), y)
-            if any(args[0].has_xfree({vi}) for vi in changed):
+            if any(_has_free_variable(args[0], vi) for vi in changed):
                 return Subs(self, old, new)
             # more arg-wise checks
             vc = newargs[1:]
@@ -2280,13 +2280,28 @@ class Lambda(Expr):
 
 
 
+def _has_free_variable(expr, v):
+    """Return True if the variable ``v`` occurs free in ``expr``.
+
+    A variable of differentiation or integration need not be a Symbol:
+    anything with ``_diff_wrt``, e.g. ``f(x)`` or ``Derivative(f(x), x)``,
+    can be one. ``free_symbols`` only reports Symbols, and ``args`` only
+    looks one level down, e.g. not at ``x`` in ``f(g(x))``, so neither
+    finds every such variable. This looks for ``v`` itself at any depth,
+    ignores occurrences that are bound, e.g. by ``Lambda`` or
+    ``Integral``, and is False for a function class such as ``f``,
+    which contains no variable.
+    """
+    return isinstance(expr, Basic) and expr.has_free(v)
+
+
 def _depends_on(expr, v):
     """Return True if ``expr`` may depend on the variable of
     differentiation ``v``, using the same test as ``Derivative``."""
+    if isinstance(v, (Symbol, AppliedUndef, Derivative)):
+        return _has_free_variable(expr, v)
     if not isinstance(expr, Basic):
         return False
-    if isinstance(v, (Symbol, AppliedUndef, Derivative)):
-        return expr.has_xfree({v})
     return bool(expr.free_symbols & v.free_symbols)
 
 

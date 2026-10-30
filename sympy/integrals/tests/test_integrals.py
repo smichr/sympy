@@ -2223,6 +2223,18 @@ def test_issue_19220():
         f, Lambda(t, t*x)))
 
 
+def test_integral_subs_non_symbol_variable():
+    # a variable of integration that is not a Symbol, e.g. f(x), is not
+    # in free_symbols but must still not be captured
+    g = Function('g')
+    raises(ValueError, lambda: Integral(g(y), (f(x), 0, 1)).subs(
+        g, Lambda(t, t*f(x))))
+    raises(ValueError, lambda: Integral(g(y), (f(x), 0, 1)).subs(g(y), f(x)))
+    # a variable of integration deep inside old is still contained in it
+    assert Integral(f(g(x)), (x, 0, 1)).subs(f(g(x)), x**2) == \
+        Integral(x**2, (x, 0, 1))
+
+
 @XFAIL
 def test_integral_subs_captures_integration_variable():
     i = Integral(x*y, (x, 0, 1))
