@@ -1461,8 +1461,7 @@ class Derivative(Expr):
                         # these match exactly since
                         # x.diff(f(x)) == g(x).diff(f(x)) == 0
                         # and are not created by differentiation
-                        D = Dummy()
-                        if not expr.xreplace({v: D}).has(D):
+                        if not _has_free_variable(expr, v):
                             zero = True
                             break
                     elif isinstance(v, MatrixExpr):
@@ -2423,6 +2422,12 @@ class Subs(Expr):
         # to give a variable-independent expression
         pre = "_"
         pts = sorted(set(point), key=default_sort_key)
+        # a symbol would make a variable of differentiation that contains
+        # an undefined function invalid, e.g. f(x) in f(x).diff(x), so
+        # such a function is replaced with another one
+        wrt = {w for d in expr.atoms(Derivative) for w in d._wrt_variables}
+        inside_wrt = {v for v in variables if isinstance(v, AppliedUndef)
+            and any(w != v and _has_free_variable(w, v) for w in wrt)}
         from sympy.printing.str import StrPrinter
         class CustomStrPrinter(StrPrinter):
             def _print_Dummy(self, expr):
@@ -2432,7 +2437,8 @@ class Subs(Expr):
             return p.doprint(expr)
         while 1:
             s_pts = {p: Symbol(pre + mystr(p)) for p in pts}
-            reps = [(v, s_pts[p])
+            reps = [(v, UndefinedFunction(s_pts[p].name)(*v.args)
+                if v in inside_wrt else s_pts[p])
                 for v, p in zip(variables, point)]
             # if any underscore-prepended symbol is already a free symbol
             # and is a variable with a different point value, then there

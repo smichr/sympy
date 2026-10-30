@@ -552,6 +552,14 @@ def test_Subs2():
     assert Subs(f(x), x**2, x).doit() == f(sqrt(x))
 
 
+def test_Subs_variable_inside_wrt_variable():
+    df = f(x).diff(x)
+    s = Subs(Derivative(df**2, df), f(x), 2*x)
+    assert s.doit() == 4
+    assert s == Subs(Derivative(df**2, df), f(x), 2*x)
+    assert Subs(g(f(x)), f(x), 2) == Subs(g(f(y)), f(y), 2)
+
+
 def test_expand_function():
     assert expand(x + y) == x + y
     assert expand(x + y, complex=True) == I*im(x) + I*im(y) + re(x) + re(y)
@@ -876,6 +884,17 @@ def test_derivative_subs_invalid_wrt_variable_chain_rule():
     assert d.subs(g, sq).doit() == (
         Subs(Derivative(f(t), t), t, x**2) +
         2*x**2*Subs(Derivative(f(t), (t, 2)), t, x**2))
+
+
+def test_derivative_subs_inside_derivative_wrt_variable():
+    df = f(x).diff(x)
+    d = Derivative(2*cos(y)*df, df, g(y))
+    assert d.subs(f(x), y).doit() == d.doit().subs(f(x), y) == 0
+    d = Derivative(df**2, df, x)
+    assert d.subs(f(x), x**2).doit() == \
+        d.doit().subs(f(x), x**2).doit() == 4
+    d = Derivative(z + h(x, y) + sin(x)**2, f(x), y)
+    assert d.subs(y, df).doit() == d.doit().subs(y, df) == 0
 
 
 def test_derivative_subs_creates_wrt_variable():
