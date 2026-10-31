@@ -39,7 +39,7 @@ from sympy.functions.elementary.integers import floor
 from sympy.integrals.integrals import Integral, _add_atan_floor_terms
 from sympy.integrals.risch import NonElementaryIntegral
 from sympy.physics import units
-from sympy.testing.pytest import XFAIL, raises, slow, warns_deprecated_sympy, warns
+from sympy.testing.pytest import raises, slow, warns_deprecated_sympy, warns
 from sympy.utilities.exceptions import SymPyDeprecationWarning
 from sympy.core.random import verify_numerically
 
@@ -2235,7 +2235,6 @@ def test_integral_subs_non_symbol_variable():
         Integral(x**2, (x, 0, 1))
 
 
-@XFAIL
 def test_integral_subs_renames_captured_variable():
     # instead of raising ValueError, the variable of integration could be
     # renamed so that it does not capture new, as for Lambda
@@ -2254,7 +2253,6 @@ def test_integral_factor_non_symbol_variable():
         2*g(y)*Sum(f(x), (f(x), 0, 1))
 
 
-@XFAIL
 def test_integral_subs_captures_integration_variable():
     i = Integral(x*y, (x, 0, 1))
     assert i.subs(y, x).doit() == i.doit().subs(y, x) == x/2

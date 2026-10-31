@@ -1698,7 +1698,6 @@ def test_issue_23952():
     assert expr.subs(p,0).subs(q,1).subs(n, 3).doit() == 3
 
 
-@XFAIL
 def test_sum_subs_captures_summation_variable():
     s = Sum(x*y, (x, 0, 2))
     assert s.subs(y, x).doit() == s.doit().subs(y, x) == 3*x

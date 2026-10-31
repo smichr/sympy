@@ -379,6 +379,23 @@ class ExprWithLimits(Expr):
         change_index : Perform mapping on the sum and product dummy variables
 
         """
+        # Rename bound variables that would capture free variables
+        # introduced by the substitution.
+        if old not in self.variables and self.function.has(old):
+            captured = {
+                v for v in self.variables
+                if _has_free_variable(new, v)
+                and not _has_free_variable(old, v)
+            }
+            if captured:
+                renamed, restore = self._bound_dummies()
+                # Restore bindings that do not cause capture.
+                restore = {
+                    d: v for d, v in restore.items()
+                    if v not in captured
+                }
+                return renamed.xreplace(restore)._subs(old, new)
+
         func, limits = self.function, list(self.limits)
 
         # If one of the expressions we are replacing is used as a func index
