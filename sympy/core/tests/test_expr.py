@@ -12,6 +12,7 @@ from sympy.core.function import (Function, DefinedFunction, expand, WildFunction
 from sympy.core.mul import Mul, _unevaluated_Mul
 from sympy.core.numbers import (NumberSymbol, E, zoo, oo, Float, I,
     Rational, nan, Integer, Number, pi, _illegal)
+from sympy.core.parameters import evaluate
 from sympy.core.power import Pow
 from sympy.core.relational import Ge, Lt, Gt, Le
 from sympy.core.singleton import S
@@ -2413,7 +2414,6 @@ def test_issue_2834():
         latex(f)
 
 
-@XFAIL
 def test_issue_10800_printing():
     # Printing an unevaluated integral must not evaluate it.
     expr = 2*Integral(sin(exp(x)), (x, 1, oo)) + 2*Si(E)
@@ -2423,7 +2423,6 @@ def test_issue_10800_printing():
     assert 'Si(E)' in s
 
 
-@XFAIL
 def test_issue_19790_printing():
     # Printing this sum of unevaluated sums formerly hung.
     k = Symbol('k')
@@ -2440,7 +2439,6 @@ def test_issue_19790_printing():
     assert s.count('Sum(') == 3
 
 
-@XFAIL
 def test_issue_2834_printing():
     # The original numerical integral example.
     sA = 1 + exp(-abs(x - 0.8))
@@ -2453,7 +2451,6 @@ def test_issue_2834_printing():
     assert s.count('Integral(') == 2
 
 
-@XFAIL
 def test_issue_17609_printing():
     # Printing the large exponential should not evaluate it.
     # This does not test the separate sin(arg) assumptions problem.
@@ -2463,8 +2460,10 @@ def test_issue_17609_printing():
     assert 'exp(' in s
 
 
-@XFAIL
+@slow
 def test_issue_23211_root_printing():
+    # this part is slow because assumptions are used
+    # during construction
     _r0 = Rational(1, 9)
     _r1 = Rational(1, 4)
     _r2 = Rational(1, 3)
@@ -2520,6 +2519,7 @@ def test_issue_23211_root_printing():
         x4 + x6,
         x42*sin(x40) + I*x42*cos(x40)]
 
+    # this part is fast
     with patch.object(Expr, 'evalf', side_effect=AssertionError):
         assert str(root)
 

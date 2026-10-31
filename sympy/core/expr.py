@@ -1231,44 +1231,28 @@ class Expr(Basic, EvalfMixin):
 
         for term in Add.make_args(self):
             coeff, _term = term.as_coeff_Mul()
+            if not coeff.is_Rational:
+                coeff = S.One
+                _term = term
 
-            coeff_complex = complex(coeff)
             cpart: dict[Expr, int] = {}
             ncpart = []
-            def simple(f):
-                if f.is_Atom:
-                    return f.is_number
-                if f.is_Add and len(f.args) == 2:
-                    a, b = f.args
-                    if a.is_Mul:
-                        a, b = b, a
-                    return (
-                        a.is_Atom and a.is_number
-                        and (b is S.ImaginaryUnit or
-                             b.is_Mul and len(b.args) == 2
-                             and S.ImaginaryUnit in b.args
-                             and all(i.is_Atom and i.is_number for i in b.args))
-                    )
-                return False
+            imaginary = False
+
             if _term is not S.One:
                 for factor in Mul.make_args(_term):
-                    if simple(factor):
-                        try:
-                            coeff_complex *= complex(factor)
-                        except (TypeError, ValueError):
-                            pass
-                        else:
-                            continue
+                    if factor is S.ImaginaryUnit:
+                        imaginary = True
+                        continue
 
                     if factor.is_commutative:
                         base, exp = decompose_power(factor)
-
                         cpart[base] = cpart.get(base, 0) + exp
                         gens_set.add(base)
                     else:
                         ncpart.append(factor)
 
-            coeff_tuple = coeff_complex.real, coeff_complex.imag
+            coeff_tuple = (S.Zero, coeff) if imaginary else (coeff, S.Zero)
             ncpart_tuple = tuple(ncpart)
 
             terms.append((term, (coeff_tuple, cpart, ncpart_tuple)))
