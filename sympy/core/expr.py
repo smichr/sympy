@@ -1231,7 +1231,7 @@ class Expr(Basic, EvalfMixin):
 
         for term in Add.make_args(self):
             coeff, _term = term.as_coeff_Mul()
-            if not coeff.is_Rational:
+            if not (coeff.is_Rational or coeff.is_Float):
                 coeff = S.One
                 _term = term
 
