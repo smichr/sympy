@@ -351,6 +351,22 @@ class Printer:
     def emptyPrinter(self, expr):
         return str(expr)
 
+    def _as_ordered_factors(self, expr):
+        """Order Mul factors for printing without changing canonical order."""
+        factors = expr.as_ordered_factors()
+        if self.order is None:
+            # Keep the relative order of noncommutative factors intact.
+            # A function such as zeta(3) is numerical even though it is
+            # not an instance of Number.
+            ncomm = 0
+            for factor in factors:
+                if not factor.is_commutative:
+                    break
+                ncomm += 1
+            factors[:ncomm] = sorted(
+                factors[:ncomm], key=lambda factor: not factor.is_number)
+        return factors
+
     def _as_ordered_terms(self, expr, order=None):
         """A compatibility function for ordering terms in Add. """
         order = order or self.order
