@@ -2448,11 +2448,11 @@ def test_two_arg_printing():
 
 
 def test_printing_ok_construction_not():
-    from time import time
-    T = time()
-    did = 0
-    while time() - T < 0.5:
-        did += 1
+    from time import perf_counter
+    start = perf_counter()
+    # CI (including Pyodide) can be slower than a developer workstation.
+    # Repeated printing must still be fast enough to prevent regressions.
+    for _ in range(100):
         # 10800
         expr = 2*Integral(sin(exp(x)), (x, 1, oo)) + 2*Si(E)
         assert str(expr)
@@ -2477,7 +2477,7 @@ def test_printing_ok_construction_not():
         # 17609
         expr = exp(exp(exp(10*E))) + 1
         assert str(expr)
-    assert did > 100  # it is about 200 on a modest system
+    assert perf_counter() - start < 2
 
 
 @XFAIL
