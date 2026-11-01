@@ -2413,6 +2413,25 @@ def test_issue_2834():
         latex(f)
 
 
+def test_two_arg_printing():
+    a, b, z = symbols('a b z')
+
+    assert (a + I*b).as_ordered_terms() == [a, I*b]
+    assert (z - a).as_ordered_terms() == [z, -a]
+    assert (2 - x).as_ordered_terms() == [2, -x]
+    assert (x - 2).as_ordered_terms() == [x, -2]
+    assert (-x - 1).as_ordered_terms() == [-x, -1]
+    assert (-6 - x).as_ordered_terms() == [-x, -6]
+    assert (-2 + 3*I).as_ordered_terms() == [-2, 3*I]
+
+    assert str(a + I*b) == 'a + I*b'
+    assert str(z - a) == 'z - a'
+    assert str(-x - 1) == '-x - 1'
+
+    e = -6 - x
+    assert [t for t, _ in e.as_ordered_terms(data=True)[0]] == e.as_ordered_terms()
+
+
 def test_printing_ok_construction_not():
     from time import time
     T = time()
