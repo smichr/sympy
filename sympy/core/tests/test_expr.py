@@ -10,7 +10,7 @@ from sympy.core.expr import (ExprBuilder, unchanged, Expr,
 from sympy.core.function import (Function, DefinedFunction, expand, WildFunction,
     AppliedUndef, Derivative, diff, Subs)
 from sympy.core.mul import Mul, _unevaluated_Mul
-from sympy.core.numbers import (NumberSymbol, E, zoo, oo, Float, I,
+from sympy.core.numbers import (NumberSymbol, E, EulerGamma, zoo, oo, Float, I,
     Rational, nan, Integer, Number, pi, _illegal)
 from sympy.core.power import Pow
 from sympy.core.relational import Ge, Lt, Gt, Le
@@ -28,6 +28,7 @@ from sympy.functions.special.delta_functions import (Heaviside,
     DiracDelta)
 from sympy.functions.special.error_functions import Si
 from sympy.functions.special.gamma_functions import gamma
+from sympy.functions.special.zeta_functions import zeta
 from sympy.integrals.integrals import integrate, Integral
 from sympy.physics.secondquant import FockState
 from sympy.polys.partfrac import apart
@@ -2440,6 +2441,12 @@ def test_two_arg_printing():
     assert str(x + pi/4 + x**2) == 'x**2 + x + pi/4'
     assert str(x + pi/4 + x**2 + O(x**3)) == (
         'pi/4 + x + x**2 + O(x**3)')
+
+    # Coefficient constants must not push lower-degree terms behind
+    # higher-degree terms in a series.
+    series = -log(x) - EulerGamma*x - x**3*zeta(3)/3 + pi**2*x**2/12 + O(x**4)
+    assert str(series).startswith('-log(x) - EulerGamma*x')
+    assert str(series).endswith(' + O(x**4)')
 
     # Adding Order reverses the non-Order terms, including the
     # numeric tail, rather than changing their relative ordering.
