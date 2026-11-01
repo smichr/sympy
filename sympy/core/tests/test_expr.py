@@ -2433,6 +2433,14 @@ def test_two_arg_printing():
     assert (-2 + 3*I).as_ordered_terms() == [-2, 3*I]
     assert str(-2 + 3*I) == '-2 + 3*I'
 
+    # Symbol-free constants are printed last with or without Order terms.
+    assert str(x + pi/4) == 'x + pi/4'
+    assert str(x + pi) == 'x + pi'
+    assert str(x + 1) == 'x + 1'
+    assert str(x + pi/4 + x**2) == 'x**2 + x + pi/4'
+    assert str(x + pi/4 + x**2 + O(x**3)) == (
+        'x + x**2 + pi/4 + O(x**3)')
+
     assert str(x - 2) == 'x - 2'
     assert str(-x - 1) == '-x - 1'
     assert str(-6 - x) == '-x - 6'
