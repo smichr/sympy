@@ -1218,6 +1218,43 @@ class Expr(Basic, EvalfMixin):
             ordered = sorted(_terms, key=key, reverse=True) \
                 + sorted(_order, key=key, reverse=True)
 
+        key, reverse = self._parse_order(order)
+        terms, gens = self.as_terms()
+
+        if not any(term.is_Order for term, _ in terms):
+            ordered = sorted(terms, key=key, reverse=reverse)
+        else:
+            _order, _terms = _sift_true_false(
+                terms, lambda x: x[0].is_Order)
+            ordered = sorted(_terms, key=key, reverse=True) \
+                + sorted(_order, key=key, reverse=True)
+
+        # Two-term ordering preferences.
+        if order is None and len(ordered) == 2:
+            a, b = (term for term, _ in ordered)
+
+            def explicit_i(term):
+                return (term is S.ImaginaryUnit or
+                        term.is_Mul and S.ImaginaryUnit in term.args)
+
+            def negative_coeff(term):
+                c = term.args[0] if term.is_Mul else term
+                if c.is_Rational:
+                    return c.p < 0
+                if c.is_Float:
+                    return bool(c._mpf_[0])
+                return c is S.NegativeInfinity
+
+            ia, ib = explicit_i(a), explicit_i(b)
+            na, nb = negative_coeff(a), negative_coeff(b)
+
+            if (ia and not ib or
+                ia == ib and (
+                    na and not nb or
+                    na and nb and a.is_Number and not b.is_Number
+                )):
+                ordered.reverse()
+
         if data:
             return ordered, gens
         else:
