@@ -19,7 +19,7 @@ from sympy.core.singleton import S
 from sympy.core.symbol import (Dummy, Symbol, Wild, symbols)
 from sympy.functions.combinatorial.factorials import (factorial, factorial2, subfactorial)
 from sympy.functions.elementary.complexes import Abs
-from sympy.functions.elementary.exponential import exp
+from sympy.functions.elementary.exponential import exp, log
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.functions.elementary.trigonometric import (cos, sin)
 from sympy.functions.special.delta_functions import Heaviside
@@ -311,6 +311,17 @@ def test_Mul():
     assert str(cc2*Rational(2)) == '2*CustomClass2()'
     assert str(cc2*Rational(2)*cc1) == '2*CustomClass1()*CustomClass2()'
     assert str(cc1*Rational(2)*cc2) == '2*CustomClass1()*CustomClass2()'
+
+
+def test_numeric_factors_first():
+    # Numeric functions need not be Number instances. Ordering them is
+    # a printer preference and should not evaluate their values.
+    assert str(zeta(3)*x**3) == 'zeta(3)*x**3'
+    assert str(zeta(3)*x**3/3) == 'zeta(3)*x**3/3'
+    assert str(log(2)*x) == 'log(2)*x'
+    assert str(sin(1)*x) == 'sin(1)*x'
+    assert str(pi**2*x**2) == 'pi**2*x**2'
+    assert sstr(zeta(3)*x**3, order='none') == 'x**3*zeta(3)'
 
 
 def test_NaN():
