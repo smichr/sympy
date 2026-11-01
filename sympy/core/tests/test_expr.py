@@ -2439,7 +2439,16 @@ def test_two_arg_printing():
     assert str(x + 1) == 'x + 1'
     assert str(x + pi/4 + x**2) == 'x**2 + x + pi/4'
     assert str(x + pi/4 + x**2 + O(x**3)) == (
-        'x + x**2 + pi/4 + O(x**3)')
+        'pi/4 + x + x**2 + O(x**3)')
+
+    # Adding Order reverses the non-Order terms, including the
+    # numeric tail, rather than changing their relative ordering.
+    series = cos(x).series(x, n=10) + pi
+    assert str(series) == (
+        '1 + pi - x**2/2 + x**4/24 - x**6/720'
+        ' + x**8/40320 + O(x**10)')
+    assert str(series.removeO()) == (
+        'x**8/40320 - x**6/720 + x**4/24 - x**2/2 + pi + 1')
 
     assert str(x - 2) == 'x - 2'
     assert str(-x - 1) == '-x - 1'
