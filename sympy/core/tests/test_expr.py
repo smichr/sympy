@@ -2433,6 +2433,14 @@ def test_two_arg_printing():
     assert (-2 + 3*I).as_ordered_terms() == [-2, 3*I]
     assert str(-2 + 3*I) == '-2 + 3*I'
 
+    # Symbol-free constants are printed last with or without Order terms.
+    assert str(x + pi/4) == 'x + pi/4'
+    assert str(x + pi) == 'x + pi'
+    assert str(x + 1) == 'x + 1'
+    assert str(x + pi/4 + x**2) == 'x**2 + x + pi/4'
+    assert str(x + pi/4 + x**2 + O(x**3)) == (
+        'x + x**2 + pi/4 + O(x**3)')
+
     assert str(x - 2) == 'x - 2'
     assert str(-x - 1) == '-x - 1'
     assert str(-6 - x) == '-x - 6'
@@ -2448,11 +2456,11 @@ def test_two_arg_printing():
 
 
 def test_printing_ok_construction_not():
-    from time import time
-    T = time()
-    did = 0
-    while time() - T < 0.5:
-        did += 1
+    from time import perf_counter
+    start = perf_counter()
+    # CI (including Pyodide) can be slower than a developer workstation.
+    # Repeated printing must still be fast enough to prevent regressions.
+    for _ in range(100):
         # 10800
         expr = 2*Integral(sin(exp(x)), (x, 1, oo)) + 2*Si(E)
         assert str(expr)
@@ -2477,7 +2485,7 @@ def test_printing_ok_construction_not():
         # 17609
         expr = exp(exp(exp(10*E))) + 1
         assert str(expr)
-    assert did > 100  # it is about 200 on a modest system
+    assert perf_counter() - start < 2
 
 
 @XFAIL
