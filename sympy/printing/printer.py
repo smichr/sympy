@@ -362,10 +362,14 @@ class Printer:
         else:
             terms = expr.as_ordered_terms(order=order)
             if order is None:
-                # Keep numerical constants after other terms, but always
-                # leave Order terms at the end. This is only a display
-                # preference, not part of canonical monomial ordering.
-                terms.sort(key=lambda term: (term.is_Order, term.is_number))
+                # In a series, put numeric terms first so that the
+                # non-Order terms reverse the usual display order.
+                # Without Order terms, leave numeric terms last.
+                # Always print Order terms last.
+                has_order = any(term.is_Order for term in terms)
+                terms.sort(key=lambda term: (
+                    term.is_Order,
+                    not term.is_number if has_order else term.is_number))
             if (order is None and len(terms) == 2
                     and not any(term.is_Order for term in terms)):
                 a, b = terms
