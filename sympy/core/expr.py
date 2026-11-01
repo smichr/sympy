@@ -1241,7 +1241,9 @@ class Expr(Basic, EvalfMixin):
 
             terms.append((term, (coeff_tuple, cpart, ncpart_tuple)))
 
-        gens = sorted(gens_set, key=default_sort_key)
+        # Numeric generators must not take precedence over variables when
+        # comparing polynomial terms (e.g. EulerGamma*x and pi**2*x**2).
+        gens = sorted(gens_set, key=lambda g: (g.is_number, default_sort_key(g)))
 
         k, indices = len(gens), {}
 
