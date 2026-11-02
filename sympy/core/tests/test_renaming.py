@@ -145,3 +145,59 @@ def test_bijective_renaming():
           '500 renamed structures + 300 brute-force graph checks')
         print('example mapping:', same_up_to_renaming(x+2*y+3*z, 2*a+b+3*c, return_mapping=True))
         print('example explain:', same_up_to_renaming([x,y], [a,a], explain=True))
+
+
+def test_bifrost_bound_variables():
+    from sympy import Integral, Sum, Product, Lambda, ConditionSet, S
+    F = same_up_to_renaming
+    x, y, z, a = symbols('x y z a')
+    pos = Symbol('p', integer=True, positive=True)
+
+    assert F(Integral(pos, (pos, 1, 2)), Integral(y, (y, 1, 2)))
+    assert F(Integral(pos, (pos, 1, 2)),
+             Integral(y, (y, 1, 2)), return_mapping=True) == {}
+    assert F(x + Integral(1, (y, 1, 2)),
+             y + Integral(1, (y, 1, 2)), return_mapping=True) == {x: y}
+    assert F(x + Integral(1, (y, 1, 2)),
+             y + Integral(1, (x, 1, 2)), return_mapping=True) == {x: y}
+    assert F((Integral(x, (x, 1, 2)), Integral(x, (x, 1, 2))),
+             (Integral(y, (y, 1, 2)), Integral(z, (z, 1, 2))))
+    assert F(Integral(x, (x, 0, x)), Integral(y, (y, 0, y)),
+             return_mapping=True) == {x: y}
+    assert F(Integral(x, (x, 0, x)), Integral(y, (y, 0, z)),
+             return_mapping=True) == {x: z}
+    assert F(Integral(pos, (pos, 0, pos)),
+             Integral(y, (y, 0, y))) is False
+    assert F(Lambda(x, x + z), Lambda(y, y + a),
+             return_mapping=True) == {z: a}
+    assert F(Sum(x + z, (x, 1, 2)), Sum(y + a, (y, 1, 2)),
+             return_mapping=True) == {z: a}
+    assert F(Product(x + z, (x, 1, 2)), Product(y + a, (y, 1, 2)),
+             return_mapping=True) == {z: a}
+    assert F(ConditionSet(x, x > z, S.Reals),
+             ConditionSet(y, y > a, S.Reals),
+             return_mapping=True) == {z: a}
+    assert not F(Integral(x, (x, 0, 1)), Integral(y, (y, 0, 2)))
+
+
+def test_bifrost_smallest_first_and_lazy():
+    from sympy import FiniteSet
+    left = symbols('smallL:2')
+    right = symbols('smallR:2')
+    bigl = symbols('bigL:4')
+    bigr = symbols('bigR:4')
+    result = same_up_to_renaming(
+        (FiniteSet(*bigl), FiniteSet(*left)),
+        (FiniteSet(*bigr), FiniteSet(*right)),
+        return_mapping=True)
+    assert result is not None
+    assert next(iter(result)) in left
+    assert {result[s] for s in left} == set(right)
+
+    class Poison(Basic):
+        @property
+        def args(self):
+            raise AssertionError('should not traverse the unused subtree')
+
+    p = Poison()
+    assert not same_up_to_renaming((1, p), (2, p))
