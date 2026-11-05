@@ -2193,9 +2193,8 @@ def test_nonlinsolve_complex():
 
     system = [exp(x) - 2, y ** 2 - 2]
     assert dumeq(nonlinsolve(system, [x, y]), {
-        (log(2), -sqrt(2)), (log(2), sqrt(2)),
-        (ImageSet(Lambda(n, 2*n*I*pi + log(2)), S.Integers), -sqrt(2)),
-        (ImageSet(Lambda(n, 2 * n * I * pi + log(2)), S.Integers), sqrt(2))})
+        (ImageSet(Lambda(n, 2*n*I*pi + log(2)), S.Integers), sqrt(2)),
+        (ImageSet(Lambda(n, 2*n*I*pi + log(2)), S.Integers), -sqrt(2))})
 
 
 def test_nonlinsolve_radical():
