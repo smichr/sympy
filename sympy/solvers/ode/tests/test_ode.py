@@ -827,6 +827,11 @@ def test_constant_renumber():
     assert constant_renumber(exprs, variables=[x, y], newconstants=symbols("C3:5")) == [C3*x, C3*y + C4*x]
 
 
+def test_constantsimp_issue_16400():
+    eq = x*f(x).diff()**2+f(x).diff(x,2)
+    assert dsolve(eq) == Eq(f(x), C1 + log(-C2 + x)/C2 - log(C2 + x)/C2)
+
+
 def test_issue_5770():
     k = Symbol("k", real=True)
     t = Symbol('t')

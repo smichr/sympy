@@ -233,7 +233,7 @@ from sympy.core import Add, S, Mul, Pow, oo
 from sympy.core.containers import Tuple
 from sympy.core.expr import AtomicExpr, Expr
 from sympy.core.function import (Function, Derivative, AppliedUndef, diff,
-    expand, expand_mul, Subs)
+    expand, expand_mul, Subs, count_ops)
 from sympy.core.numbers import nan, zoo, Number
 from sympy.core.relational import Equality, Eq
 from sympy.core.sorting import default_sort_key, ordered
@@ -1988,6 +1988,77 @@ def __remove_linear_redundancies(expr, Cs):
         return _recursive_walk(expr)
 
 
+
+def _cse_reparam(reps, reduced, constants):
+    Cs = set(constants)
+
+    for d, root in reps:
+        if not (root.is_Pow and root.exp == S.Half
+                and len(root.free_symbols) == 1):
+            continue
+
+        c, = root.free_symbols
+        if c not in Cs:
+            continue
+
+        # d = sqrt(k/c), hence c*d = k/d
+        k = cancel(c*root.base)
+        if k.free_symbols or k.is_zero is not False:
+            continue
+
+        def is_product(m):
+            return m.is_Mul and c in m.args and d in m.args
+
+        def collapse(m):
+            args = list(m.args)
+            args.remove(c)
+            args.remove(d)
+            return Mul(*args)*k/d
+
+        rest = [(s, rhs.replace(is_product, collapse))
+                for s, rhs in reps if s != d]
+        exprs = [e.replace(is_product, collapse) for e in reduced]
+
+        # Only proceed if an actual product was found.
+        if (rest == [(s, rhs) for s, rhs in reps if s != d]
+                and exprs == reduced):
+            continue
+
+        # Eliminate the old parameter everywhere.
+        swap = {c: k/d**2}
+        rest = [(s, rhs.xreplace(swap)) for s, rhs in rest]
+        exprs = [e.xreplace(swap) for e in exprs]
+
+        # Expand the remaining CSE replacements.
+        for s, rhs in reversed(rest):
+            exprs = [e.xreplace({s: rhs}) for e in exprs]
+
+        # An unrestricted parameter requires sign invariance.
+        if c.assumptions0 == {'commutative': True}:
+            if any(e.xreplace({d: -d}) != e for e in exprs):
+                continue
+        elif not (c.is_positive and k.is_positive):
+            continue
+
+        # Reuse the original constant name.
+        options = [
+            [e.xreplace({d: value}) for e in exprs]
+            for value in (c, 1/c)
+        ]
+
+        if c.assumptions0 == {'commutative': True}:
+            options = [es for es in options if any(
+                e.subs(c, 0).has(S.NaN, S.ComplexInfinity,
+                                 S.Infinity, S.NegativeInfinity)
+                for e in es)]
+
+        if options:
+            return [], min(
+                options, key=lambda es: sum(map(count_ops, es)))
+
+    return reps, reduced
+
+
 def constantsimp(expr, constants):
     r"""
     Simplifies an expression with arbitrary constants in it.
@@ -2073,7 +2144,8 @@ def constantsimp(expr, constants):
 
     # try to perform common sub-expression elimination of constant terms
     try:
-        commons, rexpr = cse(expr)
+        commons, rexpr = cse(expr, postprocess=lambda r, e:
+            _cse_reparam(r, e, Cs))
         commons.reverse()
         rexpr = rexpr[0]
         for s in commons:
