@@ -49,6 +49,29 @@ def NS(e, n=15, **options):
     return sstr(sympify(e).evalf(n, **options), full_prec=True)
 
 
+
+def test_solve_exponential_generator_system():
+    # Issue #22874: a shared lift handles systems, without changing
+    # solve's convention of returning principal exponential inverses.
+    eqs = [
+        -2*(x - exp(y)),
+        (2*x - 3*exp(2*y))*exp(y),
+    ]
+    assert solve(eqs, [x, y]) == [(Rational(2, 3), log(Rational(2, 3)))]
+    assert solve([x - exp(y), x], [x, y]) == []
+    assert set(solve([x - exp(y), exp(2*y) - 4], [x, y])) == {
+        (-2, log(2) + I*pi), (2, log(2))
+    }
+
+
+def test_generator_lift_restrictions():
+    from sympy.solvers._generators import _lift_generators
+
+    assert _lift_generators([x - exp(y), y - 1], (x, y)) is None
+    assert _lift_generators(
+        [(x - exp(y))/(exp(y) - 1), x - 2], (x, y)) is None
+
+
 def test_swap_back():
     f, g = map(Function, 'fg')
     fx, gx = f(x), g(x)

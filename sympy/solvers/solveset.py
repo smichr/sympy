@@ -56,6 +56,7 @@ from sympy.polys.solvers import (sympy_eqs_to_ring, solve_lin_sys,
 from sympy.polys.matrices.linsolve import _linsolve
 from sympy.solvers.solvers import (checksol, denoms, unrad,
     _simple_dens, recast_to_symbols)
+from sympy.solvers._generators import _lift_generators, _recover_generators
 from sympy.solvers.polysys import solve_poly_system
 from sympy.utilities import filldedent
 from sympy.utilities.iterables import (numbered_symbols, has_dups,
@@ -3955,116 +3956,43 @@ def _handle_poly(polys, symbols):
 
 
 
+
 def _nonlinsolve_generators(system, symbols):
-    """Solve using exponential generators when possible.
-
-    Return None if the system cannot be reduced safely.
-    """
-    from itertools import product
-    from sympy.core.exprtools import _decompose_exprs
-
-    exprs = [
-        eq.lhs - eq.rhs if isinstance(eq, Eq) else eq
-        for eq in system
-    ]
-
-    if not all(isinstance(e, Expr) for e in exprs):
+    """Try solving a lifted exponential system; return None on failure."""
+    lift = _lift_generators(system, symbols)
+    if lift is None:
         return None
 
-    # Include nested sums so factors of unexpanded products
-    # can contribute generators.
-    parts = exprs + [
-        a for e in exprs
-        for a in preorder_traversal(e) if a.is_Add
-    ]
-
-    if any(e.is_commutative is False for e in parts):
-        return None
-
-    _, gens = _decompose_exprs(parts)
-
-    replacements = {}
-    lifted = exprs
-
-    for s in symbols:
-        candidates = sorted(
-            (g for g in gens
-             if g.func is exp and g.free_symbols == {s}),
-            key=default_sort_key)
-
-        for g in candidates:
-            t = Dummy('g')
-            trial = [e.subs(g, t) for e in lifted]
-
-            # The original variable must disappear completely.
-            if all(s not in e.free_symbols for e in trial):
-                replacements[s] = (g, t)
-                lifted = trial
-                break
-
-    if not replacements:
-        return None
-
-    new_symbols = [
-        replacements[s][1] if s in replacements else s
-        for s in symbols
-    ]
-
-    # Initially handle only polynomial/rational systems.
-    if not all(
-        all(p.is_polynomial(*new_symbols)
-            for p in e.as_numer_denom())
-        for e in lifted
-    ):
-        return None
-
-    # Recursion is safe: the reduced system is algebraic.
-    solutions = nonlinsolve(lifted, new_symbols)
-
+    solutions = nonlinsolve(lift.equations, lift.symbols)
     if not isinstance(solutions, FiniteSet):
         return None
 
-    new_symbol_set = set(new_symbols)
-    result = []
-
-    for solution in solutions:
-        if len(solution) != len(symbols):
+    branches = []
+    for sol in solutions:
+        if not isinstance(sol, Tuple) or len(sol) != len(lift.symbols):
             return None
+        branches.append(dict(zip(lift.symbols, sol)))
 
-        # Defer parameterized algebraic families.
-        if any(v.free_symbols & new_symbol_set
-               for v in solution):
+    def invert_generator(generator, value, symbol):
+        if value.is_zero is True:
+            return ()
+        inverse = solveset(generator - value, symbol, S.Complexes)
+        if inverse.has(ConditionSet):
             return None
+        if isinstance(inverse, FiniteSet):
+            return tuple(inverse)
+        if isinstance(inverse, ImageSet):
+            return (inverse,)
+        if inverse is S.EmptySet:
+            return ()
+        return None
 
-        values = []
-
-        for s, value in zip(symbols, solution):
-            if s not in replacements:
-                values.append([value])
-                continue
-
-            # Do not silently assume a symbolic parameter is
-            # nonzero.
-            if value.free_symbols and value.is_zero is not False:
-                return None
-
-            g, _ = replacements[s]
-            inverse = solveset(g - value, s, S.Complexes)
-
-            if inverse.has(ConditionSet):
-                return None
-
-            if inverse is S.EmptySet:
-                break
-
-            if isinstance(inverse, FiniteSet):
-                values.append(list(inverse))
-            else:
-                values.append([inverse])
-        else:
-            result.extend(product(*values))
-
-    return FiniteSet(*result)
+    recovered = _recover_generators(lift, branches, invert_generator)
+    if recovered is None:
+        return None
+    return FiniteSet(*(
+        tuple(sol[s] for s in lift.original_symbols) for sol in recovered
+    ))
 
 
 def nonlinsolve(system, *symbols):

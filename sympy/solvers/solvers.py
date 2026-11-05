@@ -1842,6 +1842,35 @@ def _solve_system(exprs, symbols, **flags):
                     for item in sd.items()))
             return linear, sols
 
+
+    # Try a polynomial lift of exponential generators before classifying
+    # the equations. Leave explicit/manual solving to its existing path.
+    if not flags.get('manual', False) and not flags.get('particular', False):
+        from sympy.solvers._generators import (
+            _lift_generators, _recover_generators)
+        lift = _lift_generators(exprs, symbols)
+        if lift is not None:
+            _, lifted_sol = _solve_system(
+                list(lift.equations), list(lift.symbols), **flags.copy())
+
+            def invert_generator(generator, value, symbol):
+                try:
+                    return tuple(_vsolve(
+                        generator - value, symbol, **flags.copy()))
+                except (NotImplementedError, ValueError):
+                    return None
+
+            recovered = _recover_generators(
+                lift, lifted_sol, invert_generator)
+            if recovered is not None:
+                if flags.get('check', True):
+                    recovered = [
+                        sol for sol in recovered
+                        if not any(checksol(e, sol, **flags) is False
+                                   for e in exprs)
+                    ]
+                return False, recovered
+
     polys = []
     dens = set()
     failed = []

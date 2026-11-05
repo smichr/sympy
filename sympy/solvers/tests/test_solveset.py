@@ -1879,9 +1879,9 @@ def test_nonlinsolve_basic():
         (-S.Half, 3*S.Half))
 
 
-
 def test_nonlinsolve_generators():
     x, y = symbols('x y')
+
     def check(got):
         assert dumeq(got, expected)
 
