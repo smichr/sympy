@@ -2,6 +2,7 @@ from __future__ import annotations
 from math import isclose
 
 from sympy.calculus.util import stationary_points
+from sympy.core.basic import alpha_eq
 from sympy.core.containers import Tuple
 from sympy.core.function import (Function, Lambda, nfloat, diff)
 from sympy.core.mod import Mod
@@ -52,12 +53,6 @@ from sympy.solvers.solveset import (
 
 from sympy.abc import (a, b, c, d, e, f, g, h, i, j, k, l, m, n, q, r,
     t, w, x, y, z)
-
-
-def dumeq(i, j):
-    if type(i) in (list, tuple):
-        return all(dumeq(i, j) for i, j in zip(i, j))
-    return i == j or i.dummy_eq(j)
 
 
 def assert_close_ss(sol1, sol2):
@@ -131,63 +126,63 @@ def test_invert_real():
     base_values =  FiniteSet(y - 1, -y - 1)
     assert invert_real(Abs(x**31 + x + 1), y, x) == (lhs, base_values)
 
-    assert dumeq(invert_real(sin(x), y, x), (x,
+    assert alpha_eq(invert_real(sin(x), y, x), (x,
         ConditionSet(x, (S(-1) <= y) & (y <= S(1)), Union(
             ImageSet(Lambda(n, 2*n*pi + asin(y)), S.Integers),
             ImageSet(Lambda(n, pi*2*n + pi - asin(y)), S.Integers)))))
 
-    assert dumeq(invert_real(sin(exp(x)), y, x), (x,
+    assert alpha_eq(invert_real(sin(exp(x)), y, x), (x,
         ConditionSet(x, (S(-1) <= y) & (y <= S(1)), Union(
             ImageSet(Lambda(n, log(2*n*pi + asin(y))), S.Integers),
             ImageSet(Lambda(n, log(pi*2*n + pi - asin(y))), S.Integers)))))
 
-    assert dumeq(invert_real(csc(x), y, x), (x,
+    assert alpha_eq(invert_real(csc(x), y, x), (x,
         ConditionSet(x, ((S(1) <= y) & (y < oo)) | ((-oo < y) & (y <= S(-1))),
             Union(ImageSet(Lambda(n, 2*n*pi + acsc(y)), S.Integers),
                 ImageSet(Lambda(n, 2*n*pi - acsc(y) + pi), S.Integers)))))
 
-    assert dumeq(invert_real(csc(exp(x)), y, x), (x,
+    assert alpha_eq(invert_real(csc(exp(x)), y, x), (x,
         ConditionSet(x, ((S(1) <= y) & (y < oo)) | ((-oo < y) & (y <= S(-1))),
             Union(ImageSet(Lambda(n, log(2*n*pi + acsc(y))), S.Integers),
                 ImageSet(Lambda(n, log(2*n*pi - acsc(y) + pi)), S.Integers)))))
 
-    assert dumeq(invert_real(cos(x), y, x), (x,
+    assert alpha_eq(invert_real(cos(x), y, x), (x,
         ConditionSet(x, (S(-1) <= y) & (y <= S(1)), Union(
             ImageSet(Lambda(n, 2*n*pi + acos(y)), S.Integers),
             ImageSet(Lambda(n, 2*n*pi - acos(y)), S.Integers)))))
 
-    assert dumeq(invert_real(cos(exp(x)), y, x), (x,
+    assert alpha_eq(invert_real(cos(exp(x)), y, x), (x,
         ConditionSet(x, (S(-1) <= y) & (y <= S(1)), Union(
             ImageSet(Lambda(n, log(2*n*pi + acos(y))), S.Integers),
             ImageSet(Lambda(n, log(2*n*pi - acos(y))), S.Integers)))))
 
-    assert dumeq(invert_real(sec(x), y, x), (x,
+    assert alpha_eq(invert_real(sec(x), y, x), (x,
         ConditionSet(x, ((S(1) <= y) & (y < oo)) | ((-oo < y) & (y <= S(-1))),
             Union(ImageSet(Lambda(n, 2*n*pi + asec(y)), S.Integers), \
                 ImageSet(Lambda(n, 2*n*pi - asec(y)), S.Integers)))))
 
-    assert dumeq(invert_real(sec(exp(x)), y, x), (x,
+    assert alpha_eq(invert_real(sec(exp(x)), y, x), (x,
         ConditionSet(x, ((S(1) <= y) & (y < oo)) | ((-oo < y) & (y <= S(-1))),
             Union(ImageSet(Lambda(n, log(2*n*pi - asec(y))), S.Integers),
                 ImageSet(Lambda(n, log(2*n*pi + asec(y))), S.Integers)))))
 
-    assert dumeq(invert_real(tan(x), y, x), (x,
+    assert alpha_eq(invert_real(tan(x), y, x), (x,
         ConditionSet(x, (-oo < y) & (y < oo),
             ImageSet(Lambda(n, n*pi + atan(y)), S.Integers))))
 
-    assert dumeq(invert_real(tan(exp(x)), y, x), (x,
+    assert alpha_eq(invert_real(tan(exp(x)), y, x), (x,
         ConditionSet(x, (-oo < y) & (y < oo),
             ImageSet(Lambda(n, log(n*pi + atan(y))), S.Integers))))
 
-    assert dumeq(invert_real(cot(x), y, x), (x,
+    assert alpha_eq(invert_real(cot(x), y, x), (x,
         ConditionSet(x, (-oo < y) & (y < oo),
             ImageSet(Lambda(n, n*pi + acot(y)), S.Integers))))
 
-    assert dumeq(invert_real(cot(exp(x)), y, x), (x,
+    assert alpha_eq(invert_real(cot(exp(x)), y, x), (x,
         ConditionSet(x, (-oo < y) & (y < oo),
             ImageSet(Lambda(n, log(n*pi + acot(y))), S.Integers))))
 
-    assert dumeq(invert_real(tan(tan(x)), y, x),
+    assert alpha_eq(invert_real(tan(tan(x)), y, x),
         (x, ConditionSet(x, Eq(tan(tan(x)), y), S.Reals)))
         # slight regression compared to previous result:
         # (tan(x), imageset(Lambda(n, n*pi + atan(y)), S.Integers)))
@@ -211,7 +206,7 @@ def test_invert_real():
         FiniteSet(-asech(r), asech(r)), S.Reals))
     assert invert_real(csch(x), p, x) == (x, FiniteSet(acsch(p)))
 
-    assert dumeq(invert_real(tanh(sin(x)), r, x), (x,
+    assert alpha_eq(invert_real(tanh(sin(x)), r, x), (x,
         ConditionSet(x, (S(-1) <= atanh(r)) & (atanh(r) <= S(1)), Union(
             ImageSet(Lambda(n, 2*n*pi + asin(atanh(r))), S.Integers),
             ImageSet(Lambda(n, 2*n*pi - asin(atanh(r)) + pi), S.Integers)))))
@@ -238,7 +233,7 @@ def test_invert_complex():
     assert invert_complex(x*3, y, x) == (x, FiniteSet(y / 3))
     assert invert_complex((x - 1)**3, 0, x) == (x, FiniteSet(1))
 
-    assert dumeq(invert_complex(exp(x), y, x),
+    assert alpha_eq(invert_complex(exp(x), y, x),
         (x, imageset(Lambda(n, I*(2*pi*n + arg(y)) + log(Abs(y))), S.Integers)))
 
     assert invert_complex(log(x), y, x) == (x, FiniteSet(exp(y)))
@@ -247,32 +242,32 @@ def test_invert_complex():
     raises(ValueError, lambda: invert_complex(x, x, x))
     raises(ValueError, lambda: invert_complex(x, x, 1))
 
-    assert dumeq(invert_complex(sin(x), I, x), (x, Union(
+    assert alpha_eq(invert_complex(sin(x), I, x), (x, Union(
         ImageSet(Lambda(n, 2*n*pi + I*log(1 + sqrt(2))), S.Integers),
         ImageSet(Lambda(n, 2*n*pi + pi - I*log(1 + sqrt(2))), S.Integers))))
-    assert dumeq(invert_complex(cos(x), 1+I, x), (x, Union(
+    assert alpha_eq(invert_complex(cos(x), 1+I, x), (x, Union(
         ImageSet(Lambda(n, 2*n*pi - acos(1 + I)), S.Integers),
         ImageSet(Lambda(n, 2*n*pi + acos(1 + I)), S.Integers))))
-    assert dumeq(invert_complex(tan(2*x), 1, x), (x,
+    assert alpha_eq(invert_complex(tan(2*x), 1, x), (x,
         ImageSet(Lambda(n, n*pi/2 + pi/8), S.Integers)))
-    assert dumeq(invert_complex(cot(x), 2*I, x), (x,
+    assert alpha_eq(invert_complex(cot(x), 2*I, x), (x,
         ImageSet(Lambda(n, n*pi - I*acoth(2)), S.Integers)))
 
-    assert dumeq(invert_complex(sinh(x), 0, x), (x, Union(
+    assert alpha_eq(invert_complex(sinh(x), 0, x), (x, Union(
         ImageSet(Lambda(n, 2*n*I*pi), S.Integers),
         ImageSet(Lambda(n, 2*n*I*pi + I*pi), S.Integers))))
-    assert dumeq(invert_complex(cosh(x), 0, x), (x, Union(
+    assert alpha_eq(invert_complex(cosh(x), 0, x), (x, Union(
         ImageSet(Lambda(n, 2*n*I*pi + I*pi/2), S.Integers),
         ImageSet(Lambda(n, 2*n*I*pi + 3*I*pi/2), S.Integers))))
     assert invert_complex(tanh(x), 1, x) == (x, S.EmptySet)
-    assert dumeq(invert_complex(tanh(x), a, x), (x,
+    assert alpha_eq(invert_complex(tanh(x), a, x), (x,
         ConditionSet(x, Ne(a, -1) & Ne(a, 1),
         ImageSet(Lambda(n, n*I*pi + atanh(a)), S.Integers))))
     assert invert_complex(coth(x), 1, x) == (x, S.EmptySet)
-    assert dumeq(invert_complex(coth(x), a, x), (x,
+    assert alpha_eq(invert_complex(coth(x), a, x), (x,
         ConditionSet(x, Ne(a, -1) & Ne(a, 1),
         ImageSet(Lambda(n, n*I*pi + acoth(a)), S.Integers))))
-    assert dumeq(invert_complex(sech(x), 2, x), (x, Union(
+    assert alpha_eq(invert_complex(sech(x), 2, x), (x, Union(
         ImageSet(Lambda(n, 2*n*I*pi + I*pi/3), S.Integers),
         ImageSet(Lambda(n, 2*n*I*pi + 5*I*pi/3), S.Integers))))
 
@@ -434,7 +429,7 @@ def test_solve_invert():
 
 
 def test_issue_25768():
-    assert dumeq(solveset_real(sin(x) - S.Half, x), Union(
+    assert alpha_eq(solveset_real(sin(x) - S.Half, x), Union(
         ImageSet(Lambda(n, pi*2*n + pi/6), S.Integers),
         ImageSet(Lambda(n, pi*2*n + pi*5/6), S.Integers)))
     n1 = solveset_real(sin(x) - 0.5, x).n(5)
@@ -443,7 +438,7 @@ def test_issue_25768():
     eq = [i.replace(
         lambda x:x.is_Float,
         lambda x:Rational(x).limit_denominator(1000)) for i in (n1, n2)]
-    assert dumeq(*eq),(n1,n2)
+    assert alpha_eq(*eq),(n1,n2)
 
 
 def test_errorinverses():
@@ -764,12 +759,12 @@ def test_solve_abs():
         ImageSet(Lambda(n, -2*n*pi - pi/2), Range(0, oo, 1)),
         ImageSet(Lambda(n, 2*n*pi + pi/2), Range(0, oo, 1))
     )
-    assert dumeq(solveset(eq, x, domain=S.Reals), sol)
+    assert alpha_eq(solveset(eq, x, domain=S.Reals), sol)
 
 
 def test_issue_9824():
-    assert dumeq(solveset(sin(x)**2 - 2*sin(x) + 1, x), ImageSet(Lambda(n, 2*n*pi + pi/2), S.Integers))
-    assert dumeq(solveset(cos(x)**2 - 2*cos(x) + 1, x), ImageSet(Lambda(n, 2*n*pi), S.Integers))
+    assert alpha_eq(solveset(sin(x)**2 - 2*sin(x) + 1, x), ImageSet(Lambda(n, 2*n*pi + pi/2), S.Integers))
+    assert alpha_eq(solveset(cos(x)**2 - 2*cos(x) + 1, x), ImageSet(Lambda(n, 2*n*pi), S.Integers))
 
 
 def test_issue_9565():
@@ -886,12 +881,12 @@ def test_solve_quintics():
 
 
 def test_solveset_complex_exp():
-    assert dumeq(solveset_complex(exp(x) - 1, x),
+    assert alpha_eq(solveset_complex(exp(x) - 1, x),
         imageset(Lambda(n, I*2*n*pi), S.Integers))
-    assert dumeq(solveset_complex(exp(x) - I, x),
+    assert alpha_eq(solveset_complex(exp(x) - I, x),
         imageset(Lambda(n, I*(2*n*pi + pi/2)), S.Integers))
     assert solveset_complex(1/exp(x), x) == S.EmptySet
-    assert dumeq(solveset_complex(sinh(x).rewrite(exp), x),
+    assert alpha_eq(solveset_complex(sinh(x).rewrite(exp), x),
         imageset(Lambda(n, n*pi*I), S.Integers))
 
 
@@ -924,56 +919,56 @@ def test_solve_complex_sqrt():
 
 def test_solveset_complex_tan():
     s = solveset_complex(tan(x).rewrite(exp), x)
-    assert dumeq(s, imageset(Lambda(n, pi*n), S.Integers) - \
+    assert alpha_eq(s, imageset(Lambda(n, pi*n), S.Integers) - \
         imageset(Lambda(n, pi*n + pi/2), S.Integers))
 
 
 @slow
 @_both_exp_pow
 def test_solve_trig():
-    assert dumeq(solveset_real(sin(x), x),
+    assert alpha_eq(solveset_real(sin(x), x),
         Union(imageset(Lambda(n, 2*pi*n), S.Integers),
               imageset(Lambda(n, 2*pi*n + pi), S.Integers)))
 
-    assert dumeq(solveset_real(sin(x) - 1, x),
+    assert alpha_eq(solveset_real(sin(x) - 1, x),
         imageset(Lambda(n, 2*pi*n + pi/2), S.Integers))
 
-    assert dumeq(solveset_real(cos(x), x),
+    assert alpha_eq(solveset_real(cos(x), x),
         Union(imageset(Lambda(n, 2*pi*n + pi/2), S.Integers),
               imageset(Lambda(n, 2*pi*n + pi*Rational(3, 2)), S.Integers)))
 
-    assert dumeq(solveset_real(sin(x) + cos(x), x),
+    assert alpha_eq(solveset_real(sin(x) + cos(x), x),
         Union(imageset(Lambda(n, 2*n*pi + pi*Rational(3, 4)), S.Integers),
               imageset(Lambda(n, 2*n*pi + pi*Rational(7, 4)), S.Integers)))
 
     assert solveset_real(sin(x)**2 + cos(x)**2, x) == S.EmptySet
 
-    assert dumeq(solveset_complex(cos(x) - S.Half, x),
+    assert alpha_eq(solveset_complex(cos(x) - S.Half, x),
         Union(imageset(Lambda(n, 2*n*pi + pi*Rational(5, 3)), S.Integers),
               imageset(Lambda(n, 2*n*pi + pi/3), S.Integers)))
 
-    assert dumeq(solveset(sin(y + a) - sin(y), a, domain=S.Reals),
+    assert alpha_eq(solveset(sin(y + a) - sin(y), a, domain=S.Reals),
         ConditionSet(a, (S(-1) <= sin(y)) & (sin(y) <= S(1)), Union(
             ImageSet(Lambda(n, 2*n*pi - y + asin(sin(y))), S.Integers),
             ImageSet(Lambda(n, 2*n*pi - y - asin(sin(y)) + pi), S.Integers))))
 
-    assert dumeq(solveset_real(sin(2*x)*cos(x) + cos(2*x)*sin(x)-1, x),
+    assert alpha_eq(solveset_real(sin(2*x)*cos(x) + cos(2*x)*sin(x)-1, x),
         ImageSet(Lambda(n, n*pi*Rational(2, 3) + pi/6), S.Integers))
 
-    assert dumeq(solveset_real(2*tan(x)*sin(x) + 1, x), Union(
+    assert alpha_eq(solveset_real(2*tan(x)*sin(x) + 1, x), Union(
         ImageSet(Lambda(n, 2*n*pi + atan(sqrt(2)*sqrt(-1 + sqrt(17))/
             (1 - sqrt(17))) + pi), S.Integers),
         ImageSet(Lambda(n, 2*n*pi - atan(sqrt(2)*sqrt(-1 + sqrt(17))/
             (1 - sqrt(17))) + pi), S.Integers)))
 
-    assert dumeq(solveset_real(cos(2*x)*cos(4*x) - 1, x),
+    assert alpha_eq(solveset_real(cos(2*x)*cos(4*x) - 1, x),
                             ImageSet(Lambda(n, n*pi), S.Integers))
 
-    assert dumeq(solveset(sin(x/10) + Rational(3, 4)), Union(
+    assert alpha_eq(solveset(sin(x/10) + Rational(3, 4)), Union(
         ImageSet(Lambda(n, 20*n*pi - 10*asin(S(3)/4) + 20*pi), S.Integers),
         ImageSet(Lambda(n, 20*n*pi + 10*asin(S(3)/4) + 10*pi), S.Integers)))
 
-    assert dumeq(solveset(cos(x/15) + cos(x/5)), Union(
+    assert alpha_eq(solveset(cos(x/15) + cos(x/5)), Union(
         ImageSet(Lambda(n, 30*n*pi + 15*pi/2), S.Integers),
         ImageSet(Lambda(n, 30*n*pi + 45*pi/2), S.Integers),
         ImageSet(Lambda(n, 30*n*pi + 75*pi/4), S.Integers),
@@ -981,11 +976,11 @@ def test_solve_trig():
         ImageSet(Lambda(n, 30*n*pi + 105*pi/4), S.Integers),
         ImageSet(Lambda(n, 30*n*pi + 15*pi/4), S.Integers)))
 
-    assert dumeq(solveset(sec(sqrt(2)*x/3) + 5), Union(
+    assert alpha_eq(solveset(sec(sqrt(2)*x/3) + 5), Union(
         ImageSet(Lambda(n, 3*sqrt(2)*(2*n*pi - asec(-5))/2), S.Integers),
         ImageSet(Lambda(n, 3*sqrt(2)*(2*n*pi + asec(-5))/2), S.Integers)))
 
-    assert dumeq(simplify(solveset(tan(pi*x) - cot(pi/2*x))), Union(
+    assert alpha_eq(simplify(solveset(tan(pi*x) - cot(pi/2*x))), Union(
         ImageSet(Lambda(n, 4*n + 1), S.Integers),
         ImageSet(Lambda(n, 4*n + 3), S.Integers),
         ImageSet(Lambda(n, 4*n + Rational(7, 3)), S.Integers),
@@ -993,11 +988,11 @@ def test_solve_trig():
         ImageSet(Lambda(n, 4*n + Rational(11, 3)), S.Integers),
         ImageSet(Lambda(n, 4*n + Rational(1, 3)), S.Integers)))
 
-    assert dumeq(solveset(cos(9*x)), Union(
+    assert alpha_eq(solveset(cos(9*x)), Union(
         ImageSet(Lambda(n, 2*n*pi/9 + pi/18), S.Integers),
         ImageSet(Lambda(n, 2*n*pi/9 + pi/6), S.Integers)))
 
-    assert dumeq(solveset(sin(8*x) + cot(12*x), x, S.Reals), Union(
+    assert alpha_eq(solveset(sin(8*x) + cot(12*x), x, S.Reals), Union(
         ImageSet(Lambda(n, n*pi/2 + pi/8), S.Integers),
         ImageSet(Lambda(n, n*pi/2 + 3*pi/8), S.Integers),
         ImageSet(Lambda(n, n*pi/2 + 5*pi/16), S.Integers),
@@ -1007,7 +1002,7 @@ def test_solve_trig():
 
     # This is the only remaining solveset test that actually ends up being solved
     # by _solve_trig2(). All others are handled by the improved _solve_trig1.
-    assert dumeq(solveset_real(2*cos(x)*cos(2*x) - 1, x),
+    assert alpha_eq(solveset_real(2*cos(x)*cos(2*x) - 1, x),
           Union(ImageSet(Lambda(n, 2*n*pi + 2*atan(sqrt(-2*2**Rational(1, 3)*(67 +
                   9*sqrt(57))**Rational(2, 3) + 8*2**Rational(2, 3) + 11*(67 +
                   9*sqrt(57))**Rational(1, 3))/(3*(67 + 9*sqrt(57))**Rational(1, 6)))), S.Integers),
@@ -1017,7 +1012,7 @@ def test_solve_trig():
                   2*pi), S.Integers)))
 
     # issue #16870
-    assert dumeq(simplify(solveset(sin(x/180*pi) - S.Half, x, S.Reals)), Union(
+    assert alpha_eq(simplify(solveset(sin(x/180*pi) - S.Half, x, S.Reals)), Union(
         ImageSet(Lambda(n, 360*n + 150), S.Integers),
         ImageSet(Lambda(n, 360*n + 30), S.Integers)))
 
@@ -1213,13 +1208,13 @@ def test_solve_hyperbolic():
     assert solveset_real(sinh(x) + tanh(x) - 1, x) == FiniteSet(
         log(sqrt(2)/2 + sqrt(-S(1)/2 + sqrt(2))))
 
-    assert dumeq(solveset_complex(sinh(x) + sech(x), x), Union(
+    assert alpha_eq(solveset_complex(sinh(x) + sech(x), x), Union(
         ImageSet(Lambda(n, 2*n*I*pi + log(sqrt(-2 + sqrt(5)))), S.Integers),
         ImageSet(Lambda(n, I*(2*n*pi + pi/2) + log(sqrt(2 + sqrt(5)))), S.Integers),
         ImageSet(Lambda(n, I*(2*n*pi + pi) + log(sqrt(-2 + sqrt(5)))), S.Integers),
         ImageSet(Lambda(n, I*(2*n*pi - pi/2) + log(sqrt(2 + sqrt(5)))), S.Integers)))
 
-    assert dumeq(solveset(cosh(x/15) + cosh(x/5)), Union(
+    assert alpha_eq(solveset(cosh(x/15) + cosh(x/5)), Union(
         ImageSet(Lambda(n, 15*I*(2*n*pi + pi/2)), S.Integers),
         ImageSet(Lambda(n, 15*I*(2*n*pi - pi/2)), S.Integers),
         ImageSet(Lambda(n, 15*I*(2*n*pi - 3*pi/4)), S.Integers),
@@ -1227,7 +1222,7 @@ def test_solve_hyperbolic():
         ImageSet(Lambda(n, 15*I*(2*n*pi - pi/4)), S.Integers),
         ImageSet(Lambda(n, 15*I*(2*n*pi + pi/4)), S.Integers)))
 
-    assert dumeq(solveset(tanh(pi*x) - coth(pi/2*x)), Union(
+    assert alpha_eq(solveset(tanh(pi*x) - coth(pi/2*x)), Union(
         ImageSet(Lambda(n, 2*I*(2*n*pi + pi/2)/pi), S.Integers),
         ImageSet(Lambda(n, 2*I*(2*n*pi - pi/2)/pi), S.Integers)))
 
@@ -1241,22 +1236,22 @@ def test_solve_hyperbolic():
 
 def test_solve_trig_hyp_symbolic():
     # actual solver: invert_trig_hyp
-    assert dumeq(solveset(sin(a*x), x), ConditionSet(x, Ne(a, 0), Union(
+    assert alpha_eq(solveset(sin(a*x), x), ConditionSet(x, Ne(a, 0), Union(
         ImageSet(Lambda(n, (2*n*pi + pi)/a), S.Integers),
         ImageSet(Lambda(n, 2*n*pi/a), S.Integers))))
 
-    assert dumeq(solveset(cosh(x/a), x), ConditionSet(x, Ne(a, 0), Union(
+    assert alpha_eq(solveset(cosh(x/a), x), ConditionSet(x, Ne(a, 0), Union(
         ImageSet(Lambda(n, a*(2*n*I*pi + I*pi/2)), S.Integers),
         ImageSet(Lambda(n, a*(2*n*I*pi + 3*I*pi/2)), S.Integers))))
 
-    assert dumeq(solveset(sin(2*sqrt(3)/3*a**2/(b*pi)*x)
+    assert alpha_eq(solveset(sin(2*sqrt(3)/3*a**2/(b*pi)*x)
         + cos(4*sqrt(3)/3*a**2/(b*pi)*x), x),
        ConditionSet(x, Ne(b, 0) & Ne(a**2, 0), Union(
            ImageSet(Lambda(n, sqrt(3)*pi*b*(2*n*pi + pi/2)/(2*a**2)), S.Integers),
            ImageSet(Lambda(n, sqrt(3)*pi*b*(2*n*pi - 5*pi/6)/(2*a**2)), S.Integers),
            ImageSet(Lambda(n, sqrt(3)*pi*b*(2*n*pi - pi/6)/(2*a**2)), S.Integers))))
 
-    assert dumeq(solveset(cosh((a**2 + 1)*x) - 3, x), ConditionSet(
+    assert alpha_eq(solveset(cosh((a**2 + 1)*x) - 3, x), ConditionSet(
         x, Ne(a**2 + 1, 0), Union(
             ImageSet(Lambda(n, (2*n*I*pi - acosh(3))/(a**2 + 1)), S.Integers),
             ImageSet(Lambda(n, (2*n*I*pi + acosh(3))/(a**2 + 1)), S.Integers))))
@@ -1266,13 +1261,13 @@ def test_solve_trig_hyp_symbolic():
         -acosh(2)/(ar**2 + 1), acosh(2)/(ar**2 + 1))
 
     # actual solver: _solve_trig1
-    assert dumeq(simplify(solveset(cot((1 + I)*x) - cot((3 + 3*I)*x), x)), Union(
+    assert alpha_eq(simplify(solveset(cot((1 + I)*x) - cot((3 + 3*I)*x), x)), Union(
         ImageSet(Lambda(n, pi*(1 - I)*(4*n + 1)/4), S.Integers),
         ImageSet(Lambda(n, pi*(1 - I)*(4*n - 1)/4), S.Integers)))
 
 
 def test_issue_9616():
-    assert dumeq(solveset(sinh(x) + tanh(x) - 1, x), Union(
+    assert alpha_eq(solveset(sinh(x) + tanh(x) - 1, x), Union(
         ImageSet(Lambda(n, 2*n*I*pi + log(sqrt(2)/2 + sqrt(-S.Half + sqrt(2)))), S.Integers),
         ImageSet(Lambda(n, I*(2*n*pi - atan(sqrt(2)*sqrt(S.Half + sqrt(2))) + pi)
             + log(sqrt(1 + sqrt(2)))), S.Integers),
@@ -1281,7 +1276,7 @@ def test_issue_9616():
             + log(sqrt(1 + sqrt(2)))), S.Integers)))
     f1 = (sinh(x)).rewrite(exp)
     f2 = (tanh(x)).rewrite(exp)
-    assert dumeq(solveset(f1 + f2 - 1, x), Union(
+    assert alpha_eq(solveset(f1 + f2 - 1, x), Union(
         Complement(ImageSet(
             Lambda(n, I*(2*n*pi + pi) + log(-sqrt(2)/2 + sqrt(-S.Half + sqrt(2)))), S.Integers),
             ImageSet(Lambda(n, I*(2*n*pi + pi)/2), S.Integers)),
@@ -1304,13 +1299,13 @@ def test_solve_invalid_sol():
 @XFAIL
 def test_solve_trig_simplified():
     n = Dummy('n')
-    assert dumeq(solveset_real(sin(x), x),
+    assert alpha_eq(solveset_real(sin(x), x),
         imageset(Lambda(n, n*pi), S.Integers))
 
-    assert dumeq(solveset_real(cos(x), x),
+    assert alpha_eq(solveset_real(cos(x), x),
         imageset(Lambda(n, n*pi + pi/2), S.Integers))
 
-    assert dumeq(solveset_real(cos(x) + sin(x), x),
+    assert alpha_eq(solveset_real(cos(x) + sin(x), x),
         imageset(Lambda(n, n*pi - pi/4), S.Integers))
 
 
@@ -1435,8 +1430,8 @@ def test_solveset():
     assert solveset(x - 1 >= 0, x, S.Reals) == Interval(1, oo)
     assert solveset(exp(x) - 1 >= 0, x, S.Reals) == Interval(0, oo)
 
-    assert dumeq(solveset(exp(x) - 1, x), imageset(Lambda(n, 2*I*pi*n), S.Integers))
-    assert dumeq(solveset(Eq(exp(x), 1), x), imageset(Lambda(n, 2*I*pi*n),
+    assert alpha_eq(solveset(exp(x) - 1, x), imageset(Lambda(n, 2*I*pi*n), S.Integers))
+    assert alpha_eq(solveset(Eq(exp(x), 1), x), imageset(Lambda(n, 2*I*pi*n),
                                                   S.Integers))
     # issue 13825
     assert solveset(x**2 + f(0) + 1, x) == {-sqrt(-f(0) - 1), sqrt(-f(0) - 1)}
@@ -1448,22 +1443,22 @@ def test_solveset():
 @_both_exp_pow
 def test_multi_exp():
     k1, k2, k3 = symbols('k1, k2, k3')
-    assert dumeq(solveset(exp(exp(x)) - 5, x),\
+    assert alpha_eq(solveset(exp(exp(x)) - 5, x),\
          imageset(Lambda(((k1, n),), I*(2*k1*pi + arg(2*n*I*pi + log(5))) + log(Abs(2*n*I*pi + log(5)))),\
              ProductSet(S.Integers, S.Integers)))
-    assert dumeq(solveset((d*exp(exp(a*x + b)) + c), x),\
+    assert alpha_eq(solveset((d*exp(exp(a*x + b)) + c), x),\
         imageset(Lambda(x, (-b + x)/a), ImageSet(Lambda(((k1, n),), \
             I*(2*k1*pi + arg(I*(2*n*pi + arg(-c/d)) + log(Abs(c/d)))) + log(Abs(I*(2*n*pi + arg(-c/d)) + log(Abs(c/d))))), \
                 ProductSet(S.Integers, S.Integers))))
 
-    assert dumeq(solveset((d*exp(exp(exp(a*x + b))) + c), x),\
+    assert alpha_eq(solveset((d*exp(exp(exp(a*x + b))) + c), x),\
         imageset(Lambda(x, (-b + x)/a), ImageSet(Lambda(((k2, k1, n),), \
             I*(2*k2*pi + arg(I*(2*k1*pi + arg(I*(2*n*pi + arg(-c/d)) + log(Abs(c/d)))) + \
                 log(Abs(I*(2*n*pi + arg(-c/d)) + log(Abs(c/d)))))) + log(Abs(I*(2*k1*pi + arg(I*(2*n*pi + arg(-c/d)) + \
                     log(Abs(c/d)))) + log(Abs(I*(2*n*pi + arg(-c/d)) + log(Abs(c/d))))))), \
                         ProductSet(S.Integers, S.Integers, S.Integers))))
 
-    assert dumeq(solveset((d*exp(exp(exp(exp(a*x + b)))) + c), x),\
+    assert alpha_eq(solveset((d*exp(exp(exp(exp(a*x + b)))) + c), x),\
         ImageSet(Lambda(x, (-b + x)/a), ImageSet(Lambda(((k3, k2, k1, n),), \
             I*(2*k3*pi + arg(I*(2*k2*pi + arg(I*(2*k1*pi + arg(I*(2*n*pi + arg(-c/d)) + log(Abs(c/d)))) + \
                 log(Abs(I*(2*n*pi + arg(-c/d)) + log(Abs(c/d)))))) + log(Abs(I*(2*k1*pi + arg(I*(2*n*pi + arg(-c/d)) + \
@@ -1485,8 +1480,8 @@ def test__solveset_multi():
     assert _solveset_multi([x+y, x+1], [y, x], [Reals, Reals]) == FiniteSet((1, -1))
     assert _solveset_multi([x+y, x-y-1], [x, y], [Reals, Reals]) == FiniteSet((S(1)/2, -S(1)/2))
     assert _solveset_multi([x-1, y-2], [x, y], [Reals, Reals]) == FiniteSet((1, 2))
-    # assert dumeq(_solveset_multi([x+y], [x, y], [Reals, Reals]), ImageSet(Lambda(x, (x, -x)), Reals))
-    assert dumeq(_solveset_multi([x+y], [x, y], [Reals, Reals]), Union(
+    # assert alpha_eq(_solveset_multi([x+y], [x, y], [Reals, Reals]), ImageSet(Lambda(x, (x, -x)), Reals))
+    assert alpha_eq(_solveset_multi([x+y], [x, y], [Reals, Reals]), Union(
             ImageSet(Lambda(((x,),), (x, -x)), ProductSet(Reals)),
             ImageSet(Lambda(((y,),), (-y, y)), ProductSet(Reals))))
     assert _solveset_multi([x+y, x+y+1], [x, y], [Reals, Reals]) == S.EmptySet
@@ -1503,7 +1498,7 @@ def test__solveset_multi():
     assert _solveset_multi([x**2-1, y], [x, y], [Reals, Reals]) == FiniteSet((1, 0), (-1, 0))
     #assert _solveset_multi([x**2-y**2], [x, y], [Reals, Reals]) == Union(
     #        ImageSet(Lambda(x, (x, -x)), Reals), ImageSet(Lambda(x, (x, x)), Reals))
-    assert dumeq(_solveset_multi([x**2-y**2], [x, y], [Reals, Reals]), Union(
+    assert alpha_eq(_solveset_multi([x**2-y**2], [x, y], [Reals, Reals]), Union(
             ImageSet(Lambda(((x,),), (x, -Abs(x))), ProductSet(Reals)),
             ImageSet(Lambda(((x,),), (x, Abs(x))), ProductSet(Reals)),
             ImageSet(Lambda(((y,),), (-Abs(y), y)), ProductSet(Reals)),
@@ -1527,7 +1522,7 @@ def test_conditionset():
     assert solveset(Eq(x**2 + x*sin(x), 1), x, domain=S.Reals
         ).dummy_eq(ConditionSet(x, Eq(x**2 + x*sin(x) - 1, 0), S.Reals))
 
-    assert dumeq(solveset(Eq(-I*(exp(I*x) - exp(-I*x))/2, 1), x
+    assert alpha_eq(solveset(Eq(-I*(exp(I*x) - exp(-I*x))/2, 1), x
         ), imageset(Lambda(n, 2*n*pi + pi/2), S.Integers))
 
     assert solveset(x + sin(x) > 1, x, domain=S.Reals
@@ -1828,9 +1823,9 @@ def test_solve_decomposition():
     s5 = ImageSet(Lambda(n, 2*n*pi - 1 + pi), S.Integers)
 
     assert solve_decomposition(f1, x, S.Reals) == FiniteSet(0, log(2), log(3))
-    assert dumeq(solve_decomposition(f2, x, S.Reals), s3)
-    assert dumeq(solve_decomposition(f3, x, S.Reals), Union(s1, s2, s3))
-    assert dumeq(solve_decomposition(f4, x, S.Reals), Union(s4, s5))
+    assert alpha_eq(solve_decomposition(f2, x, S.Reals), s3)
+    assert alpha_eq(solve_decomposition(f3, x, S.Reals), Union(s1, s2, s3))
+    assert alpha_eq(solve_decomposition(f4, x, S.Reals), Union(s4, s5))
     assert solve_decomposition(f5, x, S.Reals) == FiniteSet(-2)
     assert solve_decomposition(f6, x, S.Reals) == S.EmptySet
     assert solve_decomposition(f7, x, S.Reals) == S.EmptySet
@@ -1846,10 +1841,10 @@ def test_nonlinsolve_basic():
     assert nonlinsolve([x],[x, y]) == FiniteSet((0, y))
     assert nonlinsolve(system, [y]) == S.EmptySet
     soln = (ImageSet(Lambda(n, 2*n*pi + pi/2), S.Integers),)
-    assert dumeq(nonlinsolve([sin(x) - 1], [x]), FiniteSet(tuple(soln)))
+    assert alpha_eq(nonlinsolve([sin(x) - 1], [x]), FiniteSet(tuple(soln)))
     soln = ((ImageSet(Lambda(n, 2*n*pi + pi), S.Integers), 1),
             (ImageSet(Lambda(n, 2*n*pi), S.Integers), 1))
-    assert dumeq(nonlinsolve([sin(x), y - 1], [x, y]), FiniteSet(*soln))
+    assert alpha_eq(nonlinsolve([sin(x), y - 1], [x, y]), FiniteSet(*soln))
     assert nonlinsolve([x**2 - 1], [x]) == FiniteSet((-1,), (1,))
 
     soln = FiniteSet((y, y))
@@ -1904,7 +1899,7 @@ def test_trig_system():
     assert nonlinsolve([sin(x) - 1, cos(x) -1 ], x) == S.EmptySet
     soln1 = (ImageSet(Lambda(n, 2*n*pi + pi/2), S.Integers),)
     soln = FiniteSet(soln1)
-    assert dumeq(nonlinsolve([sin(x) - 1, cos(x)], x), soln)
+    assert alpha_eq(nonlinsolve([sin(x) - 1, cos(x)], x), soln)
 
 
 @XFAIL
@@ -1919,7 +1914,7 @@ def test_trig_system_fail():
         ImageSet(Lambda(n, n*pi+ pi/2), S.Integers))
     soln_2 = FiniteSet(soln_2)
     soln = soln_1 + soln_2
-    assert dumeq(nonlinsolve(sys, [x, y]), soln)
+    assert alpha_eq(nonlinsolve(sys, [x, y]), soln)
 
     # Add more cases from here
     # http://www.vitutor.com/geometry/trigonometry/equations_systems.html#uno
@@ -1928,7 +1923,7 @@ def test_trig_system_fail():
         ImageSet(Lambda(n, 2*n*pi + pi*Rational(2, 3)), S.Integers))
     soln_y = Union(ImageSet(Lambda(n, 2*n*pi + pi/6), S.Integers),
         ImageSet(Lambda(n, 2*n*pi + pi*Rational(5, 6)), S.Integers))
-    assert dumeq(nonlinsolve(sys, [x, y]), FiniteSet((soln_x, soln_y)))
+    assert alpha_eq(nonlinsolve(sys, [x, y]), FiniteSet((soln_x, soln_y)))
 
 
 def test_nonlinsolve_positive_dimensional():
@@ -2047,7 +2042,7 @@ def test_nonlinsolve_denominator_restrictions_recast():
     n = Dummy('n')
     periodic = ImageSet(Lambda(n, 2*n*I*pi), S.Integers)
     solution = nonlinsolve([exp(f(x)) - 1, y - 1], [f(x), y])
-    assert dumeq(solution, FiniteSet((periodic, 1)))
+    assert alpha_eq(solution, FiniteSet((periodic, 1)))
 
     solution = nonlinsolve([z/(f(x) + y), exp(f(x)) - 1], [f(x), y, z])
     assert isinstance(solution, ConditionSet)
@@ -2142,11 +2137,11 @@ def test_nonlinsolve_using_substitution():
 
 def test_nonlinsolve_complex():
     n = Dummy('n')
-    assert dumeq(nonlinsolve([exp(x) - sin(y), 1/y - 3], [x, y]), {
+    assert alpha_eq(nonlinsolve([exp(x) - sin(y), 1/y - 3], [x, y]), {
         (ImageSet(Lambda(n, 2*n*I*pi + log(sin(Rational(1, 3)))), S.Integers), Rational(1, 3))})
 
     system = [exp(x) - sin(y), 1/exp(y) - 3]
-    assert dumeq(nonlinsolve(system, [x, y]), {
+    assert alpha_eq(nonlinsolve(system, [x, y]), {
         (ImageSet(Lambda(n, I*(2*n*pi + pi)
                          + log(sin(log(3)))), S.Integers), -log(3)),
         (ImageSet(Lambda(n, I*(2*n*pi + arg(sin(2*n*I*pi - log(3))))
@@ -2154,12 +2149,12 @@ def test_nonlinsolve_complex():
         ImageSet(Lambda(n, 2*n*I*pi - log(3)), S.Integers))})
 
     system = [exp(x) - sin(y), y**2 - 4]
-    assert dumeq(nonlinsolve(system, [x, y]), {
+    assert alpha_eq(nonlinsolve(system, [x, y]), {
         (ImageSet(Lambda(n, I*(2*n*pi + pi) + log(sin(2))), S.Integers), -2),
         (ImageSet(Lambda(n, 2*n*I*pi + log(sin(2))), S.Integers), 2)})
 
     system = [exp(x) - 2, y ** 2 - 2]
-    assert dumeq(nonlinsolve(system, [x, y]), {
+    assert alpha_eq(nonlinsolve(system, [x, y]), {
         (log(2), -sqrt(2)), (log(2), sqrt(2)),
         (ImageSet(Lambda(n, 2*n*I*pi + log(2)), S.Integers), -sqrt(2)),
         (ImageSet(Lambda(n, 2 * n * I * pi + log(2)), S.Integers), sqrt(2))})
@@ -2393,10 +2388,10 @@ def test_issue_10876():
 
 def test_issue_19050():
     # test_issue_19050 --> TypeError removed
-    assert dumeq(nonlinsolve([x + y, sin(y)], [x, y]),
+    assert alpha_eq(nonlinsolve([x + y, sin(y)], [x, y]),
         FiniteSet((ImageSet(Lambda(n, -2*n*pi), S.Integers), ImageSet(Lambda(n, 2*n*pi), S.Integers)),\
              (ImageSet(Lambda(n, -2*n*pi - pi), S.Integers), ImageSet(Lambda(n, 2*n*pi + pi), S.Integers))))
-    assert dumeq(nonlinsolve([x + y, sin(y) + cos(y)], [x, y]),
+    assert alpha_eq(nonlinsolve([x + y, sin(y) + cos(y)], [x, y]),
         FiniteSet((ImageSet(Lambda(n, -2*n*pi - 3*pi/4), S.Integers), ImageSet(Lambda(n, 2*n*pi + 3*pi/4), S.Integers)), \
             (ImageSet(Lambda(n, -2*n*pi - 7*pi/4), S.Integers), ImageSet(Lambda(n, 2*n*pi + 7*pi/4), S.Integers))))
 
@@ -2452,7 +2447,7 @@ def test_issue_5132_1():
                                             (s_complex_y, s_complex_z_2)
                                         )
     soln = soln_real + soln_complex
-    assert dumeq(nonlinsolve(eqs, [y, z]), soln)
+    assert alpha_eq(nonlinsolve(eqs, [y, z]), soln)
 
 
 def test_issue_5132_2():
@@ -2465,7 +2460,7 @@ def test_issue_5132_2():
     # not sure about the complex soln. But it looks correct.
     soln_complex = (img, z)
     soln = FiniteSet(soln_real, soln_complex)
-    assert dumeq(nonlinsolve(eqs, [x, z]), soln)
+    assert alpha_eq(nonlinsolve(eqs, [x, z]), soln)
 
     system = [r - x**2 - y**2, tan(t) - y/x]
     s_x = sqrt(r*cos(t)**2)
@@ -2652,7 +2647,7 @@ def test_issue_5132_substitution():
         (s_complex_y, s_complex_z_1),
         (s_complex_y, s_complex_z_2))
     soln = soln_real + soln_complex
-    assert dumeq(substitution(eqs, [y, z]), soln)
+    assert alpha_eq(substitution(eqs, [y, z]), soln)
 
 
 def test_raises_substitution():
@@ -2729,7 +2724,7 @@ def test_issue_17933_bis():
 
 def test_issue_14565():
     # removed redundancy
-    assert dumeq(nonlinsolve([k + m, k + m*exp(-2*pi*k)], [k, m]) ,
+    assert alpha_eq(nonlinsolve([k + m, k + m*exp(-2*pi*k)], [k, m]) ,
         FiniteSet((-n*I, ImageSet(Lambda(n, n*I), S.Integers))))
 
 
@@ -3012,7 +3007,7 @@ def test_issue_14300():
 
     assert solveset(f, x, S.Reals) == \
         Intersection(S.Reals, a1)
-    assert dumeq(solveset(f, x),
+    assert alpha_eq(solveset(f, x),
         ImageSet(Lambda(n, -I*(2*n*pi + arg(-y + 1))/18000000 -
             log(Abs(y - 1))/18000000), S.Integers))
 
@@ -3101,13 +3096,13 @@ def test_exponential_real():
 def test_exponential_complex():
     n = Dummy('n')
 
-    assert dumeq(solveset_complex(2**x + 4**x, x),imageset(
+    assert alpha_eq(solveset_complex(2**x + 4**x, x),imageset(
         Lambda(n, I*(2*n*pi + pi)/log(2)), S.Integers))
     assert solveset_complex(x**z*y**z - 2, z) == FiniteSet(
         log(2)/(log(x) + log(y)))
-    assert dumeq(solveset_complex(4**(x/2) - 2**(x/3), x), imageset(
+    assert alpha_eq(solveset_complex(4**(x/2) - 2**(x/3), x), imageset(
         Lambda(n, 3*n*I*pi/log(2)), S.Integers))
-    assert dumeq(solveset(2**x + 32, x), imageset(
+    assert alpha_eq(solveset(2**x + 32, x), imageset(
         Lambda(n, (I*(2*n*pi + pi) + 5*log(2))/log(2)), S.Integers))
 
     eq = (2**exp(y**2/x) + 2)/(x**2 + 15)
@@ -3116,14 +3111,14 @@ def test_exponential_complex():
 
     union1 = imageset(Lambda(n, I*(2*n*pi - pi*Rational(2, 3))/log(2)), S.Integers)
     union2 = imageset(Lambda(n, I*(2*n*pi + pi*Rational(2, 3))/log(2)), S.Integers)
-    assert dumeq(solveset(2**x + 4**x + 8**x, x), Union(union1, union2))
+    assert alpha_eq(solveset(2**x + 4**x + 8**x, x), Union(union1, union2))
 
     eq = 4**(x + 1) + 4**(x + 2) + 4**(x - 1) - 3**(x + 2) - 3**(x + 3)
     res = solveset(eq, x)
     num = 2*n*I*pi - 4*log(2) + 2*log(3)
     den = -2*log(2) + log(3)
     ans = imageset(Lambda(n, num/den), S.Integers)
-    assert dumeq(res, ans)
+    assert alpha_eq(res, ans)
 
 
 def test_expo_conditionset():
@@ -3335,24 +3330,24 @@ def test_invert_modular():
     assert invert_modular(Mod(exp(x), 7), S(5), n, x) == (Mod(exp(x), 7), 5)
     assert invert_modular(Mod(log(x), 7), S(5), n, x) == (Mod(log(x), 7), 5)
     # a is symbol
-    assert dumeq(invert_modular(Mod(x, 7), S(5), n, x),
+    assert alpha_eq(invert_modular(Mod(x, 7), S(5), n, x),
             (x, ImageSet(Lambda(n, 7*n + 5), S.Integers)))
     # a.is_Add
-    assert dumeq(invert_modular(Mod(x + 8, 7), S(5), n, x),
+    assert alpha_eq(invert_modular(Mod(x + 8, 7), S(5), n, x),
             (x, ImageSet(Lambda(n, 7*n + 4), S.Integers)))
     assert invert_modular(Mod(x**2 + x, 7), S(5), n, x) == \
             (Mod(x**2 + x, 7), 5)
     # a.is_Mul
-    assert dumeq(invert_modular(Mod(3*x, 7), S(5), n, x),
+    assert alpha_eq(invert_modular(Mod(3*x, 7), S(5), n, x),
             (x, ImageSet(Lambda(n, 7*n + 4), S.Integers)))
     assert invert_modular(Mod((x + 1)*(x + 2), 7), S(5), n, x) == \
             (Mod((x + 1)*(x + 2), 7), 5)
     # a.is_Pow
     assert invert_modular(Mod(x**4, 7), S(5), n, x) == \
             (x, S.EmptySet)
-    assert dumeq(invert_modular(Mod(3**x, 4), S(3), n, x),
+    assert alpha_eq(invert_modular(Mod(3**x, 4), S(3), n, x),
             (x, ImageSet(Lambda(n, 2*n + 1), S.Naturals0)))
-    assert dumeq(invert_modular(Mod(2**(x**2 + x + 1), 7), S(2), n, x),
+    assert alpha_eq(invert_modular(Mod(2**(x**2 + x + 1), 7), S(2), n, x),
             (x**2 + x + 1, ImageSet(Lambda(n, 3*n + 1), S.Naturals0)))
     assert invert_modular(Mod(sin(x)**4, 7), S(5), n, x) == (x, S.EmptySet)
 
@@ -3378,18 +3373,18 @@ def test_solve_modular():
     assert solveset(7 - Mod(x, 5), x, S.Integers) is S.EmptySet
     assert solveset(5 - Mod(x, 5), x, S.Integers) is S.EmptySet
     # Negative m
-    assert dumeq(solveset(2 + Mod(x, -3), x, S.Integers),
+    assert alpha_eq(solveset(2 + Mod(x, -3), x, S.Integers),
             ImageSet(Lambda(n, -3*n - 2), S.Integers))
     assert solveset(4 + Mod(x, -3), x, S.Integers) is S.EmptySet
     # linear expression in Mod
-    assert dumeq(solveset(3 - Mod(x, 5), x, S.Integers),
+    assert alpha_eq(solveset(3 - Mod(x, 5), x, S.Integers),
         ImageSet(Lambda(n, 5*n + 3), S.Integers))
-    assert dumeq(solveset(3 - Mod(5*x - 8, 7), x, S.Integers),
+    assert alpha_eq(solveset(3 - Mod(5*x - 8, 7), x, S.Integers),
                 ImageSet(Lambda(n, 7*n + 5), S.Integers))
-    assert dumeq(solveset(3 - Mod(5*x, 7), x, S.Integers),
+    assert alpha_eq(solveset(3 - Mod(5*x, 7), x, S.Integers),
                 ImageSet(Lambda(n, 7*n + 2), S.Integers))
     # higher degree expression in Mod
-    assert dumeq(solveset(Mod(x**2, 160) - 9, x, S.Integers),
+    assert alpha_eq(solveset(Mod(x**2, 160) - 9, x, S.Integers),
             Union(ImageSet(Lambda(n, 160*n + 3), S.Integers),
             ImageSet(Lambda(n, 160*n + 13), S.Integers),
             ImageSet(Lambda(n, 160*n + 67), S.Integers),
@@ -3399,32 +3394,32 @@ def test_solve_modular():
             ImageSet(Lambda(n, 160*n + 147), S.Integers),
             ImageSet(Lambda(n, 160*n + 157), S.Integers)))
     assert solveset(3 - Mod(x**4, 7), x, S.Integers) is S.EmptySet
-    assert dumeq(solveset(Mod(x**4, 17) - 13, x, S.Integers),
+    assert alpha_eq(solveset(Mod(x**4, 17) - 13, x, S.Integers),
             Union(ImageSet(Lambda(n, 17*n + 3), S.Integers),
             ImageSet(Lambda(n, 17*n + 5), S.Integers),
             ImageSet(Lambda(n, 17*n + 12), S.Integers),
             ImageSet(Lambda(n, 17*n + 14), S.Integers)))
     # a.is_Pow tests
-    assert dumeq(solveset(Mod(7**x, 41) - 15, x, S.Integers),
+    assert alpha_eq(solveset(Mod(7**x, 41) - 15, x, S.Integers),
             ImageSet(Lambda(n, 40*n + 3), S.Naturals0))
-    assert dumeq(solveset(Mod(12**x, 21) - 18, x, S.Integers),
+    assert alpha_eq(solveset(Mod(12**x, 21) - 18, x, S.Integers),
             ImageSet(Lambda(n, 6*n + 2), S.Naturals0))
-    assert dumeq(solveset(Mod(3**x, 4) - 3, x, S.Integers),
+    assert alpha_eq(solveset(Mod(3**x, 4) - 3, x, S.Integers),
             ImageSet(Lambda(n, 2*n + 1), S.Naturals0))
-    assert dumeq(solveset(Mod(2**x, 7) - 2 , x, S.Integers),
+    assert alpha_eq(solveset(Mod(2**x, 7) - 2 , x, S.Integers),
             ImageSet(Lambda(n, 3*n + 1), S.Naturals0))
-    assert dumeq(solveset(Mod(3**(3**x), 4) - 3, x, S.Integers),
+    assert alpha_eq(solveset(Mod(3**(3**x), 4) - 3, x, S.Integers),
             Intersection(ImageSet(Lambda(n, Intersection({log(2*n + 1)/log(3)},
             S.Integers)), S.Naturals0), S.Integers))
     # Implemented for m without primitive root
     assert solveset(Mod(x**3, 7) - 2, x, S.Integers) is S.EmptySet
-    assert dumeq(solveset(Mod(x**3, 8) - 1, x, S.Integers),
+    assert alpha_eq(solveset(Mod(x**3, 8) - 1, x, S.Integers),
             ImageSet(Lambda(n, 8*n + 1), S.Integers))
-    assert dumeq(solveset(Mod(x**4, 9) - 4, x, S.Integers),
+    assert alpha_eq(solveset(Mod(x**4, 9) - 4, x, S.Integers),
             Union(ImageSet(Lambda(n, 9*n + 4), S.Integers),
             ImageSet(Lambda(n, 9*n + 5), S.Integers)))
     # domain intersection
-    assert dumeq(solveset(3 - Mod(5*x - 8, 7), x, S.Naturals0),
+    assert alpha_eq(solveset(3 - Mod(5*x - 8, 7), x, S.Naturals0),
             Intersection(ImageSet(Lambda(n, 7*n + 5), S.Integers), S.Naturals0))
     # Complex args
     assert solveset(Mod(x, 3) - I, x, S.Integers) == \
@@ -3437,10 +3432,10 @@ def test_solve_modular():
             ConditionSet(x, Eq(Mod(x + I, 3) - 2, 0), S.Integers))
 
     # issue 17373 (https://github.com/sympy/sympy/issues/17373)
-    assert dumeq(solveset(Mod(x**4, 14) - 11, x, S.Integers),
+    assert alpha_eq(solveset(Mod(x**4, 14) - 11, x, S.Integers),
             Union(ImageSet(Lambda(n, 14*n + 3), S.Integers),
             ImageSet(Lambda(n, 14*n + 11), S.Integers)))
-    assert dumeq(solveset(Mod(x**31, 74) - 43, x, S.Integers),
+    assert alpha_eq(solveset(Mod(x**31, 74) - 43, x, S.Integers),
             ImageSet(Lambda(n, 74*n + 31), S.Integers))
 
     # issue 13178
@@ -3449,16 +3444,16 @@ def test_solve_modular():
     b = 1898888478
     m = 2**31 - 1
     c = 20170816
-    assert dumeq(solveset(c - Mod(a**n*b, m), n, S.Integers),
+    assert alpha_eq(solveset(c - Mod(a**n*b, m), n, S.Integers),
             ImageSet(Lambda(n, 2147483646*n + 100), S.Naturals0))
-    assert dumeq(solveset(c - Mod(a**n*b, m), n, S.Naturals0),
+    assert alpha_eq(solveset(c - Mod(a**n*b, m), n, S.Naturals0),
             Intersection(ImageSet(Lambda(n, 2147483646*n + 100), S.Naturals0),
             S.Naturals0))
-    assert dumeq(solveset(c - Mod(a**(2*n)*b, m), n, S.Integers),
+    assert alpha_eq(solveset(c - Mod(a**(2*n)*b, m), n, S.Integers),
             Intersection(ImageSet(Lambda(n, 1073741823*n + 50), S.Naturals0),
             S.Integers))
     assert solveset(c - Mod(a**(2*n + 7)*b, m), n, S.Integers) is S.EmptySet
-    assert dumeq(solveset(c - Mod(a**(n - 4)*b, m), n, S.Integers),
+    assert alpha_eq(solveset(c - Mod(a**(n - 4)*b, m), n, S.Integers),
             Intersection(ImageSet(Lambda(n, 2147483646*n + 104), S.Naturals0),
             S.Integers))
 
@@ -3654,14 +3649,14 @@ def test_issue_15024():
 
 
 def test_issue_16877():
-    assert dumeq(nonlinsolve([x - 1, sin(y)], x, y),
+    assert alpha_eq(nonlinsolve([x - 1, sin(y)], x, y),
                  FiniteSet((1, ImageSet(Lambda(n, 2*n*pi), S.Integers)),
                            (1, ImageSet(Lambda(n, 2*n*pi + pi), S.Integers))))
     # Even better if (1, ImageSet(Lambda(n, n*pi), S.Integers)) is obtained
 
 
 def test_issue_16876():
-    assert dumeq(nonlinsolve([sin(x), 2*x - 4*y], x, y),
+    assert alpha_eq(nonlinsolve([sin(x), 2*x - 4*y], x, y),
                  FiniteSet((ImageSet(Lambda(n, 2*n*pi), S.Integers),
                             ImageSet(Lambda(n, n*pi), S.Integers)),
                            (ImageSet(Lambda(n, 2*n*pi + pi), S.Integers),

@@ -5,6 +5,7 @@ from collections import Counter
 from collections.abc import Mapping, Iterable
 from itertools import zip_longest
 from functools import cmp_to_key
+from operator import eq
 from typing import TYPE_CHECKING, overload
 
 from .assumptions import _prepare_class_assumptions
@@ -49,13 +50,14 @@ def as_Basic(expr):
             expr))
 
 
-def alpha_eq(a, b):
+def alpha_eq(a, b, cmp=eq):
     """Compare objects allowing bound symbols to have different names.
 
     Lists and tuples are compared recursively, preserving their length and
     type. SymPy objects are compared after canonicalizing bound symbols with
     ``as_dummy()``. Unlike ``Basic.dummy_eq()``, this does not allow arbitrary
-    renaming of free Dummy symbols.
+    renaming of free Dummy symbols. The optional ``cmp`` callable compares
+    the canonicalized SymPy objects; it defaults to ordinary equality.
 
     Examples
     ========
@@ -68,6 +70,9 @@ def alpha_eq(a, b):
     False
     >>> alpha_eq([x], (x,))
     False
+    >>> from sympy import Dummy
+    >>> alpha_eq(Dummy('u') + 1, x + 1, cmp=lambda a, b: a.dummy_eq(b))
+    True
 
     See Also
     ========
@@ -80,9 +85,9 @@ def alpha_eq(a, b):
         return False
     if isinstance(a, (list, tuple)):
         return (len(a) == len(b) and
-                all(alpha_eq(i, j) for i, j in zip(a, b)))
+                all(alpha_eq(i, j, cmp=cmp) for i, j in zip(a, b)))
     if isinstance(a, Basic):
-        return a.as_dummy() == b.as_dummy()
+        return cmp(a.as_dummy(), b.as_dummy())
     return False
 
 # Key for sorting commutative args in canonical order

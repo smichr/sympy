@@ -103,6 +103,10 @@ def test_alpha_eq():
     assert not alpha_eq(Lambda(x, x + z), Lambda(y, y + w))
     assert not alpha_eq(x, y)  # Free symbols are not interchangeable.
     assert not alpha_eq(Dummy('u') + 1, x + 1)
+    assert alpha_eq(Dummy('u') + 1, x + 1,
+                    cmp=lambda a, b: a.dummy_eq(b))
+    assert alpha_eq([Dummy('u') + 1], [x + 1],
+                    cmp=lambda a, b: a.dummy_eq(b))
 
     assert alpha_eq([i, (Lambda(x, x), 1)],
                     [j, (Lambda(y, y), 1)])
