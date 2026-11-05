@@ -1879,6 +1879,39 @@ def test_nonlinsolve_basic():
         (-S.Half, 3*S.Half))
 
 
+
+def test_nonlinsolve_generators():
+    x, y = symbols('x y')
+    def check(got):
+        assert dumeq(got, expected)
+
+    # Issue #22874: no spurious nan branch.
+    eqs = [
+        -2*(x - exp(y)),
+        (2*x - 3*exp(2*y))*exp(y),
+    ]
+    expected = FiniteSet((
+        Rational(2, 3),
+        solveset(exp(y) - Rational(2, 3),
+                 y, S.Complexes),
+    ))
+    check(nonlinsolve(eqs, [x, y]))
+
+    # Exponential is never zero.
+    assert nonlinsolve([x - exp(y), x], [x, y]) is S.EmptySet
+
+    # Rational powers in exponential arguments.
+    expected = FiniteSet((
+        2, solveset(exp(y/2) - 2, y, S.Complexes)
+    ))
+    check(nonlinsolve([x - exp(y/2), x - 2], [x, y]))
+
+    # No need to change an already-solvable system.
+    assert nonlinsolve(
+        [x - exp(y), y - 1], [x, y]
+    ) == FiniteSet((S.Exp1, 1))
+
+
 def test_nonlinsolve_abs():
     raises(NotImplementedError, lambda: nonlinsolve([Abs(x) - y], x, y))
     raises(NotImplementedError, lambda: nonlinsolve([Abs(x) - 1, x - y], x, y))

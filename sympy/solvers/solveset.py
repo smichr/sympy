@@ -3954,6 +3954,119 @@ def _handle_poly(polys, symbols):
     return poly_sol, poly_eqs
 
 
+
+def _nonlinsolve_generators(system, symbols):
+    """Solve using exponential generators when possible.
+
+    Return None if the system cannot be reduced safely.
+    """
+    from itertools import product
+    from sympy.core.exprtools import _decompose_exprs
+
+    exprs = [
+        eq.lhs - eq.rhs if isinstance(eq, Eq) else eq
+        for eq in system
+    ]
+
+    if not all(isinstance(e, Expr) for e in exprs):
+        return None
+
+    # Include nested sums so factors of unexpanded products
+    # can contribute generators.
+    parts = exprs + [
+        a for e in exprs
+        for a in preorder_traversal(e) if a.is_Add
+    ]
+
+    if any(e.is_commutative is False for e in parts):
+        return None
+
+    _, gens = _decompose_exprs(parts)
+
+    replacements = {}
+    lifted = exprs
+
+    for s in symbols:
+        candidates = sorted(
+            (g for g in gens
+             if g.func is exp and g.free_symbols == {s}),
+            key=default_sort_key)
+
+        for g in candidates:
+            t = Dummy('g')
+            trial = [e.subs(g, t) for e in lifted]
+
+            # The original variable must disappear completely.
+            if all(s not in e.free_symbols for e in trial):
+                replacements[s] = (g, t)
+                lifted = trial
+                break
+
+    if not replacements:
+        return None
+
+    new_symbols = [
+        replacements[s][1] if s in replacements else s
+        for s in symbols
+    ]
+
+    # Initially handle only polynomial/rational systems.
+    if not all(
+        all(p.is_polynomial(*new_symbols)
+            for p in e.as_numer_denom())
+        for e in lifted
+    ):
+        return None
+
+    # Recursion is safe: the reduced system is algebraic.
+    solutions = nonlinsolve(lifted, new_symbols)
+
+    if not isinstance(solutions, FiniteSet):
+        return None
+
+    new_symbol_set = set(new_symbols)
+    result = []
+
+    for solution in solutions:
+        if len(solution) != len(symbols):
+            return None
+
+        # Defer parameterized algebraic families.
+        if any(v.free_symbols & new_symbol_set
+               for v in solution):
+            return None
+
+        values = []
+
+        for s, value in zip(symbols, solution):
+            if s not in replacements:
+                values.append([value])
+                continue
+
+            # Do not silently assume a symbolic parameter is
+            # nonzero.
+            if value.free_symbols and value.is_zero is not False:
+                return None
+
+            g, _ = replacements[s]
+            inverse = solveset(g - value, s, S.Complexes)
+
+            if inverse.has(ConditionSet):
+                return None
+
+            if inverse is S.EmptySet:
+                break
+
+            if isinstance(inverse, FiniteSet):
+                values.append(list(inverse))
+            else:
+                values.append([inverse])
+        else:
+            result.extend(product(*values))
+
+    return FiniteSet(*result)
+
+
 def nonlinsolve(system, *symbols):
     r"""
     Solve system of $N$ nonlinear equations with $M$ variables, which means both
@@ -4128,6 +4241,10 @@ def nonlinsolve(system, *symbols):
 
     if len(system) == 1 and len(symbols) == 1:
         return _solveset_work(system, symbols)
+
+    gen_sol = _nonlinsolve_generators(system, symbols)
+    if gen_sol is not None:
+        return gen_sol
 
     # main code of def nonlinsolve() starts from here
 
