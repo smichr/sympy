@@ -49,6 +49,42 @@ def as_Basic(expr):
             expr))
 
 
+def alpha_eq(a, b):
+    """Compare objects allowing bound symbols to have different names.
+
+    Lists and tuples are compared recursively, preserving their length and
+    type. SymPy objects are compared after canonicalizing bound symbols with
+    ``as_dummy()``. Unlike ``Basic.dummy_eq()``, this does not allow arbitrary
+    renaming of free Dummy symbols.
+
+    Examples
+    ========
+
+    >>> from sympy import Integral, Symbol, alpha_eq
+    >>> x, y = Symbol('x'), Symbol('y')
+    >>> alpha_eq([Integral(x, (x, 0, 1))], [Integral(y, (y, 0, 1))])
+    True
+    >>> alpha_eq(x, y)
+    False
+    >>> alpha_eq([x], (x,))
+    False
+
+    See Also
+    ========
+
+    Basic.as_dummy, Basic.dummy_eq
+    """
+    if a == b:
+        return True
+    if type(a) is not type(b):
+        return False
+    if isinstance(a, (list, tuple)):
+        return (len(a) == len(b) and
+                all(alpha_eq(i, j) for i, j in zip(a, b)))
+    if isinstance(a, Basic):
+        return a.as_dummy() == b.as_dummy()
+    return False
+
 # Key for sorting commutative args in canonical order
 # by name. This is used for canonical ordering of the
 # args for Add and Mul *if* the names of both classes

@@ -53,7 +53,7 @@ def __sympy_debug():
 SYMPY_DEBUG = __sympy_debug()  # type: bool
 
 
-from .core import (sympify, SympifyError, cacheit, Basic, Atom,
+from .core import (sympify, SympifyError, cacheit, Basic, Atom, alpha_eq,
         preorder_traversal, S, Expr, AtomicExpr, UnevaluatedExpr, Symbol,
         Wild, Dummy, symbols, var, Number, Float, Rational, Integer,
         NumberSymbol, RealNumber, igcd, ilcm, seterr, E, I, nan, oo, pi, zoo,
@@ -268,7 +268,7 @@ __all__ = [
     '__version__',
 
     # sympy.core
-    'sympify', 'SympifyError', 'cacheit', 'Basic', 'Atom',
+    'sympify', 'SympifyError', 'cacheit', 'Basic', 'Atom', 'alpha_eq',
     'preorder_traversal', 'S', 'Expr', 'AtomicExpr', 'UnevaluatedExpr',
     'Symbol', 'Wild', 'Dummy', 'symbols', 'var', 'Number', 'Float',
     'Rational', 'Integer', 'NumberSymbol', 'RealNumber', 'igcd', 'ilcm',

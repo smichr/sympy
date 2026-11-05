@@ -6,7 +6,7 @@ from .sympify import sympify, SympifyError
 from .cache import cacheit
 from .assumptions import (assumptions, check_assumptions, failing_assumptions,
                           common_assumptions, all_assumptions)
-from .basic import Basic, Atom
+from .basic import Basic, Atom, alpha_eq
 from .singleton import S
 from .expr import Expr, AtomicExpr, UnevaluatedExpr
 from .symbol import Symbol, Wild, Dummy, symbols, var
@@ -49,7 +49,7 @@ __all__ = [
     'assumptions', 'check_assumptions', 'failing_assumptions',
     'common_assumptions', 'all_assumptions',
 
-    'Basic', 'Atom',
+    'Basic', 'Atom', 'alpha_eq',
 
     'S',
 

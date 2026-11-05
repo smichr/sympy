@@ -88,3 +88,28 @@ def test_dummy_eq():
 
     assert (u**2 + y).dummy_eq(x**2 + y, x) is True
     assert (u**2 + y).dummy_eq(x**2 + y, y) is False
+
+def test_alpha_eq():
+    from sympy.core.basic import alpha_eq
+    from sympy.core.function import Lambda
+    from sympy.integrals.integrals import Integral
+
+    x, y, z, w = (Symbol(s) for s in 'xyzw')
+    i = Integral(x, (x, 0, 1))
+    j = Integral(y, (y, 0, 1))
+    assert i != j
+    assert alpha_eq(i, j)
+    assert alpha_eq(Lambda(x, x + z), Lambda(y, y + z))
+    assert not alpha_eq(Lambda(x, x + z), Lambda(y, y + w))
+    assert not alpha_eq(x, y)  # Free symbols are not interchangeable.
+    assert not alpha_eq(Dummy('u') + 1, x + 1)
+
+    assert alpha_eq([i, (Lambda(x, x), 1)],
+                    [j, (Lambda(y, y), 1)])
+    assert not alpha_eq([i], [j, j])
+    assert not alpha_eq([i, (x,)], [j, (y,)])
+    assert not alpha_eq([i], (j,))
+    assert not alpha_eq([i], [j, 1])
+    assert alpha_eq(2, 2)
+    assert not alpha_eq(2, 3)
+    assert not alpha_eq(object(), object())
