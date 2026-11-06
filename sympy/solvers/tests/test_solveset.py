@@ -2137,27 +2137,27 @@ def test_nonlinsolve_using_substitution():
 
 def test_nonlinsolve_complex():
     n = Dummy('n')
-    assert alpha_eq(nonlinsolve([exp(x) - sin(y), 1/y - 3], [x, y]), {
-        (ImageSet(Lambda(n, 2*n*I*pi + log(sin(Rational(1, 3)))), S.Integers), Rational(1, 3))})
+    assert alpha_eq(nonlinsolve([exp(x) - sin(y), 1/y - 3], [x, y]), FiniteSet(
+        (ImageSet(Lambda(n, 2*n*I*pi + log(sin(Rational(1, 3)))), S.Integers), Rational(1, 3))))
 
     system = [exp(x) - sin(y), 1/exp(y) - 3]
-    assert alpha_eq(nonlinsolve(system, [x, y]), {
+    assert alpha_eq(nonlinsolve(system, [x, y]), FiniteSet(
         (ImageSet(Lambda(n, I*(2*n*pi + pi)
                          + log(sin(log(3)))), S.Integers), -log(3)),
         (ImageSet(Lambda(n, I*(2*n*pi + arg(sin(2*n*I*pi - log(3))))
                          + log(Abs(sin(2*n*I*pi - log(3))))), S.Integers),
-        ImageSet(Lambda(n, 2*n*I*pi - log(3)), S.Integers))})
+        ImageSet(Lambda(n, 2*n*I*pi - log(3)), S.Integers))))
 
     system = [exp(x) - sin(y), y**2 - 4]
-    assert alpha_eq(nonlinsolve(system, [x, y]), {
+    assert alpha_eq(nonlinsolve(system, [x, y]), FiniteSet(
         (ImageSet(Lambda(n, I*(2*n*pi + pi) + log(sin(2))), S.Integers), -2),
-        (ImageSet(Lambda(n, 2*n*I*pi + log(sin(2))), S.Integers), 2)})
+        (ImageSet(Lambda(n, 2*n*I*pi + log(sin(2))), S.Integers), 2)))
 
     system = [exp(x) - 2, y ** 2 - 2]
-    assert alpha_eq(nonlinsolve(system, [x, y]), {
+    assert alpha_eq(nonlinsolve(system, [x, y]), FiniteSet(
         (log(2), -sqrt(2)), (log(2), sqrt(2)),
         (ImageSet(Lambda(n, 2*n*I*pi + log(2)), S.Integers), -sqrt(2)),
-        (ImageSet(Lambda(n, 2 * n * I * pi + log(2)), S.Integers), sqrt(2))})
+        (ImageSet(Lambda(n, 2 * n * I * pi + log(2)), S.Integers), sqrt(2))))
 
 
 def test_nonlinsolve_radical():
@@ -2725,7 +2725,8 @@ def test_issue_17933_bis():
 def test_issue_14565():
     # removed redundancy
     assert alpha_eq(nonlinsolve([k + m, k + m*exp(-2*pi*k)], [k, m]) ,
-        FiniteSet((-n*I, ImageSet(Lambda(n, n*I), S.Integers))))
+        FiniteSet((-n*I, ImageSet(Lambda(n, n*I), S.Integers))),
+        cmp=lambda a, b: a.dummy_eq(b))
 
 
 # end of tests for nonlinsolve
