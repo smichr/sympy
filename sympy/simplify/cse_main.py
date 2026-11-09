@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from sympy.core import Basic, Mul, Add, Pow, sympify
 from sympy.core.containers import Tuple, OrderedSet
-from sympy.core.function import Derivative
+from sympy.core.function import Derivative, Function, AppliedUndef
 from sympy.core.exprtools import factor_terms
 from sympy.core.singleton import S
 from sympy.core.sorting import ordered
@@ -104,6 +104,50 @@ def remove_cse_from_derivative(replacements, reduced_expressions):
     return processed_replacements, processed_reduced
 
 
+
+
+
+def cse_to_functions(replacements, reduced_expressions):
+    """Represent scalar CSE temporaries as functions of their free symbols.
+
+    This can be passed as the ``postprocess`` argument to ``cse``. The
+    replacement left-hand sides become applied undefined functions instead
+    of independent Symbols, and their occurrences in later expressions
+    are updated accordingly.
+
+    These are symbolic function definitions, not ordinary scalar assignments.
+    Matrix-valued replacements are left unchanged.
+
+    Examples
+    ========
+
+    >>> from sympy import cse, Derivative, Function, symbols
+    >>> from sympy.simplify.cse_main import cse_to_functions
+    >>> x = symbols('x')
+    >>> f = Function('f')
+    >>> cse(f(x)**2 + Derivative(f(x), x), postprocess=cse_to_functions)
+    ([(x0(x), f(x))], [x0(x)**2 + Derivative(x0(x), x)])
+    """
+    expressions = [rhs for _, rhs in replacements] + list(reduced_expressions)
+    used_names = {
+        node.func.__name__
+        for expr in expressions
+        for node in expr.atoms(AppliedUndef)
+    }
+    converted = {}
+    processed = []
+    for sym, rhs in replacements:
+        rhs = rhs.xreplace(converted)
+        if isinstance(sym, Symbol):
+            name = sym.name
+            while name in used_names:
+                name += '_'
+            used_names.add(name)
+            func = Function(name)(*ordered(rhs.free_symbols))
+            converted[sym] = func
+            sym = func
+        processed.append((sym, rhs))
+    return processed, [expr.xreplace(converted) for expr in reduced_expressions]
 
 
 def reps_toposort(r):
