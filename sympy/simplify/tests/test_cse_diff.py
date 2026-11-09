@@ -10,7 +10,8 @@ from sympy.core import Derivative
 from sympy.functions.elementary.exponential import exp
 from sympy.matrices.immutable import ImmutableDenseMatrix
 from sympy.physics.mechanics import dynamicsymbols
-from sympy.simplify._cse_diff import (_forward_jacobian,
+from sympy.simplify._cse_diff import (_cse_derivative_functions,
+                                      _forward_jacobian,
                                       _remove_cse_from_derivative,
                                       _forward_jacobian_cse,
                                       _forward_jacobian_norm_in_cse_out)
@@ -111,6 +112,43 @@ def test_remove_cse_from_derivative_postprocess():
         assert replacements == [(x0, g)]
         assert type(reduced) is type(expr)
         assert reduced == matrix_type([[x0 + d, x0], [x0, x0**2]])
+
+
+
+def test_cse_derivative_functions():
+    f = Function('f')
+    x0 = Symbol('x0')
+    expr = Matrix([[f(x + y)**2, Derivative(f(x + y), x)],
+                   [f(x + y), Derivative(f(x + y), y)]])
+    replacements, [reduced] = cse(
+        expr, postprocess=_cse_derivative_functions)
+    F = Function('x0')(x, y)
+    assert replacements == [(F, f(x + y))]
+    assert reduced == Matrix([[F**2, Derivative(F, x)],
+                              [F, Derivative(F, y)]])
+    assert reduced.xreplace(dict(replacements)) == expr
+
+
+def test_cse_derivative_functions_dependencies():
+    x0, x1 = symbols('x0 x1')
+    F = Function('x1')(x, y)
+    replacements, reduced = _cse_derivative_functions(
+        [(x0, x + y), (x1, x0**2)],
+        [Derivative(x1, x), x1])
+    assert replacements == [(x0, x + y), (F, x0**2)]
+    assert reduced == [Derivative(F, x), F]
+
+
+def test_cse_derivative_functions_name_collision():
+    f = Function('f')
+    x0 = Symbol('x0')
+    existing = Function('x0')(x)
+    replacements, reduced = _cse_derivative_functions(
+        [(x0, f(x))], [Derivative(x0, x) + existing])
+    new = Function('x0_')(x)
+    assert replacements == [(new, f(x))]
+    assert reduced == [Derivative(new, x) + existing]
+
 
 
 def test_io_matrix_type():
