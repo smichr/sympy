@@ -1,8 +1,10 @@
 """Module for differentiation using CSE."""
 from __future__ import annotations
 
-from sympy import cse, Matrix, Derivative, MatrixBase
+from sympy import cse, Matrix, Derivative, MatrixBase, Function
 from sympy.utilities.iterables import iterable
+from sympy.core.function import AppliedUndef
+from sympy.core.sorting import ordered
 
 
 def _remove_cse_from_derivative(replacements, reduced_expressions):
@@ -66,6 +68,54 @@ def _remove_cse_from_derivative(replacements, reduced_expressions):
     ]
 
     return processed_replacements, processed_reduced
+
+
+
+def _cse_derivative_functions(replacements, reduced_expressions):
+    """Preserve differentiation dependencies in CSE replacement functions.
+
+    Replacements used inside derivatives become applied undefined functions
+    of the original free symbols of their definitions. The returned left-hand
+    sides may consequently be functions, not symbols, and must be interpreted
+    as function definitions by consumers.
+    """
+    if not replacements:
+        return replacements, reduced_expressions
+
+    keys = {key for key, _ in replacements}
+    expressions = [rhs for _, rhs in replacements] + list(reduced_expressions)
+    used_names = {
+        node.func.__name__
+        for expr in expressions
+        for node in expr.atoms(AppliedUndef)
+    }
+
+    in_derivatives = set()
+    for expr in expressions:
+        for derivative in expr.atoms(Derivative):
+            in_derivatives.update(derivative.free_symbols & keys)
+
+    dependencies = {}
+    renamed = {}
+    processed = []
+    for key, rhs in replacements:
+        deps = rhs.free_symbols - keys
+        for previous in rhs.free_symbols & keys:
+            deps.update(dependencies[previous])
+        dependencies[key] = deps
+
+        new_key = key
+        if key in in_derivatives and deps:
+            name = key.name
+            while name in used_names:
+                name += '_'
+            used_names.add(name)
+            new_key = Function(name)(*ordered(deps))
+            renamed[key] = new_key
+        processed.append((new_key, rhs.xreplace(renamed)))
+
+    reduced = [expr.xreplace(renamed) for expr in reduced_expressions]
+    return processed, reduced
 
 
 def _forward_jacobian_cse(replacements, reduced_expr, wrt):
