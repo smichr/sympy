@@ -2,8 +2,10 @@ from __future__ import annotations
 import os
 import logging
 import re
+from contextlib import nullcontext
 from pathlib import Path
 
+from sympy.core.parameters import evaluate as evaluation_context
 from sympy.external import import_module
 from sympy.utilities.decorator import doctest_depends_on
 from sympy.parsing.latex.errors import LaTeXParsingError
@@ -44,8 +46,15 @@ class LarkLaTeXParser:
         The name of the Transformer class to use. If set to ``None``, it uses the
         default transformer class, which is :py:func:`TransformToSymPyExpr`.
 
+    evaluate : bool or None, optional
+
+        If ``False``, retain unevaluated expression structure; if ``True``,
+        evaluate normally. ``None`` (the default) respects the active SymPy
+        evaluation context.
+
     """
-    def __init__(self, print_debug_output=False, transform=True, grammar_file=None, transformer=None):
+    def __init__(self, print_debug_output=False, transform=True, grammar_file=None,
+                 transformer=None, evaluate=None):
         grammar_dir_path = os.path.join(os.path.dirname(__file__), "grammar/")
 
         if grammar_file is None:
@@ -72,13 +81,14 @@ class LarkLaTeXParser:
 
         self.print_debug_output = print_debug_output
         self.transform_expr = transform
+        self.evaluate = evaluate
 
         if transformer is None:
             self.transformer = TransformToSymPyExpr()
         else:
             self.transformer = transformer()
 
-    def doparse(self, s: str, locals=None):
+    def doparse(self, s: str, locals=None, evaluate=None):
         if self.print_debug_output:
             _lark.logger.setLevel(logging.DEBUG)
 
@@ -97,14 +107,14 @@ class LarkLaTeXParser:
             # print the `parse_tree` variable
             _lark.logger.debug(parse_tree.pretty())
 
-        sympy_expression = self._transform(parse_tree, locals)
+        sympy_expression = self._transform(parse_tree, locals, evaluate)
 
         if self.print_debug_output:
             _lark.logger.debug("SymPy expression = %s", sympy_expression)
 
         return sympy_expression
 
-    def doparse_all(self, s: str, locals=None):
+    def doparse_all(self, s: str, locals=None, evaluate=None):
         """The list of the readings of ``s``, see :func:`parse_latex_lark_all`.
 
         When ``transform`` is ``False``, the list holds the parse trees of the
@@ -118,7 +128,7 @@ class LarkLaTeXParser:
 
         expressions = []
         for tree in trees:
-            expression = self._transform(tree, locals)
+            expression = self._transform(tree, locals, evaluate)
             if expression not in expressions:
                 expressions.append(expression)
         return expressions
@@ -130,13 +140,18 @@ class LarkLaTeXParser:
 
         return self.parser.parse(s)
 
-    def _transform(self, parse_tree, locals):
+    def _transform(self, parse_tree, locals, evaluate=None):
         transformer = self.transformer
         if locals:
             transformer = transformer.with_locals(locals)
 
+        if evaluate is None:
+            evaluate = self.evaluate
+
         try:
-            return transformer.transform(parse_tree)
+            context = nullcontext() if evaluate is None else evaluation_context(evaluate)
+            with context:
+                return transformer.transform(parse_tree)
         except _lark.exceptions.VisitError as error:
             # a parsing error found while building the expression is reported as itself
             if isinstance(error.orig_exc, LaTeXParsingError):
@@ -234,7 +249,7 @@ if _lark is not None:
 
 
 @doctest_depends_on(modules=('lark',))
-def parse_latex_lark(s: str, locals=None):
+def parse_latex_lark(s: str, locals=None, evaluate=None):
     r"""
     Experimental LaTeX parser using Lark.
 
@@ -256,6 +271,11 @@ def parse_latex_lark(s: str, locals=None):
         ``\operatorname{name}``. The value is an expression for a constant,
         and for a function it is what is called with the arguments.
 
+    evaluate : bool or None, optional
+        ``False`` keeps expressions unevaluated, except that numeric fractions
+        are still represented as reduced Rationals. ``True`` evaluates them.
+        ``None`` uses the current SymPy evaluation context (the default).
+
     Examples
     ========
 
@@ -272,11 +292,11 @@ def parse_latex_lark(s: str, locals=None):
     """
     if _lark is None:
         raise ImportError("Lark is probably not installed")
-    return _lark_latex_parser.doparse(s, locals=locals)
+    return _lark_latex_parser.doparse(s, locals=locals, evaluate=evaluate)
 
 
 @doctest_depends_on(modules=('lark',))
-def parse_latex_lark_all(s: str, locals=None):
+def parse_latex_lark_all(s: str, locals=None, evaluate=None):
     r"""
     Experimental LaTeX parser using Lark, returning all the readings of an
     ambiguous input.
@@ -304,7 +324,7 @@ def parse_latex_lark_all(s: str, locals=None):
     """
     if _lark is None:
         raise ImportError("Lark is probably not installed")
-    return _lark_latex_parser.doparse_all(s, locals=locals)
+    return _lark_latex_parser.doparse_all(s, locals=locals, evaluate=evaluate)
 
 
 def _pretty_print_lark_trees(tree, indent=0, show_expr=True):

@@ -215,12 +215,12 @@ UNEVALUATED_FRACTION_EXPRESSION_PAIRS = [
     (r"\frac{a}{b}", a / b),
     (r"\dfrac{a}{b}", a / b),
     (r"\tfrac{a}{b}", a / b),
-    (r"\frac12", _Mul(1, _Pow(2, -1))),
-    (r"\frac12y", _Mul(_Mul(1, _Pow(2, -1)), y)),
-    (r"\frac1234", _Mul(_Mul(1, _Pow(2, -1)), 34)),
-    (r"\frac2{3}", _Mul(2, _Pow(3, -1))),
+    (r"\frac12", Rational(1, 2)),
+    (r"\frac12y", _Mul(Rational(1, 2), y)),
+    (r"\frac1234", _Mul(Rational(1, 2), 34)),
+    (r"\frac2{3}", Rational(2, 3)),
     (r"\frac{a + b}{c}", _Mul(a + b, _Pow(c, -1))),
-    (r"\frac{7}{3}", _Mul(7, _Pow(3, -1)))
+    (r"\frac{7}{3}", Rational(7, 3))
 ]
 
 EVALUATED_FRACTION_EXPRESSION_PAIRS = [
@@ -257,7 +257,7 @@ RELATION_EXPRESSION_PAIRS = [
 
 UNEVALUATED_POWER_EXPRESSION_PAIRS = [
     (r"x^2", x ** 2),
-    (r"x^\frac{1}{2}", _Pow(x, _Mul(1, _Pow(2, -1)))),
+    (r"x^\frac{1}{2}", _Pow(x, Rational(1, 2))),
     (r"x^{3 + 1}", x ** _Add(3, 1)),
     (r"\pi^{|xy|}", Symbol('pi') ** _Abs(x * y)),
     (r"5^0 - 4^0", _Add(_Pow(5, 0), _Mul(-1, _Pow(4, 0)))),
@@ -351,7 +351,7 @@ TRIGONOMETRIC_EXPRESSION_PAIRS = [
     (r"\sin \cos \theta", sin(cos(theta))),
     (r"\sin(\cos \theta)", sin(cos(theta))),
     (r"(\csc x)(\sec y)", csc(x) * sec(y)),
-    (r"\frac{\sin{x}}2", _Mul(sin(x), _Pow(2, -1)))
+    (r"\frac{\sin{x}}2", _Mul(sin(x), Rational(1, 2)))
 ]
 
 UNEVALUATED_LIMIT_EXPRESSION_PAIRS = [
@@ -379,7 +379,7 @@ UNEVALUATED_SQRT_EXPRESSION_PAIRS = [
     # acts differently if its second argument is a number
     (r"\sqrt[y]{\sin x}", root(sin(x), y)),
     (r"\sqrt[\theta]{\sin x}", root(sin(x), theta)),
-    (r"\sqrt{\frac{12}{6}}", _Sqrt(_Mul(12, _Pow(6, -1))))
+    (r"\sqrt{\frac{12}{6}}", _Sqrt(2))
 ]
 
 EVALUATED_SQRT_EXPRESSION_PAIRS = [
@@ -629,7 +629,7 @@ UNEVALUATED_MATRIX_EXPRESSION_PAIRS = [
                      Matrix([[x, y, z], [a, b, c], [a, b, c]])),
              Matrix([[a, b, c], [x, y, z], [x, y, z]]))),
     (r"\begin{pmatrix}a & b \\x & y\end{pmatrix}/2",
-     _MatMul(Matrix([[a, b], [x, y]]), _Pow(2, -1))),
+     _MatMul(Matrix([[a, b], [x, y]]), Rational(1, 2))),
     (r"\begin{pmatrix}a & b \\x & y\end{pmatrix}^2",
      _Pow(Matrix([[a, b], [x, y]]), 2)),
     (r"\begin{pmatrix}a & b \\x & y\end{pmatrix}^{-1}",
@@ -1184,3 +1184,26 @@ def test_latex_cases_environment_error():
     latex_string = r"\begin{cases} x=1 \\ y=2 \end{cases}"
     with raises(LaTeXParsingError, match="The 'cases' environment is not currently supported"):
         parse_latex(latex_string)
+
+
+def test_evaluate_option():
+    from sympy.parsing.latex.lark import LarkLaTeXParser
+    from sympy import Add, Mul
+
+    assert parse_latex_lark(r"1+1", evaluate=False).args == (S.One, S.One)
+    assert parse_latex_lark(r"2x+3x", evaluate=False) == Add(
+        Mul(2, x, evaluate=False), Mul(3, x, evaluate=False), evaluate=False)
+    assert parse_latex_lark(r"x-x", evaluate=False).args == (
+        x, Mul(-1, x, evaluate=False))
+    assert parse_latex_lark(r"\sin(0)", evaluate=False).args == (S.Zero,)
+    assert parse_latex_lark(r"x=x", evaluate=False) == Eq(x, x, evaluate=False)
+    assert parse_latex_lark(r"\frac{2}{4}", evaluate=False) == Rational(1, 2)
+    assert parse_latex_lark(r"\frac{1}{2}x", evaluate=False) == Mul(
+        Rational(1, 2), x, evaluate=False)
+    assert parse_latex_lark_all(r"x+x", evaluate=False) == [Add(x, x, evaluate=False)]
+    assert LarkLaTeXParser(evaluate=False).doparse("1+1").args == (S.One, S.One)
+    assert parse_latex_lark(r"1+1", evaluate=True) == 2
+    with evaluate(False):
+        assert parse_latex_lark(r"1+1", evaluate=True) == 2
+    with evaluate(True):
+        assert parse_latex_lark(r"1+1", evaluate=False).args == (S.One, S.One)

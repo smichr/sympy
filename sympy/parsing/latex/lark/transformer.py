@@ -857,7 +857,13 @@ class TransformToSymPyExpr(Transformer):
                                     "by the inverse is intended. Try explicitly "
                                     "multiplying by the inverse instead.")
 
-        if self._obj_is_sympy_Matrix(numerator):
-            return sympy.MatMul(numerator, sympy.Pow(denominator, -1))
+        # Canonicalize exact numerical fractions even in unevaluated mode.
+        if isinstance(numerator, sympy.Integer) and isinstance(denominator, sympy.Integer):
+            return sympy.Rational(numerator, denominator)
 
-        return sympy.Mul(numerator, sympy.Pow(denominator, -1))
+        reciprocal = (sympy.Rational(1, denominator) if isinstance(denominator, sympy.Integer)
+                      else sympy.Pow(denominator, -1))
+        if self._obj_is_sympy_Matrix(numerator):
+            return sympy.MatMul(numerator, reciprocal)
+
+        return sympy.Mul(numerator, reciprocal)
