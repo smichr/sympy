@@ -278,7 +278,7 @@ class TransformToSymPyExpr(Transformer):
         return self._number_sets[name]
 
     def membership(self, tokens):
-        contains = sympy.Contains(tokens[0], tokens[2])
+        contains = self._construct(sympy.Contains, tokens[0], tokens[2])
         return self._construct(sympy.Not, contains) if tokens[1].type == "CMD_NOTIN" else contains
 
     def add(self, tokens):

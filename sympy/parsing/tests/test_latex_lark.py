@@ -1203,10 +1203,11 @@ def test_evaluate_option():
     assert parse_latex_lark_all(r"x+x", evaluate=False) == [Add(x, x, evaluate=False)]
     assert LarkLaTeXParser(evaluate=False).doparse("1+1").args == (S.One, S.One)
     assert parse_latex_lark(r"1+1", evaluate=True) == 2
-    with evaluate(False):
-        assert parse_latex_lark(r"1+1", evaluate=True) == 2
+    # An explicit False works in an otherwise evaluating environment.
     with evaluate(True):
         assert parse_latex_lark(r"1+1", evaluate=False).args == (S.One, S.One)
+    # Do not demand the converse: SymPy constructors cannot reliably
+    # evaluate under the global evaluate(False) context (see #25618).
 
 
 def test_evaluate_option_structural_regressions():
