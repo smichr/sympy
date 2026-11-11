@@ -261,9 +261,9 @@ UNEVALUATED_POWER_EXPRESSION_PAIRS = [
     (r"x^{3 + 1}", x ** _Add(3, 1)),
     (r"\pi^{|xy|}", Symbol('pi') ** _Abs(x * y)),
     (r"5^0 - 4^0", _Add(_Pow(5, 0), _Mul(-1, _Pow(4, 0)))),
-    (r"x^\circ", _Mul(x, _Mul(pi, _Pow(180, -1)))),
-    (r"x^{\circ}", _Mul(x, _Mul(pi, _Pow(180, -1)))),
-    (r"180^\circ", _Mul(180, _Mul(pi, _Pow(180, -1))))
+    (r"x^\circ", _Mul(x, _Mul(pi, Rational(1, 180)))),
+    (r"x^{\circ}", _Mul(x, _Mul(pi, Rational(1, 180)))),
+    (r"180^\circ", _Mul(180, _Mul(pi, Rational(1, 180))))
 ]
 
 EVALUATED_POWER_EXPRESSION_PAIRS = [
