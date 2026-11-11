@@ -2,10 +2,8 @@ from __future__ import annotations
 import os
 import logging
 import re
-from contextlib import nullcontext
 from pathlib import Path
 
-from sympy.core.parameters import evaluate as evaluation_context
 from sympy.external import import_module
 from sympy.utilities.decorator import doctest_depends_on
 from sympy.parsing.latex.errors import LaTeXParsingError
@@ -147,11 +145,13 @@ class LarkLaTeXParser:
 
         if evaluate is None:
             evaluate = self.evaluate
+        if evaluate is not None:
+            if not isinstance(transformer, TransformToSymPyExpr):
+                raise TypeError("The custom Lark transformer does not support the evaluate option.")
+            transformer = transformer.with_evaluate(evaluate)
 
         try:
-            context = nullcontext() if evaluate is None else evaluation_context(evaluate)
-            with context:
-                return transformer.transform(parse_tree)
+            return transformer.transform(parse_tree)
         except _lark.exceptions.VisitError as error:
             # a parsing error found while building the expression is reported as itself
             if isinstance(error.orig_exc, LaTeXParsingError):

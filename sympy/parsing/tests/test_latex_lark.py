@@ -1207,3 +1207,30 @@ def test_evaluate_option():
         assert parse_latex_lark(r"1+1", evaluate=True) == 2
     with evaluate(True):
         assert parse_latex_lark(r"1+1", evaluate=False).args == (S.One, S.One)
+
+
+def test_evaluate_option_structural_regressions():
+    from sympy import Add, Mul, Pow
+    from sympy.parsing.latex.lark import LarkLaTeXParser
+
+    # Numeric expressions are canonical; symbolic operations keep their form.
+    assert parse_latex_lark(r"-(-1)", evaluate=False) == 1
+    assert parse_latex_lark(r"\frac{2}{4}", evaluate=False) == Rational(1, 2)
+    assert parse_latex_lark(r"\frac12", evaluate=False) == Rational(1, 2)
+    assert parse_latex_lark(r"-(x+y)", evaluate=False) == Mul(
+        -1, Add(x, y, evaluate=False), evaluate=False)
+    assert parse_latex_lark(r"2^3", evaluate=False) == Pow(2, 3, evaluate=False)
+    assert parse_latex_lark(r"\sin(0)", evaluate=False) == sin(0, evaluate=False)
+    assert parse_latex_lark(r"\ln(x)", evaluate=False) == log(x, evaluate=False)
+    assert parse_latex_lark(r"\sqrt{4}", evaluate=False) == Pow(
+        4, Rational(1, 2), evaluate=False)
+
+    parser = LarkLaTeXParser()
+    assert parser.doparse("1+1", evaluate=False).args == (S.One, S.One)
+    assert parser.doparse("1+1", evaluate=True) == 2
+    assert parser.doparse("1+1", evaluate=False).args == (S.One, S.One)
+
+    # An explicit evaluation mode must not leak to another transformer.
+    assert parse_latex_lark("1+1", evaluate=True) == 2
+    assert parse_latex_lark("1+1", evaluate=False).args == (S.One, S.One)
+    assert parse_latex_lark("1+1") == 2
