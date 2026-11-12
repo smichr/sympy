@@ -100,3 +100,58 @@ def evaluate_structural(s):
     transformed = StructuralTransformer().visit(node)
     transformed = ast.Expression(transformed.body[0].value)
     return ast.fix_missing_locations(transformed)
+
+
+def parse_structural_expr(s, local_dict=None, transformations=None,
+                          global_dict=None):
+    """Experimentally parse multiplication and division as binary operations.
+
+    Uses parse_expr's token transformations and its non-evaluating AST
+    transformer for other operators. Parentheses are used to determine
+    the AST but redundant parentheses are not retained as separate nodes.
+
+    Like parse_expr, this function uses eval and must not be used with
+    untrusted input.
+    """
+    import builtins
+    import types
+
+    from sympy.parsing.sympy_parser import (
+        T, eval_expr, null, standard_transformations, stringify_expr)
+
+    if local_dict is None:
+        local_dict = {}
+    elif not isinstance(local_dict, dict):
+        raise TypeError('expecting local_dict to be a dict')
+
+    if global_dict is None:
+        global_dict = {}
+        exec('from sympy import *', global_dict)
+        for name, obj in vars(builtins).items():
+            if isinstance(obj, types.BuiltinFunctionType):
+                global_dict[name] = obj
+        from sympy import Max, Min
+        global_dict['max'] = Max
+        global_dict['min'] = Min
+    elif not isinstance(global_dict, dict):
+        raise TypeError('expecting global_dict to be a dict')
+
+    if transformations is None:
+        transformations = standard_transformations
+    elif transformations == 'all':
+        transformations = T[:]
+    elif transformations == 'implicit':
+        transformations = T[:6]
+    elif isinstance(transformations, str):
+        raise ValueError('unknown transformation group name')
+
+    global_dict = dict(global_dict)
+    global_dict['_sympy_parsing_mul2'] = Mul2
+    global_dict['_sympy_parsing_div'] = Div
+    code = stringify_expr(s, local_dict, global_dict, transformations)
+    compiled = compile(evaluate_structural(code), '<string>', 'eval')
+    try:
+        return eval_expr(compiled, local_dict, global_dict)
+    finally:
+        for name in local_dict.pop(null, ()):
+            local_dict[name] = null
