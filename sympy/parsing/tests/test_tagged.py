@@ -136,4 +136,4 @@ def test_touch_does_not_call_doit():
     x = Symbol('x')
     e = parse_tagged_expr('Integral(1/x, (x, 1, 2))')
     assert touch(e) == Integral(1/x, (x, 1, 2))
-    assert touch(e).is_Integral
+    assert touch(e).func == Integral
