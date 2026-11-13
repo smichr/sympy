@@ -50,7 +50,26 @@ def annotation(expr):
 
 
 def tagged(operator, payload):
-    """Build the agreed canonical two-argument annotation."""
+    """Annotate only where ordinary unevaluated printing loses structure.
+
+    Simple additions and multiplications already preserve their grouping.
+    Keep the marker when their textual forms can disguise a written operator,
+    including a positive Add with a negative term, a negative numeric factor,
+    and multiplication by an explicitly written power.
+    """
+    if operator == 'addition':
+        left, right = payload.args
+        if ((right.is_Symbol and right.name) or
+                (right.is_Integer and right.is_nonnegative)):
+            return payload
+    elif operator == 'multiplication':
+        left, right = payload.args
+        signed_numeric = any(
+            arg.is_Number and arg.is_negative for arg in payload.args)
+        right_annotation = annotation(right)
+        if not signed_numeric and not (
+                right_annotation and right_annotation[0] == 'power'):
+            return payload
     return Mul(_TAGS[operator], payload, evaluate=False)
 
 
