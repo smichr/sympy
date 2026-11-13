@@ -1,58 +1,37 @@
 """Experimental structural arithmetic used by the optional parser mode.
 
-Mul2 and Div are binary expressions which never evaluate on construction.
-They preserve the distinction between writing a*b**-1 and a/b, as well as
-the order of successive multiplications. Call touch() to lower them into
-ordinary SymPy arithmetic.
+Ordinary unevaluated Mul nodes preserve the order and nesting of written
+multiplication. Div retains explicit division distinct from a reciprocal
+power. Call touch() to evaluate arithmetic operations inside-out.
 """
 
 from __future__ import annotations
 import ast
 
+from sympy.core.add import Add
 from sympy.core.function import Function
+from sympy.core.mul import Mul
+from sympy.core.power import Pow
 from sympy.core.sympify import sympify
 from sympy.parsing.sympy_parser import EvaluateFalseTransformer
+from sympy.printing.precedence import PRECEDENCE
 
 
 def _operand_str(printer, arg):
-    result = printer.doprint(arg)
-    if (arg.is_Add or isinstance(arg, (Mul2, Div)) or
+    result = printer._print(arg)
+    if (arg.is_Add or arg.is_Mul or isinstance(arg, Div) or
+            (arg.is_Rational and arg.q != 1) or
+            (arg.is_Pow and arg.exp.is_negative) or
             (arg.is_Number and arg.is_negative)):
         return '(%s)' % result
     return result
 
 
-def _operand_latex(printer, arg):
-    result = printer.doprint(arg)
-    if arg.is_Add or isinstance(arg, (Mul2, Div)):
-        return r'\left(%s\right)' % result
-    return result
-
-
-class Mul2(Function):
-    """An unevaluated binary multiplication operation."""
-    nargs = 2
-
-    def doit(self, deep=True, **hints):
-        a, b = self.args
-        if deep:
-            a, b = (arg.doit(deep=True, **hints) for arg in (a, b))
-        return a*b
-
-    def _sympystr(self, printer):
-        a, b = self.args
-        return '%s*%s' % (_operand_str(printer, a),
-                          _operand_str(printer, b))
-
-    def _latex(self, printer):
-        a, b = self.args
-        return r'%s \cdot %s' % (_operand_latex(printer, a),
-                                _operand_latex(printer, b))
-
-
 class Div(Function):
-    """An unevaluated binary division operation."""
+    """Explicit unevaluated binary division operation."""
     nargs = 2
+    # Parenthesize Div when printed as a multiplicative/power operand.
+    precedence = PRECEDENCE['Mul'] - 1
 
     def doit(self, deep=True, **hints):
         a, b = self.args
@@ -65,34 +44,38 @@ class Div(Function):
         return '%s/%s' % (_operand_str(printer, a),
                           _operand_str(printer, b))
 
-    def _latex(self, printer):
+    def _latex(self, printer, exp=None):
         a, b = self.args
-        return r'\frac{%s}{%s}' % (printer.doprint(a),
-                                  printer.doprint(b))
+        result = r'\frac{%s}{%s}' % (printer._print(a), printer._print(b))
+        if exp is not None:
+            return r'\left(%s\right)^{%s}' % (result, exp)
+        return result
 
 
 def touch(expr):
-    """Evaluate structural multiplication and division, inside-out.
+    """Evaluate arithmetic operations in their original nesting order.
 
-    Unlike a general doit(), this only asks Mul2 and Div to perform their
-    operations; it does not explicitly evaluate unrelated functions.
+    Unlike a general doit(), this does not explicitly evaluate arbitrary
+    functions, integrals, sums, or other non-arithmetic operations.
     """
     return sympify(expr).replace(
-        lambda e: isinstance(e, (Mul2, Div)),
-        lambda e: e.doit(deep=False))
+        lambda e: isinstance(e, (Add, Mul, Pow, Div)),
+        lambda e: e.doit(deep=False) if isinstance(e, Div) else e.func(*e.args))
 
 
 class StructuralTransformer(EvaluateFalseTransformer):
-    """Retain binary multiplication and division in parse_expr's AST."""
+    """Retain binary multiplication and explicit division in parse_expr's AST."""
 
     def visit_BinOp(self, node):
         if isinstance(node.op, (ast.Mult, ast.Div)):
-            name = ('_sympy_parsing_mul2' if isinstance(node.op, ast.Mult)
+            name = ('Mul' if isinstance(node.op, ast.Mult)
                     else '_sympy_parsing_div')
+            keywords = ([ast.keyword(arg='evaluate', value=ast.Constant(False))]
+                        if isinstance(node.op, ast.Mult) else [])
             return ast.Call(
                 func=ast.Name(id=name, ctx=ast.Load()),
                 args=[self.visit(node.left), self.visit(node.right)],
-                keywords=[])
+                keywords=keywords)
         return super().visit_BinOp(node)
 
 
@@ -106,7 +89,7 @@ def evaluate_structural(s):
 
 def parse_structural_expr(s, local_dict=None, transformations=None,
                           global_dict=None):
-    """Experimentally parse multiplication and division as binary operations.
+    """Experimentally parse multiplication and division without flattening.
 
     Uses parse_expr's token transformations and its non-evaluating AST
     transformer for other operators. Parentheses are used to determine
@@ -148,7 +131,6 @@ def parse_structural_expr(s, local_dict=None, transformations=None,
         raise ValueError('unknown transformation group name')
 
     global_dict = dict(global_dict)
-    global_dict['_sympy_parsing_mul2'] = Mul2
     global_dict['_sympy_parsing_div'] = Div
     code = stringify_expr(s, local_dict, global_dict, transformations)
     compiled = compile(evaluate_structural(code), '<string>', 'eval')
