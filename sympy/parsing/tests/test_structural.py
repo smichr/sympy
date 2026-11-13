@@ -131,3 +131,28 @@ def test_additive_roundtrip():
         expr = parse_structural_expr(source)
         printed = sstr(expr, order='none')
         assert parse_structural_expr(printed) == expr, (source, printed)
+
+
+def test_structural_binary_operator_corpus():
+    """Binary arithmetic grouping round-trips and evaluates correctly.
+
+    This systematically checks 2 * 3**3 * 5**2 = 1350 combinations
+    of addition, subtraction, multiplication, division and powers.
+    """
+    from sympy.parsing.sympy_parser import parse_expr
+
+    operators = ('+', '-', '*', '/', '**')
+    for a in 'abc':
+        for b in 'abc':
+            for c in 'abc':
+                for left_op in operators:
+                    for right_op in operators:
+                        for source in (
+                            f'({a}{left_op}{b}){right_op}{c}',
+                            f'{a}{left_op}({b}{right_op}{c})',
+                        ):
+                            expr = parse_structural_expr(source)
+                            printed = sstr(expr, order='none')
+                            assert parse_structural_expr(printed) == expr, (
+                                source, printed)
+                            assert touch(expr) == parse_expr(source), source
