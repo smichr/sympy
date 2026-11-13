@@ -273,6 +273,24 @@ class StrPrinter(Printer):
         return expr.name
 
     def _print_Mul(self, expr):
+        # Retain grouping around a negated, unevaluated product.
+        args = expr.args
+        if (len(args) == 2 and args[0] is S.NegativeOne and
+                args[1].is_Mul):
+            return '-(%s)' % self._print(args[1])
+
+        # A structural parser can use UnevaluatedExpr on a written
+        # negative exponent, leaving commutativity unknown. If a reciprocal
+        # power encloses one, it still represents an explicit division.
+        if (len(args) == 2 and isinstance(args[1], Pow) and
+                args[1].exp is S.NegativeOne and
+                args[1].base.has(UnevaluatedExpr)):
+            numerator = args[0]
+            n = self._print(numerator)
+            if numerator.is_Add or numerator.is_Mul:
+                n = '(%s)' % n
+            return '%s/(%s)' % (n, self._print(args[1].base))
+
         prec = precedence(expr)
 
         # Check for unevaluated Mul. In this case we need to make sure the
