@@ -89,3 +89,45 @@ def test_structural_implicit_multiplication():
     x = symbols('x')
     assert parse_structural_expr(
         '2x', transformations='all') == Mul(2, x, evaluate=False)
+
+
+def test_additive_grouping():
+    a, b, c = symbols('a b c')
+    left = parse_structural_expr('(a+b)+c')
+    right = parse_structural_expr('a+(b+c)')
+    assert left == Add(Add(a, b, evaluate=False), c, evaluate=False)
+    assert right == Add(a, Add(b, c, evaluate=False), evaluate=False)
+    assert left != right
+    assert left.args != right.args
+    assert sstr(left, order='none') == '(a + b) + c'
+    assert sstr(right, order='none') == 'a + (b + c)'
+    assert touch(left) == touch(right) == a + b + c
+
+
+def test_subtractive_grouping():
+    a, b, c = symbols('a b c')
+    left = parse_structural_expr('(a-b)-c')
+    right = parse_structural_expr('a-(b-c)')
+    assert left != right
+    assert left.args[0] == Add(
+        a, Mul(-1, b, evaluate=False), evaluate=False)
+    assert right.args[1] == Mul(
+        -1, Add(b, Mul(-1, c, evaluate=False), evaluate=False),
+        evaluate=False)
+    assert sstr(left, order='none') == '(a - b) - c'
+    assert sstr(right, order='none') == 'a - (b - c)'
+    assert touch(left) == a - b - c
+    assert touch(right) == a - b + c
+
+
+def test_additive_roundtrip():
+    examples = [
+        '(a+b)+c', 'a+(b+c)', 'a+b+c',
+        '(a-b)-c', 'a-(b-c)', 'a-(b+c)', 'a+(b-c)',
+        '(a+b)*c', 'a*(b+c)', '(a+b)+(a+b)',
+        'a-(b/(c+d))',
+    ]
+    for source in examples:
+        expr = parse_structural_expr(source)
+        printed = sstr(expr, order='none')
+        assert parse_structural_expr(printed) == expr, (source, printed)
