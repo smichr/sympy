@@ -108,12 +108,6 @@ class StrPrinter(Printer):
                     self._tagged_operand(exponent, kind, 'right'))
         raise ValueError('Unrecognized structural annotation: %s' % kind)
 
-    def doprint(self, expr):
-        from sympy.parsing.tagged import annotation
-        if annotation(expr) is not None:
-            return self._str(self._tagged_print(expr))
-        return super().doprint(expr)
-
     def parenthesize(self, item, level, strict=False):
         prec = self._mod_precedence if isinstance(item, Mod) else precedence(item)
         if prec < level or (not strict and prec <= level):
@@ -352,7 +346,7 @@ class StrPrinter(Printer):
                 and expr.args[0].name == ''):
             from sympy.parsing.tagged import annotation
             if annotation(expr) is not None:
-                return '(%s)' % self._tagged_print(expr)
+                return self._tagged_print(expr)
         # Retain grouping around a negated, unevaluated product.
         args = expr.args
         if (len(args) == 2 and args[0] is S.NegativeOne and
