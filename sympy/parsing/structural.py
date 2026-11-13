@@ -31,12 +31,20 @@ def touch(expr):
 
 
 class StructuralTransformer(EvaluateFalseTransformer):
-    """Retain binary arithmetic and distinguish written negative powers."""
+    """Preserve binary arithmetic grouping and distinguish written powers."""
 
     def visit_BinOp(self, node):
-        if isinstance(node.op, (ast.Mult, ast.Div, ast.Pow)):
+        if isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)):
             left, right = self.visit(node.left), self.visit(node.right)
-            if isinstance(node.op, ast.Div):
+            if isinstance(node.op, ast.Sub):
+                # Preserve a - (b + c) as a binary Add with a negated group.
+                right = ast.Call(
+                    func=ast.Name(id='Mul', ctx=ast.Load()),
+                    args=[ast.UnaryOp(
+                        op=ast.USub(), operand=ast.Constant(1)), right],
+                    keywords=[ast.keyword(
+                        arg='evaluate', value=ast.Constant(False))])
+            elif isinstance(node.op, ast.Div):
                 # Represent a written division using a reciprocal Pow.
                 right = ast.Call(
                     func=ast.Name(id='Pow', ctx=ast.Load()),
@@ -51,7 +59,8 @@ class StructuralTransformer(EvaluateFalseTransformer):
                 right = ast.Call(
                     func=ast.Name(id='_sympy_parsing_hold_exp', ctx=ast.Load()),
                     args=[right], keywords=[])
-            name = 'Pow' if isinstance(node.op, ast.Pow) else 'Mul'
+            name = ('Pow' if isinstance(node.op, ast.Pow) else
+                    'Add' if isinstance(node.op, (ast.Add, ast.Sub)) else 'Mul')
             return ast.Call(
                 func=ast.Name(id=name, ctx=ast.Load()),
                 args=[left, right],
@@ -61,7 +70,7 @@ class StructuralTransformer(EvaluateFalseTransformer):
 
 
 def evaluate_structural(s):
-    """Return an AST retaining multiply/divide operations without flattening."""
+    """Return an AST preserving arithmetic nesting without flattening."""
     node = ast.parse(s)
     transformed = StructuralTransformer().visit(node)
     transformed = ast.Expression(transformed.body[0].value)
@@ -70,7 +79,7 @@ def evaluate_structural(s):
 
 def parse_structural_expr(s, local_dict=None, transformations=None,
                           global_dict=None):
-    """Experimentally parse multiplication and division without flattening.
+    """Experimentally parse arithmetic expressions without flattening.
 
     Uses parse_expr's token transformations and its non-evaluating AST
     transformer for other operators. Parentheses are used to determine
