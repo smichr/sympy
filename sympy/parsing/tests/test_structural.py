@@ -197,3 +197,16 @@ def test_held_inverse_assumptions():
     assert reciprocal.as_numer_denom() == (reciprocal, S.One)
     assert reciprocal.free_symbols == {y}
     assert touch(Mul(x, reciprocal, evaluate=False)) == x/y
+
+
+def test_parse_expr_unevaluated_uses_structural_transformer():
+    """Exercise the public entry point on the experimental branch."""
+    from sympy.parsing.sympy_parser import parse_expr
+
+    for source in ('a/b', 'a*b**-1', '2/8', '2**-2',
+                   '(a+b)*c', 'a/(b**-1)', '-(a*b)'):
+        assert parse_expr(source, evaluate=False) == parse_structural_expr(source)
+    assert parse_expr('a/b', evaluate=False) != parse_expr(
+        'a*b**-1', evaluate=False)
+    assert parse_expr('2/8', evaluate=False) != parse_expr(
+        '2**-2', evaluate=False)
