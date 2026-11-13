@@ -28,11 +28,17 @@ def _check(source, local_dict=None):
             assert e.args[0].assumptions0 == {
                 'commutative': True, 'parse_' + kind: True,
             }
-    got = touch(expr)
-    expected = parse_expr(source, local_dict=local_dict)
-    # This initial corpus is chosen so canonical SymPy evaluation agrees.
-    assert got == expected, (source, printed, got, expected)
+    raw = touch(expr)
+    assert all(annotation(e) is None for e in _walk(raw))
+    assert touch(raw) == raw  # idempotence
+
+    got = touch(expr, evaluate=True)
     assert all(annotation(e) is None for e in _walk(got))
+    expected = parse_expr(source, local_dict=local_dict)
+    assert got == expected, (source, printed, got, expected)
+    # Evaluating after detagging agrees with evaluating immediately.
+    assert touch(raw, evaluate=True) == got
+
     return expr, printed
 
 
@@ -135,8 +141,13 @@ def test_noncommutative_and_function_arguments():
 def test_touch_does_not_call_doit():
     x = Symbol('x')
     e = parse_tagged_expr('Integral(1/x, (x, 1, 2))')
-    assert touch(e) == Integral(1/x, (x, 1, 2))
-    assert touch(e).func == Integral
+
+    raw = touch(e)
+    assert raw.func == Integral
+    assert raw.function == Mul(1, 1/x, evaluate=False)
+    assert raw.function.args == (S.One, 1/x)
+
+    assert touch(e, evaluate=True) == Integral(1/x, (x, 1, 2))
 
 
 def test_selective_annotations():

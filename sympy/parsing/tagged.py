@@ -73,17 +73,21 @@ def tagged(operator, payload):
     return Mul(_TAGS[operator], payload, evaluate=False)
 
 
-def touch(expr):
-    """Remove annotations *before* evaluating children, without calling doit()."""
+def touch(expr, evaluate=False):
     expr = sympify(expr)
+
     ann = annotation(expr)
     if ann is not None:
-        return touch(ann[1])
+        return touch(ann[1], evaluate=evaluate)
+
     if not expr.args:
         return expr
-    args = tuple(touch(a) if hasattr(a, 'args') else a for a in expr.args)
+
+    args = tuple(touch(a, evaluate=evaluate) for a in expr.args)
+
     if isinstance(expr, (Add, Mul, Pow)):
-        return expr.func(*args)
+        return expr.func(*args, evaluate=evaluate)
+
     if args == expr.args:
         return expr
     return expr.func(*args)
