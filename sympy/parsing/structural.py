@@ -5,6 +5,8 @@ They preserve the distinction between writing a*b**-1 and a/b, as well as
 the order of successive multiplications. Call touch() to lower them into
 ordinary SymPy arithmetic.
 """
+
+from __future__ import annotations
 import ast
 
 from sympy.core.function import Function
