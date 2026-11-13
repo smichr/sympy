@@ -1079,7 +1079,18 @@ def parse_expr(s: str, local_dict: DICT | None = None,
     code = stringify_expr(s, local_dict, global_dict, _transformations)
 
     if not evaluate:
-        code = compile(evaluateFalse(code), '<string>', 'eval') # type: ignore
+        # Experimental structural parser: preserve binary arithmetic grouping
+        # and distinguish division from an explicitly written negative power.
+        # Import here to avoid a cycle: StructuralTransformer subclasses
+        # EvaluateFalseTransformer from this module.
+        from sympy.core.expr import UnevaluatedExpr
+        from sympy.parsing.structural import evaluate_structural
+
+        # The AST emits this private helper for explicit negative powers.
+        # Do not mutate a caller-supplied global dictionary.
+        global_dict = dict(global_dict)
+        global_dict['_sympy_parsing_hold_exp'] = UnevaluatedExpr
+        code = compile(evaluate_structural(code), '<string>', 'eval') # type: ignore
 
     try:
         rv = eval_expr(code, local_dict, global_dict)
