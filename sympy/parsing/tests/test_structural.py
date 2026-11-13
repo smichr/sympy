@@ -1,5 +1,7 @@
 """Tests for experimental structural arithmetic parsing."""
 
+from __future__ import annotations
+
 from sympy import Pow, S, latex, symbols
 from sympy.parsing.structural import Div, Mul2, parse_structural_expr, touch
 
