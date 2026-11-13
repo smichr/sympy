@@ -10,8 +10,8 @@ from sympy import sqrt, I, ring, S
 import pytest
 from sympy.utilities.pytest import slow
 
-# Historical algorithm regression cases. Enable individually as the port progresses.
-pytestmark = pytest.mark.skip(reason='Experimental PR #2468 port not operational yet')
+# Keep helper-level regressions active; defer end-to-end factorization tests.
+_deferred = pytest.mark.skip(reason='Experimental PR #2468 factorization port not operational yet')
 
 def test_distinct_prime_divisors():
     S = [20, 6, 7]
@@ -21,6 +21,7 @@ def test_distinct_prime_divisors():
     assert _distinct_prime_divisors(S, ZZ) == [5, 2, 11]
 
 
+@_deferred
 def test_efactor():
     A = AlgebraicField(QQ, sqrt(2))
     R, x, y = ring('x, y', A)
@@ -98,6 +99,7 @@ def test_efactor():
 
 
 @slow
+@_deferred
 def test_efactor_wang():
     a = S(1)/4*(-1 + sqrt(5)) - I*sqrt(S(1)/8*(sqrt(5) + 5))
     A = AlgebraicField(QQ, a)
