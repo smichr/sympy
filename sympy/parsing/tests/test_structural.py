@@ -156,3 +156,44 @@ def test_structural_binary_operator_corpus():
                             assert parse_structural_expr(printed) == expr, (
                                 source, printed)
                             assert touch(expr) == parse_expr(source), source
+
+
+def test_structural_recursions_in_denominators():
+    """Print explicit division around held negative powers unambiguously."""
+    cases = (
+        'x/(y**-1)',
+        'x/(y**-2)',
+        'x/((y**-1)*z)',
+        '(a*b)/(y**-1)',
+        '(x/(y**-1))/z',
+    )
+    for source in cases:
+        expr = parse_structural_expr(source)
+        printed = sstr(expr, order='none')
+        assert parse_structural_expr(printed) == expr, (source, printed)
+    assert sstr(parse_structural_expr('x/(y**-1)'), order='none') == (
+        'x/(y**(-1))')
+    assert sstr(parse_structural_expr('x*y**-1'), order='none') == (
+        'x*y**(-1)')
+
+
+def test_negated_group_roundtrip():
+    for source in ('-(a*b)', '-(a/b)', '-(a*(b*c))'):
+        expr = parse_structural_expr(source)
+        printed = sstr(expr, order='none')
+        assert parse_structural_expr(printed) == expr, (source, printed)
+    assert sstr(parse_structural_expr('-(a*b)'), order='none') == '-(a*b)'
+
+
+def test_held_inverse_assumptions():
+    """The held exponent is intentionally not assumption-transparent."""
+    x, y = symbols('x y')
+    held = UnevaluatedExpr(-1)
+    assert held.is_commutative is None
+    assert held.is_negative is None
+    assert held.is_integer is None
+    reciprocal = Pow(y, held, evaluate=False)
+    assert reciprocal.is_commutative is None
+    assert reciprocal.as_numer_denom() == (reciprocal, S.One)
+    assert reciprocal.free_symbols == {y}
+    assert touch(Mul(x, reciprocal, evaluate=False)) == x/y
