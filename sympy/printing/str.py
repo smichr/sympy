@@ -41,6 +41,73 @@ class StrPrinter(Printer):
 
     _relationals: dict[str, str] = {}
 
+    # Experimental operator annotations. The underlying object is a Mul, but
+    # its printed precedence comes from its tag, not from Mul's precedence.
+    # Parentheses are conservative inside ordinary (untagged) expressions.
+    _tagged_precedence = {
+        'addition': 10, 'subtraction': 10,
+        'multiplication': 20, 'division': 20,
+        'negation': 30, 'power': 40,
+    }
+
+    def _tagged_operand(self, obj, parent, side):
+        from sympy.parsing.tagged import annotation
+        rendered = self._tagged_print(obj)
+        ann = annotation(obj)
+        if ann is not None:
+            kind = ann[0]
+            if self._tagged_precedence[kind] <= self._tagged_precedence[parent]:
+                return '(%s)' % rendered
+            if parent == 'power' and side == 'left' and kind == 'negation':
+                return '(%s)' % rendered
+            if (parent in ('addition', 'multiplication', 'division')
+                    and side == 'right' and rendered.startswith('-')):
+                return '(%s)' % rendered
+        else:
+            if (obj.is_Add or
+                    (obj.is_Mul and parent in ('division', 'power', 'negation'))):
+                return '(%s)' % rendered
+            if obj.is_Pow and parent == 'power':
+                return '(%s)' % rendered
+            if (rendered.startswith('-')
+                    and parent in ('addition', 'division', 'power')):
+                return '(%s)' % rendered
+        return rendered
+
+    def _tagged_print(self, obj):
+        from sympy.parsing.tagged import annotation
+        ann = annotation(obj)
+        if ann is None:
+            return self._print(obj)
+        kind, inner = ann
+        if kind in ('addition', 'subtraction', 'multiplication', 'division'):
+            if kind == 'division':
+                left, reciprocal = inner.args
+                right = reciprocal.base
+            elif kind == 'subtraction':
+                left, negated = inner.args
+                right = negated.args[1]
+            else:
+                left, right = inner.args
+            operator = {
+                'addition': '+', 'subtraction': '-',
+                'multiplication': '*', 'division': '/',
+            }[kind]
+            return (self._tagged_operand(left, kind, 'left') + operator +
+                    self._tagged_operand(right, kind, 'right'))
+        if kind == 'negation':
+            operand = inner.args[1]
+            # -0 alone is parsed as a numeric literal and loses the
+            # operation tag. This is an explicit operator, so print -(+0).
+            if operand is S.Zero:
+                return '-(+0)'
+            return '-' + self._tagged_operand(operand, kind, 'right')
+        if kind == 'power':
+            base, exponent = inner.args
+            return (self._tagged_operand(base, kind, 'left') + '**' +
+                    self._tagged_operand(exponent, kind, 'right'))
+        raise ValueError('Unrecognized structural annotation: %s' % kind)
+
     def parenthesize(self, item, level, strict=False):
         prec = self._mod_precedence if isinstance(item, Mod) else precedence(item)
         if prec < level or (not strict and prec <= level):
@@ -273,6 +340,13 @@ class StrPrinter(Printer):
         return expr.name
 
     def _print_Mul(self, expr):
+        # Structural parsing annotations have an invisible Symbol followed
+        # by the annotated payload, always held as a two-argument Mul.
+        if (len(expr.args) == 2 and isinstance(expr.args[0], Symbol)
+                and expr.args[0].name == ''):
+            from sympy.parsing.tagged import annotation
+            if annotation(expr) is not None:
+                return self._tagged_print(expr)
         prec = precedence(expr)
 
         # Check for unevaluated Mul. In this case we need to make sure the
