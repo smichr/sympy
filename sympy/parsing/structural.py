@@ -1,81 +1,62 @@
 """Experimental structural arithmetic used by the optional parser mode.
 
-Ordinary unevaluated Mul nodes preserve the order and nesting of written
-multiplication. Div retains explicit division distinct from a reciprocal
-power. Call touch() to evaluate arithmetic operations inside-out.
+Ordinary unevaluated Add, Mul, and Pow preserve operation order and nesting.
+A held negative exponent distinguishes a written inverse power from the
+reciprocal Pow used to represent division. Call touch() to evaluate arithmetic.
 """
 
 from __future__ import annotations
 import ast
 
 from sympy.core.add import Add
-from sympy.core.function import Function
+from sympy.core.expr import UnevaluatedExpr
 from sympy.core.mul import Mul
 from sympy.core.power import Pow
 from sympy.core.sympify import sympify
 from sympy.parsing.sympy_parser import EvaluateFalseTransformer
-from sympy.printing.precedence import PRECEDENCE
-
-
-def _operand_str(printer, arg):
-    result = printer._print(arg)
-    if (arg.is_Add or arg.is_Mul or isinstance(arg, Div) or
-            (arg.is_Rational and arg.q != 1) or
-            (arg.is_Pow and arg.exp.is_negative) or
-            (arg.is_Number and arg.is_negative)):
-        return '(%s)' % result
-    return result
-
-
-class Div(Function):
-    """Explicit unevaluated binary division operation."""
-    nargs = 2
-    # Parenthesize Div when printed as a multiplicative/power operand.
-    precedence = PRECEDENCE['Mul'] - 1
-
-    def doit(self, deep=True, **hints):
-        a, b = self.args
-        if deep:
-            a, b = (arg.doit(deep=True, **hints) for arg in (a, b))
-        return a/b
-
-    def _sympystr(self, printer):
-        a, b = self.args
-        return '%s/%s' % (_operand_str(printer, a),
-                          _operand_str(printer, b))
-
-    def _latex(self, printer, exp=None):
-        a, b = self.args
-        result = r'\frac{%s}{%s}' % (printer._print(a), printer._print(b))
-        if exp is not None:
-            return r'\left(%s\right)^{%s}' % (result, exp)
-        return result
 
 
 def touch(expr):
-    """Evaluate arithmetic operations in their original nesting order.
+    """Evaluate arithmetic in nesting order without invoking unrelated doit's.
 
-    Unlike a general doit(), this does not explicitly evaluate arbitrary
-    functions, integrals, sums, or other non-arithmetic operations.
+    Release an explicitly held exponent as part of evaluating its Pow.
     """
+    def evaluate(e):
+        if isinstance(e, Pow) and isinstance(e.exp, UnevaluatedExpr):
+            return Pow(e.base, e.exp.args[0])
+        return e.func(*e.args)
+
     return sympify(expr).replace(
-        lambda e: isinstance(e, (Add, Mul, Pow, Div)),
-        lambda e: e.doit(deep=False) if isinstance(e, Div) else e.func(*e.args))
+        lambda e: isinstance(e, (Add, Mul, Pow)), evaluate)
 
 
 class StructuralTransformer(EvaluateFalseTransformer):
-    """Retain binary multiplication and explicit division in parse_expr's AST."""
+    """Retain binary arithmetic and distinguish written negative powers."""
 
     def visit_BinOp(self, node):
-        if isinstance(node.op, (ast.Mult, ast.Div)):
-            name = ('Mul' if isinstance(node.op, ast.Mult)
-                    else '_sympy_parsing_div')
-            keywords = ([ast.keyword(arg='evaluate', value=ast.Constant(False))]
-                        if isinstance(node.op, ast.Mult) else [])
+        if isinstance(node.op, (ast.Mult, ast.Div, ast.Pow)):
+            left, right = self.visit(node.left), self.visit(node.right)
+            if isinstance(node.op, ast.Div):
+                # Represent a written division using a reciprocal Pow.
+                right = ast.Call(
+                    func=ast.Name(id='Pow', ctx=ast.Load()),
+                    args=[right, ast.UnaryOp(
+                        op=ast.USub(), operand=ast.Constant(1))],
+                    keywords=[ast.keyword(
+                        arg='evaluate', value=ast.Constant(False))])
+            elif (isinstance(node.op, ast.Pow) and
+                  isinstance(node.right, ast.UnaryOp) and
+                  isinstance(node.right.op, ast.USub)):
+                # A written negative power must not print as division.
+                right = ast.Call(
+                    func=ast.Name(id='_sympy_parsing_hold_exp', ctx=ast.Load()),
+                    args=[right], keywords=[])
+            name = 'Pow' if isinstance(node.op, ast.Pow) else 'Mul'
             return ast.Call(
                 func=ast.Name(id=name, ctx=ast.Load()),
-                args=[self.visit(node.left), self.visit(node.right)],
-                keywords=keywords)
+                args=[left, right],
+                keywords=[ast.keyword(
+                    arg='evaluate', value=ast.Constant(False))])
         return super().visit_BinOp(node)
 
 
@@ -131,7 +112,7 @@ def parse_structural_expr(s, local_dict=None, transformations=None,
         raise ValueError('unknown transformation group name')
 
     global_dict = dict(global_dict)
-    global_dict['_sympy_parsing_div'] = Div
+    global_dict['_sympy_parsing_hold_exp'] = UnevaluatedExpr
     code = stringify_expr(s, local_dict, global_dict, transformations)
     compiled = compile(evaluate_structural(code), '<string>', 'eval')
     try:
