@@ -65,7 +65,9 @@ class StrPrinter(Printer):
                 return '(%s)' % rendered
         else:
             if (obj.is_Add or
-                    (obj.is_Mul and parent in ('division', 'power', 'negation'))):
+                    (obj.is_Mul and (
+                        parent in ('division', 'power', 'negation') or
+                        (parent == 'multiplication' and side == 'right')))):
                 return '(%s)' % rendered
             if obj.is_Pow and parent == 'power':
                 return '(%s)' % rendered

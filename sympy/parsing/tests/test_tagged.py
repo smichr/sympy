@@ -137,3 +137,24 @@ def test_touch_does_not_call_doit():
     e = parse_tagged_expr('Integral(1/x, (x, 1, 2))')
     assert touch(e) == Integral(1/x, (x, 1, 2))
     assert touch(e).func == Integral
+
+
+def test_selective_annotations():
+    """Simple additions/products need no tag; ambiguous ones still do."""
+    from sympy import Add, Pow
+
+    assert annotation(parse_tagged_expr('a+b')) is None
+    assert annotation(parse_tagged_expr('a*b')) is None
+    assert annotation(parse_tagged_expr('(a+b)+c')) is None
+    assert annotation(parse_tagged_expr('a*(b*c)')) is None
+
+    assert annotation(parse_tagged_expr('a+(-b)'))[0] == 'addition'
+    assert annotation(parse_tagged_expr('-2*a'))[0] == 'multiplication'
+    assert annotation(parse_tagged_expr('a*b**-1'))[0] == 'multiplication'
+
+    for source in (
+        '(a+b)+c', 'a+(b+c)', 'a*(b*c)', '(a*b)*c',
+        'a+(-b)', 'a+(-1*b)', '-2*a', '-2*(a+b)',
+        'a*b**-1', 'a*x**(-2*y)', 'a/(b/c)', '(a/b)*c',
+    ):
+        _check(source)
