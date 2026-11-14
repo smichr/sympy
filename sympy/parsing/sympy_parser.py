@@ -1076,10 +1076,15 @@ def parse_expr(s: str, local_dict: DICT | None = None,
     else:
         _transformations = transformations
 
-    code = stringify_expr(s, local_dict, global_dict, _transformations)
-
     if not evaluate:
-        code = compile(evaluateFalse(code), '<string>', 'eval') # type: ignore
+        # Preserve written arithmetic grouping using the tagged parser,
+        # then remove its annotations before returning a SymPy expression.
+        from sympy.parsing.tagged import parse_tagged_expr, touch
+        return touch(parse_tagged_expr(
+            s, local_dict=local_dict, transformations=_transformations,
+            global_dict=global_dict))
+
+    code = stringify_expr(s, local_dict, global_dict, _transformations)
 
     try:
         rv = eval_expr(code, local_dict, global_dict)

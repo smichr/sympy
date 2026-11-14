@@ -169,3 +169,42 @@ def test_selective_annotations():
         'a*b**-1', 'a*x**(-2*y)', 'a/(b/c)', '(a/b)*c',
     ):
         _check(source)
+
+
+def test_parse_expr_unevaluated_tagged_integration():
+    """parse_expr(evaluate=False) returns the detagged structural tree."""
+    from sympy import Integer, Add, Pow
+    from sympy.parsing.sympy_parser import T
+
+    samples = (
+        'a*(b*c)', '(a*b)*c', 'a*b*c',
+        'a+(b+c)', '(a+b)+c', 'a+b+c',
+        'a/b/c', 'a/(b/c)', '1/2', '2/4', '1/1',
+        'a-b', 'a+(-b)', 'a*b**-1', '-1**2',
+    )
+    for source in samples:
+        got = parse_expr(source, evaluate=False)
+        expected = touch(parse_tagged_expr(source))
+        assert got == expected, (source, got, expected)
+        assert all(annotation(e) is None for e in _walk(got))
+        assert touch(got, evaluate=True) == parse_expr(source)
+
+    a, b, c = symbols('a b c')
+    assert parse_expr('a*(b*c)', evaluate=False) == Mul(
+        a, Mul(b, c, evaluate=False), evaluate=False)
+    assert parse_expr('a+(b+c)', evaluate=False) == Add(
+        a, Add(b, c, evaluate=False), evaluate=False)
+
+    # Transformation preferences and namespaces must still pass through.
+    options = (
+        ('2x', {'transformations': 'implicit'}),
+        ('x^2', {'transformations': 'all'}),
+        ('x^2', {'transformations': T[:7]}),
+        ('a+b', {'local_dict': {'a': Symbol('u')}}),
+        ('a+2', {'global_dict': {
+            'Symbol': Symbol, 'Integer': Integer, 'Add': Add,
+            'Mul': Mul, 'Pow': Pow}}),
+    )
+    for source, kwargs in options:
+        assert parse_expr(source, evaluate=False, **kwargs) == touch(
+            parse_tagged_expr(source, **kwargs))
