@@ -66,6 +66,20 @@ def test_Symbol():
     assert x.is_complex is None  # might be a non-number
 
 
+
+def test_mul_no_auto_distribute():
+    # gh-4596: multiplying a number by a sum must not depend on grouping.
+    s = x + y
+    for n in (S.NegativeOne, S(2), S.Half):
+        assert Mul(n, s).args == (n, s)
+        assert n*s == s*n == Mul(n, s)
+        assert n*(s*z) == (n*s)*z == (s*z)*n == Mul(n, s, z)
+        assert (n*s)*(x + z) == n*(s*(x + z)) == Mul(n, s, x + z)
+
+    assert Mul(2, 3, s) == Mul(6, s)
+    assert (2*s).expand(mul=True) == 2*x + 2*y
+
+
 def test_arit0():
     p = Rational(5)
     e = a*b

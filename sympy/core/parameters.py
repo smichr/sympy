@@ -105,25 +105,25 @@ class evaluate:
 
 @contextmanager
 def distribute(x):
-    """ Control automatic distribution of Number over Add
+    """Legacy context manager for controlling number distribution.
 
-    Explanation
-    ===========
-
-    This context manager controls whether or not Mul distribute Number over
-    Add. Plan is to avoid distributing Number over Add in all of sympy. Once
-    that is done, this contextmanager will be removed.
+    Numeric multiplication no longer automatically distributes over Add,
+    regardless of this setting. The context manager is retained temporarily
+    for compatibility; use ``expand_mul`` to distribute explicitly.
 
     Examples
     ========
 
+    >>> from sympy import expand_mul
     >>> from sympy.abc import x
     >>> from sympy.core.parameters import distribute
-    >>> print(2*(x + 1))
-    2*x + 2
-    >>> with distribute(False):
+    >>> 2*(x + 1)
+    2*(x + 1)
+    >>> with distribute(True):
     ...     print(2*(x + 1))
     2*(x + 1)
+    >>> expand_mul(2*(x + 1))
+    2*x + 2
     """
 
     old = global_parameters.distribute
