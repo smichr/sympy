@@ -51,6 +51,61 @@ class StrPrinter(Printer):
     def stringify(self, args, sep, level=0):
         return sep.join([self.parenthesize(item, level) for item in args])
 
+    def _mul_factors(self, args, *, rational='none', symbolic=False):
+        """Stage ordered Mul factors without evaluating reciprocal powers.
+
+        Rational factors are kept by code printers, split by the string and
+        Octave printers, or split only for unit numerators by Julia.
+        The string printer also recognizes negative symbolic exponents.
+        """
+        a, b, pow_paren = [], [], []
+        for item in args:
+            if (item.is_commutative and isinstance(item, Pow) and
+                    (bool(item.exp.as_coeff_Mul()[0] < 0) if symbolic else
+                     item.exp.is_Rational and item.exp.is_negative)):
+                if item.exp is S.NegativeOne:
+                    b.append(item.base)
+                    if (len(item.base.args) != 1 and
+                            isinstance(item.base, (Mul, Pow) if symbolic else Mul)):
+                        pow_paren.append(item)
+                else:
+                    if symbolic:
+                        eargs = list(Mul.make_args(item.exp))
+                        if eargs[0] is S.NegativeOne:
+                            eargs = eargs[1:]
+                        else:
+                            eargs[0] = -eargs[0]
+                        exp = Mul._from_args(eargs)
+                    else:
+                        exp = -item.exp
+                    b.append(Pow(item.base, exp, evaluate=False))
+            elif rational == 'split' and item.is_Rational and item is not S.Infinity:
+                if item.p != 1:
+                    a.append(Rational(item.p))
+                if item.q != 1:
+                    b.append(Rational(item.q))
+            elif (rational == 'unit' and item.is_Rational and
+                    item is not S.Infinity and item.p == 1):
+                b.append(Rational(item.q))
+            else:
+                a.append(item)
+        return a or [S.One], b, pow_paren
+
+    def _parenthesize_mul_denominator(self, factor, rendered):
+        # A Pow can print as a division, depending on the target language.
+        # Inspect the rendered expression rather than guessing from its
+        # exponent: an interior slash in pow(x, 1.0/2.0) needs no grouping.
+        if factor.is_Pow and '/' in rendered:
+            depth = 0
+            for char in rendered:
+                if char in '([{':
+                    depth += 1
+                elif char in ')]}':
+                    depth -= 1
+                elif char == '/' and depth == 0:
+                    return "(%s)" % rendered
+        return rendered
+
     def emptyPrinter(self, expr):
         if isinstance(expr, str):
             return expr
@@ -331,59 +386,29 @@ class StrPrinter(Printer):
         else:
             sign = ""
 
-        a = []  # items in the numerator
-        b = []  # items that are in the denominator (if any)
-
-        pow_paren = []  # Will collect all pow with more than one base element and exp = -1
-
         if self.order not in ('old', 'none'):
             args = expr.as_ordered_factors()
         else:
-            # use make_args in case expr was something like -x -> x
             args = Mul.make_args(expr)
 
-        # Gather args for numerator/denominator
-        def apow(i):
-            b, e = i.as_base_exp()
-            eargs = list(Mul.make_args(e))
-            if eargs[0] is S.NegativeOne:
-                eargs = eargs[1:]
-            else:
-                eargs[0] = -eargs[0]
-            e = Mul._from_args(eargs)
-            if isinstance(i, Pow):
-                return i.func(b, e, evaluate=False)
-            return i.func(e, evaluate=False)
-
-        for item in args:
-            if (item.is_commutative and
-                    isinstance(item, Pow) and
-                    bool(item.exp.as_coeff_Mul()[0] < 0)):
-                if item.exp is not S.NegativeOne:
-                    b.append(apow(item))
-                else:
-                    if (len(item.args[0].args) != 1 and
-                            isinstance(item.base, (Mul, Pow))):
-                        # To avoid situations like #14160
-                        pow_paren.append(item)
-                    b.append(item.base)
-            elif item.is_Rational and item is not S.Infinity:
-                if item.p != 1:
-                    a.append(Rational(item.p))
-                if item.q != 1:
-                    b.append(Rational(item.q))
-            else:
-                a.append(item)
-
-        a = a or [S.One]
+        a, b, pow_paren = self._mul_factors(args, rational='split', symbolic=True)
 
         a_str = [self.parenthesize(x, prec, strict=False) for x in a]
-        b_str = [self.parenthesize(x, PRECEDENCE["Mul"], strict=False) for x in b]
+        b_str = [self.parenthesize(x, PRECEDENCE["Mul"], strict=False)
+                 for x in b]
 
-        # To parenthesize Pow with exp = -1 and having more than one Symbol
         for item in pow_paren:
-            if item.base in b:
-                b_str[b.index(item.base)] = "(%s)" % self._print(item.base)
+            if item.base.is_Pow and item.base in b:
+                index = b.index(item.base)
+                # Preserve the original grouping for symbolic/positive powers,
+                # but avoid redundant parentheses on negative numeric powers
+                # that print with exponentiation rather than division.
+                if not (item.base.exp.is_Number and
+                        item.base.exp.is_negative):
+                    b_str[index] = "(%s)" % b_str[index]
+
+        b_str = [self._parenthesize_mul_denominator(x, printed)
+                 for x, printed in zip(b, b_str)]
 
         if not b:
             return sign + '*'.join(a_str)
