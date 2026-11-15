@@ -64,6 +64,9 @@ class StrPrinter(Printer):
                     and side == 'right' and rendered.startswith('-')):
                 return '(%s)' % rendered
         else:
+            if (obj.is_Rational and obj.q != 1
+                    and parent in ('negation', 'power')):
+                return '(%s)' % rendered
             if (obj.is_Add or
                     (obj.is_Mul and (
                         parent in ('division', 'power', 'negation') or

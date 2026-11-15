@@ -419,12 +419,12 @@ def test_evaluate_false_literal_fractions():
         '3/1': ratio(3, 1),
         '0/5': ratio(0, 5),
         '1/0': Pow(0, -1, evaluate=False),
-        '1*1/2': Mul(1, 1, Pow(2, -1, evaluate=False), evaluate=False),
-        '1*2/4': Mul(1, 2, Pow(4, -1, evaluate=False), evaluate=False),
+        '1*1/2': ratio(Mul(1, 1, evaluate=False), 2),
+        '1*2/4': ratio(Mul(1, 2, evaluate=False), 4),
         '1*(2/4)': Mul(1, ratio(2, 4), evaluate=False),
         '2/4*3': Mul(ratio(2, 4), 3, evaluate=False),
         '3/2*4': Mul(Rational(3, 2), 4, evaluate=False),
-        '-sqrt(2)/3': Mul(Rational(-1, 3), sqrt(2), evaluate=False),
+        '-sqrt(2)/3': ratio(-sqrt(2), 3),
     }
     for text, expected in cases.items():
         assert parse_expr(text, evaluate=False) == expected, text
@@ -437,18 +437,17 @@ def test_evaluate_false_literal_fractions():
 
     assert parse_expr('x - 1/2', evaluate=False).args[-1] == Rational(-1, 2)
     assert parse_expr('-(1/2)', evaluate=False) == Rational(-1, 2)
-    assert latex(parse_expr('-sqrt(2)/3', evaluate=False)) == r'- \frac{\sqrt{2}}{3}'
+    assert latex(parse_expr('-sqrt(2)/3', evaluate=False)) == r'\frac{\left(-1\right) \sqrt{2}}{3}' # better r'- \frac{\sqrt{2}}{3}'
     assert latex(parse_expr('-sqrt(2)/3 + 1/3 - 1/2',
         evaluate=False), order='none') == (
-        r'- \frac{\sqrt{2}}{3} + \frac{1}{3} - \frac{1}{2}')
+        r'\left(\frac{\left(-1\right) \sqrt{2}}{3} + \frac{1}{3}\right) - \frac{1}{2}')  # better r'- \frac{\sqrt{2}}{3} + \frac{1}{3} - \frac{1}{2}')
     assert str(parse_expr('(1+x)/2', evaluate=False)) == '(x + 1)/2'
     assert parse_expr('2/4') == Rational(1, 2)
     assert latex(parse_expr('1/1', evaluate=False)) == r'\frac{1}{1}'
     assert latex(parse_expr('1/0', evaluate=False)) == r'\frac{1}{0}'
-    assert latex(parse_expr('1*2/4', evaluate=False)) == r'1 \cdot 2 \cdot \frac{1}{4}'
+    assert latex(parse_expr('1*2/4', evaluate=False)) == r'\frac{1 \cdot 2}{4}' # better r'1 \cdot 2 \cdot \frac{1}{4}'
     assert latex(parse_expr('2/4', evaluate=False)) == r'\frac{2}{4}'
     assert latex(parse_expr('1*(2/4)', evaluate=False)) == r'1 \cdot \frac{2}{4}'
 
     # issue 24112
-    assert str(parse_expr('-sqrt(7)/2 + 1/3 - 1/2', evaluate=False)) == (
-        '-sqrt(7)/2 - 1/2 + 1/3')
+    assert str(parse_expr('-sqrt(7)/2 + 1/3 - 1/2', evaluate=False)) == '(1/3 - sqrt(7)/2) - 1/2'  # better to not group

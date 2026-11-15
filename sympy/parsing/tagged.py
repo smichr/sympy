@@ -20,6 +20,8 @@ from sympy.parsing.sympy_parser import (
     EvaluateFalseTransformer, T, eval_expr, null, standard_transformations,
     stringify_expr,
 )
+from math import gcd
+
 
 _TAGS = {
     name: Symbol('', **{'parse_' + name: True})
@@ -82,9 +84,24 @@ def touch(expr, evaluate=False):
     ann = annotation(expr)
     if ann is not None:
         kind, payload = ann
-        if (not evaluate and kind == 'division'
-                and payload.args[0] is S.One):
-            return touch(payload.args[1], evaluate=False)
+
+        if not evaluate and kind == 'subtraction':
+            left, negated = payload.args
+            right = touch(negated.args[1], evaluate=False)
+            if right.is_Number:
+                return Add(touch(left, evaluate=False), -right,
+                           evaluate=False)
+
+        if not evaluate and kind == 'negation':
+            operand = touch(payload.args[1], evaluate=False)
+            if operand.is_Number:
+                return -operand
+
+        if not evaluate and kind == 'division':
+            numerator, reciprocal = payload.args
+            if touch(numerator, evaluate=False) is S.One:
+                return touch(reciprocal, evaluate=False)
+
         return touch(payload, evaluate=evaluate)
 
     if not expr.args:
@@ -143,24 +160,11 @@ class TaggedStructuralTransformer(EvaluateFalseTransformer):
 
     def visit_BinOp(self, node):
         if isinstance(node.op, ast.Div):
-            if (self._integer_literal(node.left) is not None and
-                    self._integer_literal(node.right) is not None):
-                fraction = self._literal_fraction(node)
-                if (isinstance(fraction, ast.Call) and
-                        isinstance(fraction.func, ast.Name) and
-                        fraction.func.id == 'Rational'):
-                    return fraction
-        if isinstance(node.op, ast.Div):
-            # Only accept canonical Rationals from the existing literal
-            # recognition; its other outputs are untagged divisions, which
-            # would lose the written '/' (e.g. 2/8 and x/4).
-            if (self._integer_literal(node.left) is not None and
-                    self._integer_literal(node.right) is not None):
-                fraction = self._literal_fraction(node)
-                if (isinstance(fraction, ast.Call) and
-                        isinstance(fraction.func, ast.Name) and
-                        fraction.func.id == 'Rational'):
-                    return fraction
+            fraction = self._literal_fraction(node)
+            if fraction is not None:
+                p, q = fraction
+                if p != 0 and q > 1 and gcd(p, q) == 1:
+                    return _call('Rational', ast.Constant(p), ast.Constant(q))
         if not isinstance(node.op, (
                 ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)):
             return super().visit_BinOp(node)

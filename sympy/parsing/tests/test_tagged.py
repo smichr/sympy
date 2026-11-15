@@ -4,7 +4,7 @@ from __future__ import annotations
 from itertools import product
 from random import Random
 
-from sympy import Integral, Mul, S, Symbol, sin, sstr, symbols
+from sympy import Integral, Mul, S, Symbol, sin, sstr, symbols, Pow
 from sympy.parsing.sympy_parser import parse_expr
 from sympy.parsing.tagged import annotation, parse_tagged_expr, tagged, touch
 
@@ -144,8 +144,8 @@ def test_touch_does_not_call_doit():
 
     raw = touch(e)
     assert raw.func == Integral
-    assert raw.function == Mul(1, 1/x, evaluate=False)
-    assert raw.function.args == (S.One, 1/x)
+    assert raw.function == Pow(x, -1, evaluate=False)
+    assert raw.function.args == (x, -1)
 
     assert touch(e, evaluate=True) == Integral(1/x, (x, 1, 2))
 
