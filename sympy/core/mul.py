@@ -2198,4 +2198,4 @@ def expand_2arg(e):
 
 from .numbers import Rational
 from .power import Pow
-from .add import Add, _unevaluated_Add
+from .add import Add
