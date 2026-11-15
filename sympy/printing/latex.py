@@ -397,6 +397,14 @@ class LatexPrinter(Printer):
     def _print_NoneType(self, e):
         return r"\text{%s}" % e
 
+    def _print_Neg(self, expr):
+        from sympy.core.expr import UnevaluatedExpr
+        arg = expr.args[0]
+        tex = self._print(arg)
+        if arg.is_Add or (isinstance(arg, UnevaluatedExpr) and arg.args[0].is_Add):
+            return r"-\left(%s\right)" % tex
+        return '-' + tex
+
     def _print_Add(self, expr, order=None):
         terms = self._as_ordered_terms(expr, order=order)
 
@@ -410,7 +418,9 @@ class LatexPrinter(Printer):
             else:
                 tex += " + "
             term_tex = self._print(term)
-            if self._needs_add_brackets(term):
+            from sympy.core.expr import UnevaluatedExpr
+            if self._needs_add_brackets(term) or (isinstance(term, UnevaluatedExpr)
+                    and term.args[0].is_Add):
                 term_tex = r"\left(%s\right)" % term_tex
             tex += term_tex
 

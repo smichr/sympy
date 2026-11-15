@@ -264,6 +264,9 @@ class Add(Expr, AssocOp):
                 else:
                     return [], [a, b], None
 
+        from .neg import Neg
+        neg_parts = set()
+
         # term -> coeff
         # e.g. x**2 -> 5   for ... + 5*x**2 + ...
         terms: dict[Expr, Number] = {}
@@ -321,6 +324,13 @@ class Add(Expr, AssocOp):
                 coeff = S.ComplexInfinity
                 continue
 
+            # A subtraction marker contributes a negative coefficient,
+            # but remains marked until the coefficient is combined.
+            elif isinstance(o, Neg):
+                s = o.args[0]
+                c = S.NegativeOne
+                neg_parts.add(s)
+
             # Add([...])
             elif o.is_Add:
                 # NB: here we assume Add is always commutative
@@ -374,7 +384,9 @@ class Add(Expr, AssocOp):
                 newseq.append(s)
             # c*s
             else:
-                if s.is_Mul:
+                if c is S.NegativeOne and s in neg_parts:
+                    newseq.append(Neg(s))
+                elif s.is_Mul:
                     # Mul, already keeps its arguments in perfect order.
                     # so we can simply put c in slot0 and go the fast way.
                     #

@@ -59,6 +59,13 @@ class StrPrinter(Printer):
         else:
             return str(expr)
 
+    def _print_Neg(self, expr):
+        arg = expr.args[0]
+        text = self._print(arg)
+        if arg.is_Add or (isinstance(arg, UnevaluatedExpr) and arg.args[0].is_Add):
+            return "-(%s)" % text
+        return "-" + text
+
     def _print_Add(self, expr, order=None):
         terms = self._as_ordered_terms(expr, order=order)
 

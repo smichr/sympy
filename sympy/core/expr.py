@@ -273,12 +273,14 @@ class Expr(Basic, EvalfMixin):
     @sympify_return([('other', 'Expr')], NotImplemented)
     @call_highest_priority('__rsub__')
     def __sub__(self, other: Expr | complex) -> Expr:
-        return Add(self, -other)
+        from .neg import Neg
+        return Add(self, Neg(other))
 
     @sympify_return([('other', 'Expr')], NotImplemented)
     @call_highest_priority('__sub__')
     def __rsub__(self, other: Expr | complex) -> Expr:
-        return Add(other, -self)
+        from .neg import Neg
+        return Add(other, Neg(self))
 
     @sympify_return([('other', 'Expr')], NotImplemented)
     @call_highest_priority('__rmul__')
