@@ -81,6 +81,26 @@ def test_mul_no_auto_distribute():
     assert (2*s).expand(mul=True) == 2*x + 2*y
 
 
+def test_expand_2arg_property():
+    # A rational coefficient expands without requiring general multiplication
+    # expansion or rebuilding the already-formed terms.
+    assert (2*(x + y)).ex == 2*x + 2*y
+    assert (-(x + y)).ex == -x - y
+    assert (S.Half*(2*x + y)).ex == x + y/2
+    assert (2*x).ex == 2*x
+    assert x.ex == x
+
+    q = a - (x + y) + 2*(x + 2*(y - 3))
+    assert q.ex == a + x + 3*y - 12
+    assert q.ex.ex == q.ex
+
+    # The newly created Add has the ordering expected by the ordinary Add.
+    assert (2*(x - y)).ex.args == (2*x - 2*y).args
+
+    # Non-two-argument Mul products are not expanded by this helper.
+    assert (2*z*(x + y)).ex == 2*z*(x + y)
+
+
 def test_arit0():
     p = Rational(5)
     e = a*b
