@@ -2184,12 +2184,12 @@ def expand_2arg(e):
             c, r = e.args
             if c.is_Rational and r.is_Add:
                 args = []
-                allsym = True
+                allsym = 0
                 for ri in r.args:
-                    if allsym and not ri.is_Symbol:
-                        allsym = False
+                    if ri.is_Symbol:
+                        allsym += 1
                     args.append(_keep_coeff(c, ri))
-                if not allsym:
+                if not (allsym == len(r.args) or r.args[0].is_Rational and allsym + 1 == len(r.args)):
                     args.sort(key=_args_sortkey)
                 return r._new_rawargs(*args)
         return e
