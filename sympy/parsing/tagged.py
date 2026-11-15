@@ -66,8 +66,11 @@ def tagged(operator, payload):
         left, right = payload.args
         signed_numeric = any(
             arg.is_Number and arg.is_negative for arg in payload.args)
+        # A rational leading factor is otherwise printed as division:
+        # Mul(Rational(1, 4), x, evaluate=False) prints as x/4.
+        left_fraction = left.is_Rational and left.q != 1
         right_annotation = annotation(right)
-        if not signed_numeric and not (
+        if not signed_numeric and not left_fraction and not (
                 right_annotation and right_annotation[0] == 'power'):
             return payload
     return Mul(_TAGS[operator], payload, evaluate=False)
@@ -78,7 +81,14 @@ def touch(expr, evaluate=False):
 
     ann = annotation(expr)
     if ann is not None:
-        return touch(ann[1], evaluate=evaluate)
+        kind, payload = ann
+        # Preserve the historical unevaluated Pow for 1/1 and 1/0.
+        if (not evaluate and kind == 'division'
+                and payload.args[0] is S.One
+                and payload.args[1].is_Pow
+                and payload.args[1].base in (S.Zero, S.One)):
+            return touch(payload.args[1], evaluate=False)
+        return touch(payload, evaluate=evaluate)
 
     if not expr.args:
         return expr
@@ -88,8 +98,10 @@ def touch(expr, evaluate=False):
     if isinstance(expr, (Add, Mul, Pow)):
         return expr.func(*args, evaluate=evaluate)
 
-    if args == expr.args:
+    if not evaluate and args == expr.args:
         return expr
+    if not evaluate and (expr.is_Function or expr.is_Relational):
+        return expr.func(*args, evaluate=False)
     return expr.func(*args)
 
 
@@ -111,6 +123,11 @@ def _tag(operator, payload):
 class TaggedStructuralTransformer(EvaluateFalseTransformer):
     """Preserve each written arithmetic operator as a tagged binary tree."""
 
+    # Relational constructor calls should not evaluate while the tagged
+    # intermediate structure is being constructed.
+    functions = EvaluateFalseTransformer.functions + (
+        'Eq', 'Ne', 'Lt', 'Le', 'Gt', 'Ge')
+
     def visit_UnaryOp(self, node):
         if isinstance(node.op, ast.USub):
             operand = self.visit(node.operand)
@@ -128,6 +145,25 @@ class TaggedStructuralTransformer(EvaluateFalseTransformer):
         return self.generic_visit(node)
 
     def visit_BinOp(self, node):
+        if isinstance(node.op, ast.Div):
+            if (self._integer_literal(node.left) is not None and
+                    self._integer_literal(node.right) is not None):
+                fraction = self._literal_fraction(node)
+                if (isinstance(fraction, ast.Call) and
+                        isinstance(fraction.func, ast.Name) and
+                        fraction.func.id == 'Rational'):
+                    return fraction
+        if isinstance(node.op, ast.Div):
+            # Only accept canonical Rationals from the existing literal
+            # recognition; its other outputs are untagged divisions, which
+            # would lose the written '/' (e.g. 2/8 and x/4).
+            if (self._integer_literal(node.left) is not None and
+                    self._integer_literal(node.right) is not None):
+                fraction = self._literal_fraction(node)
+                if (isinstance(fraction, ast.Call) and
+                        isinstance(fraction.func, ast.Name) and
+                        fraction.func.id == 'Rational'):
+                    return fraction
         if not isinstance(node.op, (
                 ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)):
             return super().visit_BinOp(node)
