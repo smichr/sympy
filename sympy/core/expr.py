@@ -3673,6 +3673,20 @@ class Expr(Basic, EvalfMixin):
 
         return (expr, hit)
 
+    @property
+    def ex(self):
+        """Expand rational coefficients over sums without full expansion.
+
+        Examples
+        ========
+
+        >>> from sympy.abc import x, y
+        >>> (2*(x + y)).ex
+        2*x + 2*y
+        """
+        from .mul import expand_2arg
+        return expand_2arg(self)
+
     @cacheit
     def expand(
         self,
