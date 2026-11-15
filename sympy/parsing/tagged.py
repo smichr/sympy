@@ -82,11 +82,8 @@ def touch(expr, evaluate=False):
     ann = annotation(expr)
     if ann is not None:
         kind, payload = ann
-        # Preserve the historical unevaluated Pow for 1/1 and 1/0.
         if (not evaluate and kind == 'division'
-                and payload.args[0] is S.One
-                and payload.args[1].is_Pow
-                and payload.args[1].base in (S.Zero, S.One)):
+                and payload.args[0] is S.One):
             return touch(payload.args[1], evaluate=False)
         return touch(payload, evaluate=evaluate)
 
