@@ -2180,11 +2180,17 @@ def _keep_coeff(coeff, factors, clear=True, sign=False):
 
 def expand_2arg(e):
     def do(e):
-        if e.is_Mul:
-            c, r = e.as_coeff_Mul()
+        if e.is_Mul and len(e.args) == 2:
+            c, r = e.args
             if c.is_Rational and r.is_Add:
-                args = [_keep_coeff(c, ri) for ri in r.args]
-                args.sort(key=_args_sortkey)
+                args = []
+                allsym = True
+                for ri in r.args:
+                    if allsym and not ri.is_Symbol:
+                        allsym = False
+                    args.append(_keep_coeff(c, ri))
+                if not allsym:
+                    args.sort(key=_args_sortkey)
                 return r._new_rawargs(*args)
         return e
     return bottom_up(e, do)
