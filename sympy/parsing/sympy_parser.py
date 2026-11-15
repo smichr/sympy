@@ -1141,16 +1141,39 @@ class EvaluateFalseTransformer(ast.NodeTransformer):
             mode='eval').body
 
     def _literal_fraction(self, node):
-        if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.Div):
-            return None
-
-        p = self._integer_literal(node.left)
+        """Preserve unreduced integer division but use canonical Rationals."""
         q = self._integer_literal(node.right)
-
-        if p is None or q is None or q < 0:
+        if q is None or q < 0:
             return None
+        p = self._integer_literal(node.left)
+        if p == 1 and q <= 1:
+            # Preserve the original Pow representation of 1/1 and 1/0.
+            return None
+        if p is None:
+            # Absorb a leading minus sign into the rational coefficient.
+            if (q > 1 and isinstance(node.left, ast.UnaryOp)
+                    and isinstance(node.left.op, ast.USub)
+                    and not isinstance(node.left.operand, ast.UnaryOp)):
+                coeff = ast.Call(
+                    func=ast.Name(id='Rational', ctx=ast.Load()),
+                    args=[ast.Constant(-1), ast.Constant(q)],
+                    keywords=[])
+                return ast.Call(
+                    func=ast.Name(id='Mul', ctx=ast.Load()),
+                    args=[coeff, self.visit(node.left.operand)],
+                    keywords=[ast.keyword(
+                        arg='evaluate', value=ast.Constant(False))])
+            return None
+        if p != 0 and q > 1 and gcd(p, q) == 1:
+            return ast.Call(
+                func=ast.Name(id='Rational', ctx=ast.Load()),
+                args=[ast.Constant(p), ast.Constant(q)],
+                keywords=[])
 
-        return p, q
+        return ast.Call(
+            func=self._ratio_ast,
+            args=[self.visit(node.left), self.visit(node.right)],
+            keywords=[])
 
     operators = {
         ast.Add: 'Add',

@@ -160,11 +160,13 @@ class TaggedStructuralTransformer(EvaluateFalseTransformer):
 
     def visit_BinOp(self, node):
         if isinstance(node.op, ast.Div):
-            fraction = self._literal_fraction(node)
-            if fraction is not None:
-                p, q = fraction
-                if p != 0 and q > 1 and gcd(p, q) == 1:
-                    return _call('Rational', ast.Constant(p), ast.Constant(q))
+            # Only canonical fractions of integer literals become Rationals.
+            # Other written divisions retain their operator annotation.
+            p = self._integer_literal(node.left)
+            q = self._integer_literal(node.right)
+            if (p is not None and q is not None
+                    and p != 0 and q > 1 and gcd(p, q) == 1):
+                return _call('Rational', ast.Constant(p), ast.Constant(q))
         if not isinstance(node.op, (
                 ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)):
             return super().visit_BinOp(node)
