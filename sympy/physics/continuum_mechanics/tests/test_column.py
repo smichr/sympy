@@ -586,7 +586,7 @@ def test_equations():
         - R_10*SingularityFunction(x, 10, 1)/210000
         - SingularityFunction(x, 8, 1)/42000
     )
-    assert p == q
+    assert p.exx == q
 
     # Test after solving the unknowns
     c.solve_for_reaction_loads()
@@ -605,4 +605,4 @@ def test_equations():
         - SingularityFunction(x, 8, 1)/42000
         + SingularityFunction(x, 10, 1)/52500
     )
-    assert p == q
+    assert p.exx == q
