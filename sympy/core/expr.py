@@ -46,6 +46,16 @@ def _corem(eq, c):  # helper for extract_additively
     return Add(*co), Add(*non)
 
 
+def _extract_additive_coeff(co, n):
+    """Subtract n from a coefficient without expanding the result."""
+    rv = co.extract_additively(n)
+    if rv is None and co.is_Mul:
+        expanded = co.ex
+        if expanded != co and expanded.extract_additively(n) is not None:
+            return co - n
+    return rv
+
+
 @sympify_method_args
 class Expr(Basic, EvalfMixin):
     """
@@ -2369,7 +2379,7 @@ class Expr(Basic, EvalfMixin):
                     else:
                         xc = cs.extract_multiplicatively(c)
                     if xc is not None:
-                        return xc*ps  # rely on 2-arg Mul to restore Add
+                        return xc*ps  # .ex to distribute
                 return None # |c| != 1 can only be extracted from cs
             if c == ps:
                 return cs
@@ -2467,7 +2477,7 @@ class Expr(Basic, EvalfMixin):
         if c.is_Add and c.args[0].is_Number:
             # whole term as a term factor
             co = self.coeff(c)
-            xa0 = (co.extract_additively(1) or 0)*c
+            xa0 = (_extract_additive_coeff(co, 1) or 0)*c
             if xa0:
                 diff = self - co*c
                 return (xa0 + (diff.extract_additively(c) or diff)) or None
@@ -2484,9 +2494,9 @@ class Expr(Basic, EvalfMixin):
 
         # whole term as a term factor
         co, diff = _corem(self, c)
-        xa0 = (co.extract_additively(1) or 0)*c
+        xa0 = (_extract_additive_coeff(co, 1) or 0)*c
         if xa0:
-            return (xa0 + (diff.extract_additively(c) or diff)) or None
+            return (xa0 + (diff.extract_additively(c) or diff)) or None  # ().exx to distribute
         # term-wise
         coeffs = []
         for a in Add.make_args(c):
@@ -2494,12 +2504,11 @@ class Expr(Basic, EvalfMixin):
             co = self.coeff(at)
             if not co:
                 return None
-            coc, cot = co.as_coeff_Add()
-            xa = coc.extract_additively(ac)
-            if xa is None:
+            newco = _extract_additive_coeff(co, ac)
+            if newco is None:
                 return None
             self -= co*at
-            coeffs.append((cot + xa)*at)
+            coeffs.append(newco*at)
         coeffs.append(self)
         return Add(*coeffs)
 
@@ -3676,11 +3685,24 @@ class Expr(Basic, EvalfMixin):
         ========
 
         >>> from sympy.abc import x, y
-        >>> (2*(x + y)).ex
-        2*x + 2*y
+        >>> (2*(x + 3*(y + 1))).ex
+        2*x + 6*(y + 1)
         """
+        from .mul import _expand_2arg_once
+        return _expand_2arg_once(self)
+
+    @property
+    def exx(self):
+        """Recursively distribute numeric coefficients over Add expressions."""
         from .mul import expand_2arg
         return expand_2arg(self)
+
+    @property
+    def ec(self):
+        """Distribute an outer numeric coefficient and canonicalize the result."""
+        from .add import Add
+        result = self.ex
+        return Add(*result.args) if result.is_Add else result
 
     @cacheit
     def expand(
@@ -4234,6 +4256,17 @@ class ExprBuilder:
             elif id(arg) == id(elem):
                 return (i,)
         return None
+
+
+def ex(a, b=None):
+    """Distribute numeric coefficients over sums."""
+    a = sympify(a)
+    if b is None:
+        return a.ex
+    b = sympify(b)
+    if not b.is_Number:
+        raise TypeError("coefficient must be a Number")
+    return (b*a).ex
 
 
 from .mul import Mul
