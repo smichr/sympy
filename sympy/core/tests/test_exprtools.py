@@ -271,7 +271,7 @@ def test_gcd_terms():
 def test_factor_terms():
     A = Symbol('A', commutative=False)
     assert factor_terms(9*(x + x*y + 1) + (3*x + 3)**(2 + 2*x)) == \
-        9*x*y + 9*x + _keep_coeff(S(3), x + 1)**_keep_coeff(S(2), x + 1) + 9
+        (3*(x + 1))**(2*(x + 1)) + 9*(x*y + x + 1)
     assert factor_terms(9*(x + x*y + 1) + (3)**(2 + 2*x)) == \
         _keep_coeff(S(9), 3**(2*x) + x*y + x + 1)
     assert factor_terms(3**(2 + 2*x) + a*3**(2 + 2*x)) == \
@@ -289,11 +289,21 @@ def test_factor_terms():
     i = Integral(x, (x, 0, oo))
     assert factor_terms(i) == i
 
-    assert factor_terms(x/2 + y) == x/2 + y
     # fraction doesn't apply to integer denominators
     assert factor_terms(x/2 + y, fraction=True) == x/2 + y
     # clear *does* apply to the integer denominators
     assert factor_terms(x/2 + y, clear=True) == Mul(S.Half, x + 2*y, evaluate=False)
+
+    assert factor_terms(x/2 + y) == x/2 + y
+    assert factor_terms(x/2 + 1) == x/2 + 1
+    assert factor_terms(x/2 + y/2 + 1) == x/2 + y/2 + 1
+
+    # All coefficients fractional: common denominator is appropriate.
+    assert factor_terms(x/2 + y/2) == (x + y)/2
+    assert factor_terms(x/2 + y/3) == (3*x + 2*y)/6
+
+    # Explicitly clearing denominators remains supported.
+    assert factor_terms(x/2 + y, clear=True) == (x + 2*y)/2
 
     # check radical extraction
     eq = sqrt(2) + sqrt(10)
