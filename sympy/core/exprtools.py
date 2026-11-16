@@ -1319,7 +1319,7 @@ def gcd_terms(terms, isprimitive=False, clear=True, fraction=True):
             c, _coeff = coeff.as_coeff_Mul()
             if not c.is_Integer and not clear and numer.is_Add:
                 n, d = c.as_numer_denom()
-                _numer = numer/d
+                _numer = (numer/d).ex
                 if any(a.as_coeff_Mul()[0].is_Integer
                         for a in _numer.args):
                     numer = _numer
