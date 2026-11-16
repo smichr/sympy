@@ -64,7 +64,7 @@ class Mod(DefinedFunction):
                 raise ZeroDivisionError("Modulo by zero")
             if p is S.NaN or q is S.NaN or p.is_finite is False or q.is_finite is False:
                 return S.NaN
-            if p is S.Zero or p in (q, -q) or (p.is_integer and q == 1):
+            if p is S.Zero or p in (q, (-q).ex) or (p.is_integer and q == 1):
                 return S.Zero
 
             if q.is_Number:
@@ -113,13 +113,13 @@ class Mod(DefinedFunction):
                 comp1, comp2 = is_ge, is_gt
             else:
                 return
-            ls = -2*q
-            r = p - q
+            ls = (-2*q).ex
+            r = (p - q).ex
             for _ in range(4):
                 if not comp1(ls, p):
                     return
                 if comp2(r, ls):
-                    return p - ls
+                    return (p - ls).ex
                 ls += q
 
         rv = number_eval(p, q)
@@ -135,14 +135,14 @@ class Mod(DefinedFunction):
             qinner = p.args[1]
             if qinner % q == 0:
                 return cls(p.args[0], q)
-            elif (qinner*(q - qinner)).is_nonnegative:
+            elif (qinner*(q - qinner)).ex.is_nonnegative:
                 # |qinner| < |q| and have same sign
                 return p
-        elif isinstance(-p, cls):
-            qinner = (-p).args[1]
+        elif isinstance(np:=(-p).ex, cls):
+            qinner = np.args[1]
             if qinner % q == 0:
-                return cls(-(-p).args[0], q)
-            elif (qinner*(q + qinner)).is_nonpositive:
+                return cls((-np.args[0]).ex, q)
+            elif (qinner*(q + qinner)).ex.is_nonpositive:
                 # |qinner| < |q| and have different sign
                 return p
         elif isinstance(p, Add):
@@ -163,7 +163,7 @@ class Mod(DefinedFunction):
 
             if mod_l and all(inner.args[1] == q for inner in mod_l) and all(t.is_integer for t in p.args) and q.is_integer:
                 # finding distributive term
-                non_mod_l = [cls(x, q) for x in non_mod_l]
+                non_mod_l = [cls(x, q).ex for x in non_mod_l]
                 mod = []
                 non_mod = []
                 for j in non_mod_l:
@@ -171,11 +171,11 @@ class Mod(DefinedFunction):
                         mod.append(j.args[0])
                     else:
                         non_mod.append(j)
-                prod_mod = Mul(*mod)
+                prod_mod = Mul(*mod).ex
                 prod_non_mod = Mul(*non_mod)
                 prod_mod1 = Mul(*[i.args[0] for i in mod_l])
                 net = prod_mod1*prod_mod*prod_non_mod
-                return cls(net, q)
+                return cls(net.ex, q)
 
             if q.is_Integer and q is not S.One:
                 if all(t.is_integer for t in p.args):
@@ -200,6 +200,7 @@ class Mod(DefinedFunction):
                 if not equal_valued(G, 1):
                     p, q = [gcd_terms(i/G, clear=False, fraction=False)
                             for i in (p, q)]
+                    p = p.ex
             except PolynomialError:  # issue 21373
                 pass
         pwas, qwas = p, q
