@@ -2249,6 +2249,22 @@ def test_Mod_is_nonposneg():
     assert Mod(k, n).is_nonnegative is None
 
 
+def test_Mod_forms():
+    u = Symbol('u', positive=True)
+
+    # Recognition of an expanded negative dividend
+    assert Mod(-2*x - 2*y, 2*(x + y)) == 0
+
+    # Comparison loop must simplify its moving boundary
+    assert Mod(-u - 5, u + 3) == u + 1
+
+    # GCD extraction must expose additive terms
+    assert (12*x + 18*y) % (3*x) == 3*Mod(6*y, x)
+
+    # Do not expand a quotient product before subtraction
+    assert Mod(8*(x + y), 3*(x + y)) == 2*(x + y)
+
+
 def test_issue_6001():
     A = Symbol("A", commutative=False)
     eq = A + A**2
