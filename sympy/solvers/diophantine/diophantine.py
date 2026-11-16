@@ -1448,7 +1448,7 @@ def diophantine(eq, param=symbols("t", integer=True), syms=None,
     except (TypeError, NotImplementedError):
         fl = factor_list(eq)
         if fl[0].is_Rational and fl[0] != 1:
-            return diophantine(eq/fl[0], param=param, syms=syms, permute=permute)
+            return diophantine((eq/fl[0]).ex, param=param, syms=syms, permute=permute)
         terms = fl[1]
 
     sols = set()
@@ -2916,7 +2916,7 @@ def _parametrize_ternary_quadratic(solution, _var, coeff):
     y = (A*y_0 - _mexpand(B/r*p))
     z = (A*z_0 - _mexpand(B/r*q))
 
-    return _remove_gcd(x, y, z)
+    return tuple(i.exx for i in _remove_gcd(x, y, z))
 
 
 def diop_ternary_quadratic_normal(eq, parameterize=False):
