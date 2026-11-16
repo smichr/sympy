@@ -842,7 +842,7 @@ def test_as_numer_denom():
 
     # the following morphs from Add to Mul during processing
     assert Add(0, (x + y)/z/-2, evaluate=False).as_numer_denom(
-        ) == (-x - y, 2*z)
+        ) == (-1*(x + y), 2*z)
 
 
 def test_trunc():
@@ -1350,10 +1350,10 @@ def test_extractions():
     assert (sqrt(x)).extract_multiplicatively(x) is None
     assert (sqrt(x)).extract_multiplicatively(1/x) is None
     assert x.extract_multiplicatively(-x) is None
-    assert (-2 - 4*I).extract_multiplicatively(-2) == 1 + 2*I
+    assert (-2 - 4*I).extract_multiplicatively(-2).ex == 1 + 2*I
     assert (-2 - 4*I).extract_multiplicatively(3) is None
-    assert (-2*x - 4*y - 8).extract_multiplicatively(-2) == x + 2*y + 4
-    assert (-2*x*y - 4*x**2*y).extract_multiplicatively(-2*y) == 2*x**2 + x
+    assert (-2*x - 4*y - 8).extract_multiplicatively(-2).ex == x + 2*y + 4
+    assert (-2*x*y - 4*x**2*y).extract_multiplicatively(-2*y).ex == 2*x**2 + x
     assert (2*x*y + 4*x**2*y).extract_multiplicatively(2*y) == 2*x**2 + x
     assert (-4*y**2*x).extract_multiplicatively(-3*y) is None
     assert (2*x).extract_multiplicatively(1) == 2*x
@@ -1394,7 +1394,7 @@ def test_extractions():
         (x + 2*y)*(y + 1) + 3
     assert (-x - x*I).extract_additively(-x) == -I*x
     # extraction does not leave artificats, now
-    assert (4*x*(y + 1) + y).extract_additively(x) == x*(4*y + 3) + y
+    assert (4*x*(y + 1) + y).extract_additively(x).exx == x*(4*y + 3) + y
 
     n = Symbol("n", integer=True)
     assert (Integer(-3)).could_extract_minus_sign() is True
@@ -2303,7 +2303,7 @@ def test_issue_10755():
 
 def test_issue_11877():
     x = symbols('x')
-    assert integrate(log(S.Half - x), (x, 0, S.Half)) == Rational(-1, 2) -log(2)/2
+    assert integrate(log(S.Half - x), (x, 0, S.Half)).exx == Rational(-1, 2) - log(2)/2
 
 
 @pytest.mark.parametrize('expr', [I / 3, I / 200])

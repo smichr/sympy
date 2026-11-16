@@ -84,15 +84,17 @@ def test_mul_no_auto_distribute():
 def test_expand_2arg_property():
     # A rational coefficient expands without requiring general multiplication
     # expansion or rebuilding the already-formed terms.
-    assert (2*(x + y)).ex == 2*x + 2*y
-    assert (-(x + y)).ex == -x - y
-    assert (S.Half*(2*x + y)).ex == x + y/2
+    e = 2*(x + y)
+    assert e.is_Mul and e.ex == 2*x + 2*y
+    e = S.Half*(2*x + y)
+    assert e.is_Mul and e.ex == x + y/2
     assert (2*x).ex == 2*x
     assert x.ex == x
 
     q = a - (x + y) + 2*(x + 2*(y - 3))
-    assert q.ex == a + x + 3*y - 12
-    assert q.ex.ex == q.ex
+    assert q.ex == q
+    assert ((2*q).ex/2).ex == q  # no structure lost
+
 
     # The newly created Add has the ordering expected by the ordinary Add.
     assert (2*(x - y)).ex.args == (2*x - 2*y).args
@@ -146,9 +148,10 @@ def test_arit0():
     e = 2**a**2
     assert e == 2**(a**2)
     e = -(1 + a)
-    assert e == -1 - a
+    assert e.args == (S.NegativeOne, -a)
     e = S.Half*(1 + a)
-    assert e == S.Half + a/2
+    assert e.args == (S.Half, 1 + a)
+    assert e.ex == S.Half + a/2
 
 
 def test_div():
@@ -1831,9 +1834,9 @@ def test_Add_as_content_primitive():
     # the coefficient may sort to a position other than 0
     p = 3 + x + y
     assert (2*p).expand().as_content_primitive() == (2, p)
-    assert (2.0*p).expand().as_content_primitive() == (1, 2.*p)
+    assert (2.0*p).expand().as_content_primitive() == (1, (2.*p).ex)
     p *= -1
-    assert (2*p).expand().as_content_primitive() == (2, p)
+    assert (2*p).expand().as_content_primitive() == (2, p.ex)
 
 
 def test_Mul_as_content_primitive():
@@ -2088,7 +2091,7 @@ def test_Mod():
 
     # rewrite
     assert Mod(x, y).rewrite(floor) == x - y*floor(x/y)
-    assert ((x - Mod(x, y))/y).rewrite(floor) == floor(x/y)
+    assert ((x - Mod(x, y))/y).rewrite(floor).exx == floor(x/y)
 
     # issue 21373
     from sympy.functions.elementary.hyperbolic import sinh
@@ -2604,21 +2607,31 @@ def test_issue_21034():
 def test_issue_22021():
     from sympy.calculus.accumulationbounds import AccumBounds
     # these objects are special cases in Mul
-    from sympy.tensor.tensor import TensorIndexType, tensor_indices, tensor_heads
+    from sympy.tensor.tensor import TensorIndexType, tensor_indices, tensor_heads, TensMul
     L = TensorIndexType("L")
     i = tensor_indices("i", L)
     A, B = tensor_heads("A B", [L])
     e = A(i) + B(i)
-    assert -e == -1*e
-    e = zoo + x
-    assert -e == -1*e
-    a = AccumBounds(1, 2)
-    e = a + x
-    assert -e == -1*e
+    nege = -e
+    assert nege == -1*e
+    assert isinstance(nege, TensMul) and nege.args == (-1, e)
+    for what in (zoo, AccumBounds(1, 2)):
+        e = what + x
+        nege = -1*e
+        assert -e == -what - x
+        assert -e != nege
+        assert nege.is_Mul and nege.args == (-1, e)
     for args in permutations((zoo, a, x)):
         e = Add(*args, evaluate=False)
-        assert -e == -1*e
-    assert 2*Add(1, x, x, evaluate=False) == 4*x + 2
+        expected = Add(*(-term for term in e.args))
+        assert -e == expected
+        assert (-1*e).args == (-1, e)
+    u = Add(1, x, x, evaluate=False)
+    assert (2*u).is_Mul and (2*u).args == (2, u)
+    assert (2*u).ex == (2*u).exx == Add(*[2*i for i in u.args], evaluate=False)
+    assert (2*u).ec == 4*x + 2
+    q = (2*(1 + 2*(x + 1)))
+    assert q.ec == q.ex == 2 + 4*(x + 1)
 
 
 def test_issue_22244():

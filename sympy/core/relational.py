@@ -1778,9 +1778,10 @@ def is_ge(lhs, rhs, assumptions=None):
             diff = lhs - rhs
             if diff is not S.NaN:
                 rv = is_extended_nonnegative(diff, assumptions)
+                if rv is None and (lhs.is_Add or rhs.is_Add):
+                    rv = is_extended_nonnegative(diff.ex, assumptions)
                 if rv is not None:
                     return rv
-
 
 def is_neq(lhs, rhs, assumptions=None):
     """Fuzzy bool for lhs does not equal rhs.

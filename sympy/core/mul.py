@@ -2178,24 +2178,19 @@ def _keep_coeff(coeff, factors, clear=True, sign=False):
             m = Mul._from_args((coeff, factors))
         return m
 
+
+def _expand_2arg_once(e):
+    if e.is_Mul:
+        c, r = e.as_coeff_Mul()
+        if c.is_Number and r.is_Add:
+            return _unevaluated_Add(*(c*ri for ri in r.args))
+    return e
+
+
 def expand_2arg(e):
-    def do(e):
-        if e.is_Mul and len(e.args) == 2:
-            c, r = e.args
-            if c.is_Rational and r.is_Add:
-                args = []
-                allsym = 0
-                for ri in r.args:
-                    if ri.is_Symbol:
-                        allsym += 1
-                    args.append(_keep_coeff(c, ri))
-                if not (allsym == len(r.args) or r.args[0].is_Rational and allsym + 1 == len(r.args)):
-                    args.sort(key=_args_sortkey)
-                return r._new_rawargs(*args)
-        return e
-    return bottom_up(e, do)
+    return bottom_up(e, _expand_2arg_once)
 
 
 from .numbers import Rational
 from .power import Pow
-from .add import Add
+from .add import Add, _unevaluated_Add

@@ -1239,7 +1239,7 @@ class Add(Expr, AssocOp):
             radical=radical, clear=clear)) for a in self.args]).primitive()
         if not clear and not con.is_Integer and prim.is_Add:
             con, d = con.as_numer_denom()
-            _p = prim/d
+            _p = (prim/d).ex
             if any(a.as_coeff_Mul()[0].is_Integer for a in _p.args):
                 prim = _p
             else:
@@ -1313,9 +1313,12 @@ class Add(Expr, AssocOp):
         return (Float(re_part)._mpf_, Float(im_part)._mpf_)
 
     def __neg__(self):
-        if not global_parameters.distribute:
+        if (not global_parameters.distribute or
+                not global_parameters.evaluate or
+                not self.is_commutative):
             return super().__neg__()
-        return Mul(S.NegativeOne, self)
+        return Add(*(-arg for arg in self.args))
+
 
 add = AssocOpDispatcher('add')
 

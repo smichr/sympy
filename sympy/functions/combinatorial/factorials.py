@@ -210,7 +210,7 @@ class factorial(CombinatorialFunction):
         n = self.args[0]
         if n.is_integer and n.is_nonnegative and q.is_integer:
             aq = abs(q)
-            d = aq - n
+            d = aq + (-n).ex
             if d.is_nonpositive:
                 return S.Zero
             else:
