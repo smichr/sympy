@@ -181,6 +181,12 @@ def test_expand_power_base():
     assert expand_power_base(sqrt(z*q)) == sqrt(z)*exp_polar(I*pi/4)
 
 
+def test_expand_power_base_content():
+    assert expand_power_base((2 + 2*x)**y) == 2**y*(x + 1)**y
+    assert expand_power_base((2*x + 2*y)**z) == 2**z*(x + y)**z
+    assert expand_power_base((x + y)**z) == (x + y)**z
+
+
 def test_expand_arit():
     a = Symbol("a")
     b = Symbol("b", positive=True)

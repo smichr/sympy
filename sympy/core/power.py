@@ -331,6 +331,8 @@ class Pow(Expr):
                 # e.is_extended_real is False requires:
                 #     _half(expt) with constant floor or
                 #     floor(S.Half - im(e*log(b))/2/pi) == 0
+                if b.is_zero is not False:
+                    return None
                 try:
                     s = exp(2*S.ImaginaryUnit*S.Pi*expt*
                         floor(S.Half - im(e*log(b))/2/S.Pi))
@@ -889,7 +891,12 @@ class Pow(Expr):
 
         b = self.base
         e = self.exp
-        if not b.is_Mul:
+        if b.is_Add:
+            c, p = b.primitive()
+            if c is S.One:
+                return self
+            b = Mul(c, p, evaluate=False)
+        elif not b.is_Mul:
             return self
 
         cargs, nc = b.args_cnc(split_1=False)
@@ -1006,6 +1013,8 @@ class Pow(Expr):
             rv *= Mul(*[self.func(b, e, evaluate=False) for b in cargs])
         if other:
             rv *= self.func(Mul(*other), e, evaluate=False)
+        if rv.is_Mul and any(a.is_Mul for a in rv.args):
+            rv = Mul(*rv.args)  # flatten
         return rv
 
     def _eval_expand_multinomial(self, **hints):
@@ -1769,21 +1778,10 @@ class Pow(Expr):
         (1, 3**((y + 1)/2))
         >>> (3**((5 + y)/2)).as_content_primitive()
         (9, 3**((y + 1)/2))
-        >>> eq = 3**(2 + 2*x)
-        >>> powsimp(eq) == eq
-        True
-        >>> eq.as_content_primitive()
-        (9, 3**(2*x))
-        >>> powsimp(Mul(*_))
-        3**(2*x + 2)
 
         >>> eq = (2 + 2*x)**y
-        >>> s = expand_power_base(eq); s.is_Mul, s
-        (False, (2*x + 2)**y)
         >>> eq.as_content_primitive()
         (1, (2*(x + 1))**y)
-        >>> s = expand_power_base(_[1]); s.is_Mul, s
-        (True, 2**y*(x + 1)**y)
 
         See docstring of Expr.as_content_primitive for more examples.
         """

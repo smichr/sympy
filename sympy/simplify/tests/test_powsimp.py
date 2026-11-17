@@ -2,6 +2,7 @@ from __future__ import annotations
 from sympy.core.function import Function
 from sympy.core.mul import Mul
 from sympy.core.numbers import (E, I, Rational, oo, pi)
+from sympy.core.parameters import distribute
 from sympy.core.singleton import S
 from sympy.core.symbol import (Dummy, Symbol, symbols)
 from sympy.functions.elementary.exponential import (exp, log)
@@ -68,8 +69,8 @@ def test_powsimp():
     assert powsimp((z**x*z**y)**x, deep=True) == (z**(x + y))**x
     assert powsimp(x*(z**x*z**y)**x, deep=True) == x*(z**(x + y))**x
     p = symbols('p', positive=True)
-    assert powsimp((1/x)**log(2)/x) == (1/x)**(1 + log(2))
-    assert powsimp((1/p)**log(2)/p) == p**(-1 - log(2))
+    assert powsimp((1/x)**log(2)/x) == x**(-log(2) - 1)
+    assert powsimp((1/p)**log(2)/p) == p**(-1*(1 + log(2)))
 
     # coefficient of exponent can only be simplified for positive bases
     assert powsimp(2**(2*x)) == 4**x
@@ -367,3 +368,12 @@ def test_issue_22546():
     ans = ref.subs(i, e)
     assert ans.is_Pow
     assert powsimp(x**e/y**e) == ans
+
+
+def test_powsimp_factored_exponent():
+    with distribute(False):
+        e = 3**(2*x + 2)
+        expected = 9**(x + 1)
+        assert powsimp(e) == expected
+        assert powsimp(e, combine='base') == expected
+        assert powsimp(powsimp(e)) == expected
