@@ -5,9 +5,9 @@ import pytest
 from sympy.core import (
     Basic, Rational, Symbol, S, Float, Integer, Mul, Number, Pow,
     Expr, I, nan, pi, symbols, oo, zoo, N)
-from sympy.core.parameters import global_parameters
+from sympy.core.parameters import global_parameters, distribute
 from sympy.core.tests.test_evalf import NS
-from sympy.core.function import expand_multinomial
+from sympy.core.function import expand_multinomial, expand_complex
 from sympy.functions.elementary.miscellaneous import sqrt, cbrt
 from sympy.functions.elementary.exponential import exp, log
 from sympy.functions.special.error_functions import erf
@@ -234,7 +234,7 @@ def test_power_rewrite_exp():
     assert expr.rewrite(exp).expand() == \
         169*exp(5*I*log(13)/2)*exp(4*I*atan(Rational(3, 2)))*exp(-5*atan(Rational(3, 2)))
 
-    assert ((6 + 7*I)**5).rewrite(exp) == 7225*sqrt(85)*exp(5*I*atan(Rational(7, 6)))
+    assert ((6 + 7*I)**5).rewrite(exp) == exp(5*(log(sqrt(85)) + I*atan(S(7)/6)))
 
     expr = 5**(6 + 7*I)
     assert expr.rewrite(exp) == exp((6 + 7*I)*log(5))
@@ -314,16 +314,26 @@ def test_nseries():
     (-1)**(S(2)/3)*x**2/9 + 5*(-1)**(S(1)/6)*x**3/81 + O(x**4)
     assert (1 / (exp(-1/x) + 1/x))._eval_nseries(x, 2, None) == x + O(x**2)
     # test issue 23752
-    assert sqrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, 1) == -sqrt(3)*I + sqrt(3)*I*x/6 - \
+    assert sqrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, 1).exx == -sqrt(3)*I + sqrt(3)*I*x/6 - \
     sqrt(3)*I*x**2*(-S(1)/72 + I/6) - sqrt(3)*I*x**3*(-S(1)/432 + I/36) + O(x**4)
-    assert sqrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, -1) == -sqrt(3)*I + sqrt(3)*I*x/6 - \
+    assert sqrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, -1).exx == -sqrt(3)*I + sqrt(3)*I*x/6 - \
     sqrt(3)*I*x**2*(-S(1)/72 + I/6) - sqrt(3)*I*x**3*(-S(1)/432 + I/36) + O(x**4)
-    assert cbrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, 1) == -(-1)**(S(2)/3)*3**(S(1)/3) + \
-    (-1)**(S(2)/3)*3**(S(1)/3)*x/9 - (-1)**(S(2)/3)*3**(S(1)/3)*x**2*(-S(1)/81 + I/9) - \
-    (-1)**(S(2)/3)*3**(S(1)/3)*x**3*(-S(5)/2187 + 2*I/81) + O(x**4)
-    assert cbrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, -1) == -(-1)**(S(2)/3)*3**(S(1)/3) + \
-    (-1)**(S(2)/3)*3**(S(1)/3)*x/9 - (-1)**(S(2)/3)*3**(S(1)/3)*x**2*(-S(1)/81 + I/9) - \
-    (-1)**(S(2)/3)*3**(S(1)/3)*x**3*(-S(5)/2187 + 2*I/81) + O(x**4)
+    # series check from both directions
+    g = -(-1)**(S(2)/3)*3**(S(1)/3)
+    coeffs = (
+        g,
+        -g/9,
+        g*(-S(1)/81 + I/9),
+        g*(-S(5)/2187 + 2*I/81),
+    )
+    for direction in (1, -1):
+        series = cbrt(-I*x**2 + x - 3)._eval_nseries(
+            x, 4, None, direction)
+        assert series.getO() == O(x**4)
+        polynomial = series.removeO()
+        for k, coeff in enumerate(coeffs):
+            assert expand_complex(
+                polynomial.coeff(x, k) - coeff).expand() == 0
 
 
 def test_issue_6100_12942_4473():
@@ -350,7 +360,7 @@ def test_issue_6208():
     assert root((6*I)**(2*I), 3).as_base_exp()[1] == Rational(1, 3)  # != 2*I/3
     assert root((6*I)**(I/3), 3).as_base_exp()[1] == I/9
     assert sqrt(exp(3*I)) == exp(3*I/2)
-    assert sqrt(-sqrt(3)*(1 + 2*I)) == sqrt(sqrt(3))*sqrt(-1 - 2*I)
+    assert sqrt(-sqrt(3)*(1 + 2*I)).exx == sqrt(sqrt(3))*sqrt(-1 - 2*I)
     assert sqrt(exp(5*I)) == -exp(5*I/2)
     assert root(exp(5*I), 3).exp == Rational(1, 3)
 
@@ -398,33 +408,38 @@ def test_issue_7638():
     # sign will be +/-1; for the previous "small arg" case, it didn't matter
     # that this could not be proved
     assert (1 + I)**(4*I*f) == ((1 + I)**(12*I*f))**Rational(1, 3)
-
     assert (((1 + I)**(I*(1 + 7*f)))**Rational(1, 3)).exp == Rational(1, 3)
+
+    e = 1/(1 - sqrt(2))
+    assert sqrt(e) == I/sqrt(-1 + sqrt(2))
+    assert e**Rational(-1, 2) == -I*sqrt(-1 + sqrt(2))
+
+    z = cos(1)**2 + sin(1)**2 - 1
+    e = sqrt(z**(3 + I))
+    assert e.is_Pow and e.exp in [S.Half, (3 + I)/2]
+
+    e = 1 + I/5
+    assert sqrt(e**5) == e**(5*S.Half)
+    assert sqrt(e**6) == e**3
+
     r = symbols('r', real=True)
     assert sqrt(r**2) == abs(r)
     assert cbrt(r**3) != r
     assert sqrt(Pow(2*I, 5*S.Half)) != (2*I)**Rational(5, 4)
+    assert sqrt(r**Rational(4, 3)) != r**Rational(2, 3)
+
     p = symbols('p', positive=True)
     assert cbrt(p**2) == p**Rational(2, 3)
     assert NS(((0.2 + 0.7*I)**(0.7 + 1.0*I))**(0.5 - 0.1*I), 1) == '0.4 + 0.2*I'
     assert sqrt(1/(1 + I)) == sqrt(1 - I)/sqrt(2)  # or 1/sqrt(1 + I)
-    e = 1/(1 - sqrt(2))
-    assert sqrt(e) == I/sqrt(-1 + sqrt(2))
-    assert e**Rational(-1, 2) == -I*sqrt(-1 + sqrt(2))
-    assert sqrt((cos(1)**2 + sin(1)**2 - 1)**(3 + I)).exp in [S.Half,
-                                                              Rational(3, 2) + I/2]
-    assert sqrt(r**Rational(4, 3)) != r**Rational(2, 3)
     assert sqrt((p + I)**Rational(4, 3)) == (p + I)**Rational(2, 3)
 
     for q in 1+I, 1-I:
         assert sqrt(q**2) == q
     for q in -1+I, -1-I:
-        assert sqrt(q**2) == -q
+        assert sqrt(q**2) == -1*q
 
     assert sqrt((p + r*I)**2) != p + r*I
-    e = (1 + I/5)
-    assert sqrt(e**5) == e**(5*S.Half)
-    assert sqrt(e**6) == e**3
     assert sqrt((1 + I*r)**6) != (1 + I*r)**3
 
 
@@ -457,21 +472,21 @@ def test_better_sqrt():
     n = Symbol('n', integer=True, nonnegative=True)
     assert sqrt(3 + 4*I) == 2 + I
     assert sqrt(3 - 4*I) == 2 - I
-    assert sqrt(-3 - 4*I) == 1 - 2*I
-    assert sqrt(-3 + 4*I) == 1 + 2*I
-    assert sqrt(32 + 24*I) == 6 + 2*I
-    assert sqrt(32 - 24*I) == 6 - 2*I
-    assert sqrt(-32 - 24*I) == 2 - 6*I
-    assert sqrt(-32 + 24*I) == 2 + 6*I
+    assert sqrt(-3 - 4*I).ex == 1 - 2*I
+    assert sqrt(-3 + 4*I).ex == 1 + 2*I
+    assert sqrt(32 + 24*I).ex == 6 + 2*I
+    assert sqrt(32 - 24*I).ex == 6 - 2*I
+    assert sqrt(-32 - 24*I).ex == 2 - 6*I
+    assert sqrt(-32 + 24*I).ex == 2 + 6*I
 
     # triple (3, 4, 5):
     # parity of 3 matches parity of 5 and
     # den, 4, is a square
-    assert sqrt((3 + 4*I)/4) == 1 + I/2
+    assert sqrt((3 + 4*I)/4).ex == 1 + I/2
     # triple (8, 15, 17)
     # parity of 8 doesn't match parity of 17 but
     # den/2, 8/2, is a square
-    assert sqrt((8 + 15*I)/8) == (5 + 3*I)/4
+    assert sqrt((8 + 15*I)/8) == 3*(S(5)/3 + I)/4
     # handle the denominator
     assert sqrt((3 - 4*I)/25) == (2 - I)/5
     assert sqrt((3 - 4*I)/26) == (2 - I)/sqrt(26)
@@ -480,8 +495,8 @@ def test_better_sqrt():
     assert sqrt((3 + 4*I)/(3 - 4*I)) == (3 + 4*I)/5
     assert sqrt(2/(3 + 4*I)) == sqrt(2)/5*(2 - I)
     assert sqrt(n/(3 + 4*I)).subs(n, 2) == sqrt(2)/5*(2 - I)
-    assert sqrt(-2/(3 + 4*I)) == sqrt(2)/5*(1 + 2*I)
-    assert sqrt(-n/(3 + 4*I)).subs(n, 2) == sqrt(2)/5*(1 + 2*I)
+    assert sqrt(-2/(3 + 4*I)).exx == sqrt(2)/5*(1 + 2*I)
+    assert sqrt(-n/(3 + 4*I)).subs(n, 2).exx == sqrt(2)/5*(1 + 2*I)
     # power
     assert sqrt(1/(3 + I*4)) == (2 - I)/5
     assert sqrt(1/(3 - I)) == sqrt(10)*sqrt(3 + I)/10
@@ -498,7 +513,7 @@ def test_better_sqrt():
     eq = sqrt(a)
     assert eq.args == (a, S.Half)
     assert expand_multinomial(eq) == sqrt((-117 + 44*I)*(3 + 4*I))/125
-    assert eq.expand() == (7 - 24*I)/125
+    assert eq.expand() == ((7 - 24*I)/125).ex
 
     # issue 12775
     # pos im part
@@ -690,3 +705,10 @@ def test_issue_28219():
     assert Pow(S.Zero, -1, evaluate=False).as_real_imag() == (S.NaN, S.NaN)
     x = Symbol('x', real=True)
     assert Pow(x, -1, evaluate=False).as_real_imag() == (1/x, S.Zero)
+
+
+def test_power_canonical_mul():
+    with distribute(False):
+        p = sqrt((8 + 15*I)/8)
+        assert p == 3*(S(5)/3 + I)/4
+        assert p == p.func(*p.args)
