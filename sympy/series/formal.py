@@ -116,7 +116,7 @@ def rational_algorithm(f, x, k, order=4, full=False):
 
             terms = apart(diff, x, full=full)
             if terms.has(RootSum):
-                terms = terms.doit()
+                terms = terms.doit().ex
 
             for t in Add.make_args(terms):
                 num, den = t.as_numer_denom()
@@ -158,7 +158,7 @@ def rational_algorithm(f, x, k, order=4, full=False):
                 coeff = (coeff / (k + j + 1))
                 sep = integrate(sep, x)
                 sep += (ds.pop() - sep).limit(x, 0)  # constant of integration
-            return (coeff.subs(k, k - i), sep, i)
+            return (coeff.subs(k, k - i).exx, sep, i)
 
         else:
             ds.append(diff)
@@ -544,7 +544,7 @@ def rsolve_hypergeometric(f, x, P, Q, k, m):
 
     sol_dict = defaultdict(lambda: S.Zero)
     for res, cond in sol_list:
-        j, mk = cond.as_coeff_Add()
+        j, mk = cond.ex.as_coeff_Add()
         c = mk.coeff(k)
 
         if j.is_integer is False:
@@ -553,6 +553,7 @@ def rsolve_hypergeometric(f, x, P, Q, k, m):
 
         res = res.subs(k, (k - j) / c)
         cond = Eq(k % c, j % c)
+
         sol_dict[cond] += res  # Group together formula for same conditions
 
     sol = [(res, cond) for cond, res in sol_dict.items()]
@@ -583,6 +584,7 @@ def _solve_hyper_RE(f, x, RE, g, k):
         gs = list(RE.atoms(Function))
         P, Q = map(RE.coeff, gs)
         m = gs[1].args[0] - gs[0].args[0]
+
         if m < 0:
             P, Q = Q, P
             m = abs(m)
