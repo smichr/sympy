@@ -60,9 +60,9 @@ def difference_delta(expr, n=None, step=1):
     if hasattr(expr, '_eval_difference_delta'):
         result = expr._eval_difference_delta(n, step)
         if result:
-            return result
+            return result.exx
 
-    return expr.subs(n, n + step) - expr
+    return (expr.subs(n, n + step) - expr).exx
 
 
 def dominant(expr, n):
@@ -236,7 +236,9 @@ def limit_seq(expr, n=None, trials=5):
             L2 = _limit_seq(expr.xreplace({n: n2}), n2, trials)
             if L1 != L2:
                 if L1.is_comparable and L2.is_comparable:
-                    return AccumulationBounds(Min(L1, L2), Max(L1, L2))
+                    L1, L2 = L1.cancel(), L2.cancel()
+                    if L1 != L2:
+                        return AccumulationBounds(Min(L1, L2), Max(L1, L2))
                 else:
                     return None
     else:

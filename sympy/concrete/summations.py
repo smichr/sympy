@@ -362,7 +362,7 @@ class Sum(AddWithLimits, ExprWithIntLimits):
 
     def _eval_difference_delta(self, n, step):
         k, _, upper = self.args[-1]
-        new_upper = upper.subs(n, n + step)
+        new_upper = upper.subs(n, n + step).ex
 
         if len(self.args) == 2:
             f = self.args[0]
