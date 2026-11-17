@@ -369,6 +369,8 @@ class Limit(Expr):
             if coeff.has(S.Infinity, S.NegativeInfinity, S.ComplexInfinity, S.NaN):
                 return self
             if not coeff.has(newz):
+                if ex.is_positive is None and ex.is_negative is None:
+                    ex == ex.ex
                 if ex.is_positive:
                     return S.Zero
                 elif ex == 0:

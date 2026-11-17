@@ -43,11 +43,10 @@ def test_rational_algorithm():
 
     f = x / (1 - x - x**2)
     assert rational_algorithm(f, x, k) is None
-    assert rational_algorithm(f, x, k, full=True) == \
-        (((Rational(-1, 2) + sqrt(5)/2)**(-k - 1) *
-         (-sqrt(5)/10 + S.Half)) +
-         ((-sqrt(5)/2 - S.Half)**(-k - 1) *
-         (sqrt(5)/10 + S.Half)), 0, 0)
+    assert rational_algorithm(f, x, k, full=True) == (
+        (5 - sqrt(5))*(sqrt(5)/2 - S.Half)**(-k - 1)/10
+        + (5 + sqrt(5))*(-sqrt(5)/2 - S.Half)**(-k - 1)/10,
+        0, 0)
 
     f = 1 / (x**2 + 2*x + 2)
     assert rational_algorithm(f, x, k) is None
@@ -140,15 +139,15 @@ def test_hyper_re():
 
     d = 2*f(x) - 2*Derivative(f(x), x) + Derivative(f(x), x, x)
     assert hyper_re(d, r, k) == \
-        (-2*k - 2)*r(k + 1) + (k + 1)*(k + 2)*r(k + 2) + 2*r(k)
+        (k + 1)*(k + 2)*r(k + 2) - 2*(k + 1)*r(k + 1) + 2*r(k)
 
     d = 2*n*f(x) + (x**2 - 1)*Derivative(f(x), x)
     assert hyper_re(d, r, k) == \
-        k*r(k) + 2*n*r(k + 1) + (-k - 2)*r(k + 2)
+        k*r(k) + 2*n*r(k + 1) + -1*(k + 2)*r(k + 2)
 
     d = (x**10 + 4)*Derivative(f(x), x) + x*(x**10 - 1)*Derivative(f(x), x, x)
     assert hyper_re(d, r, k) == \
-        (k*(k - 1) + k)*r(k) + (4*k - (k + 9)*(k + 10) + 40)*r(k + 10)
+        (k*(k - 1) + k)*r(k) + (4*(k + 10) + -1*(k + 9)*(k + 10))*r(k + 10)
 
     d = ((x**2 - 1)*Derivative(f(x), x, 3) + 3*x*Derivative(f(x), x, x) +
          Derivative(f(x), x))
