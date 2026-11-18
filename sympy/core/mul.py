@@ -2182,8 +2182,9 @@ def _keep_coeff(coeff, factors, clear=True, sign=False):
 def _expand_2arg_once(e):
     if e.is_Mul:
         c, r = e.as_coeff_Mul()
-        if c.is_Number and r.is_Add:
-            return _unevaluated_Add(*(c*ri for ri in r.args))
+        if c.is_Number:
+            if r.is_Add:
+                return _unevaluated_Add(*(c*ri for ri in r.args))
     return e
 
 
