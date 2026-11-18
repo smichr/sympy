@@ -1496,7 +1496,7 @@ def factor_terms(expr: Expr | complex, radical=False, clear=False, fraction=Fals
             special = {}
             for i, a in enumerate(list_args):
                 b, e = a.as_base_exp()
-                if e.is_Mul and e != Mul(*e.args):
+                if e.is_Mul and e.as_coeff_Mul()[1].is_Add:
                     list_args[i] = Dummy()
                     special[list_args[i]] = a
             # rebuild p not worrying about the order which gcd_terms will fix
