@@ -7030,11 +7030,12 @@ def _torational_factor_list(p, x):
     lc, r, t, g = res
     factors = factor_list(g.as_expr())
     if lc:
+        from sympy.simplify.radsimp import radsimp
         c = simplify(factors[0]*lc*r**n)
-        r1 = simplify(1/r)
+        r1 = factor_terms(radsimp(1/r))
         a = []
         for z in factors[1:][0]:
-            a.append((simplify(z[0].subs({x: x*r1})), z[1]))
+            a.append((z[0].subs({x: x*r1}), z[1]))
     else:
         c = factors[0]
         a = []
