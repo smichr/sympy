@@ -70,7 +70,7 @@ def test_powsimp():
     assert powsimp(x*(z**x*z**y)**x, deep=True) == x*(z**(x + y))**x
     p = symbols('p', positive=True)
     assert powsimp((1/x)**log(2)/x) == x**(-log(2) - 1)
-    assert powsimp((1/p)**log(2)/p) == p**(-1*(1 + log(2)))
+    assert powsimp((1/p)**log(2)/p) == p**(-log(2) - 1)
 
     # coefficient of exponent can only be simplified for positive bases
     assert powsimp(2**(2*x)) == 4**x

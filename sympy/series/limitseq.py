@@ -230,10 +230,19 @@ def limit_seq(expr, n=None, trials=5):
     # trigonometric function, then consider even and odd n separately.
     powers = (p.as_base_exp() for p in expr.atoms(Pow))
     if (any(b.is_negative and e.has(n) for b, e in powers) or
-            expr.has(cos, sin)):
-        L1 = _limit_seq(expr.xreplace({n: n1}), n1, trials)
+        expr.has(cos, sin)):
+        odd = expr.xreplace({n: n1})
+        L1 = _limit_seq(odd, n1, trials)
+        if L1 is None or L1.is_comparable is not True:
+            L1 = _limit_seq(odd.exx, n1, trials)
+
         if L1 is not None:
-            L2 = _limit_seq(expr.xreplace({n: n2}), n2, trials)
+            even = expr.xreplace({n: n2})
+            L2 = _limit_seq(even, n2, trials)
+            if L2 is None or L2.is_comparable is not True:
+                L2 = _limit_seq(even.exx, n2, trials)
+            if L2 is None:
+                return None
             if L1 != L2:
                 if L1.is_comparable and L2.is_comparable:
                     L1, L2 = L1.cancel(), L2.cancel()
