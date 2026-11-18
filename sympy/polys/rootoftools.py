@@ -1196,7 +1196,7 @@ class RootSum(Expr):
 
             terms.append(k*term)
 
-        return mul_const*Add(*terms) + deg*add_const
+        return (mul_const*Add(*terms)).ex + deg*add_const
 
     @classmethod
     def _new(cls, poly, func, auto=True):
