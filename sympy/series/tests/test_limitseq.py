@@ -142,7 +142,9 @@ def test_issue_11672():
 def test_issue_14196():
     k, n  = symbols('k, n', positive=True)
     m = Symbol('m')
-    assert limit_seq(Sum(m**k, (m, 1, n)).doit()/(n**(k + 1)), n) == 1/(k + 1)
+    got = limit_seq(Sum(m**k, (m, 1, n)).doit()/(n**(k + 1)), n)
+    ans = 1/(k + 1)
+    assert got == 2/(2*k + 2) and got.cancel() == ans
 
 
 def test_issue_16735():
