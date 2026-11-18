@@ -116,7 +116,7 @@ def rational_algorithm(f, x, k, order=4, full=False):
 
             terms = apart(diff, x, full=full)
             if terms.has(RootSum):
-                terms = terms.doit().ex
+                terms = terms.doit().exx
 
             for t in Add.make_args(terms):
                 num, den = t.as_numer_denom()

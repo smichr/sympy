@@ -370,7 +370,8 @@ class Limit(Expr):
                 return self
             if not coeff.has(newz):
                 if ex.is_positive is None and ex.is_negative is None:
-                    ex == ex.ex
+                    from sympy.core.function import expand_mul
+                    ex = expand_mul(ex)
                 if ex.is_positive:
                     return S.Zero
                 elif ex == 0:
