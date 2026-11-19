@@ -315,9 +315,9 @@ def test_nseries():
     assert (1 / (exp(-1/x) + 1/x))._eval_nseries(x, 2, None) == x + O(x**2)
     # test issue 23752
     assert sqrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, 1).exx == -sqrt(3)*I + sqrt(3)*I*x/6 - \
-    sqrt(3)*I*x**2*(-S(1)/72 + I/6) - sqrt(3)*I*x**3*(-S(1)/432 + I/36) + O(x**4)
+    sqrt(3)*I*x**2*(S(1)/72 - I/6) + sqrt(3)*I*x**3*(S(1)/432 - I/36) + O(x**4)
     assert sqrt(-I*x**2 + x - 3)._eval_nseries(x, 4, None, -1).exx == -sqrt(3)*I + sqrt(3)*I*x/6 - \
-    sqrt(3)*I*x**2*(-S(1)/72 + I/6) - sqrt(3)*I*x**3*(-S(1)/432 + I/36) + O(x**4)
+    sqrt(3)*I*x**2*(S(1)/72 - I/6) + sqrt(3)*I*x**3*(S(1)/432 - I/36) + O(x**4)
     # series check from both directions
     g = -(-1)**(S(2)/3)*3**(S(1)/3)
     coeffs = (
@@ -495,8 +495,8 @@ def test_better_sqrt():
     assert sqrt((3 + 4*I)/(3 - 4*I)) == (3 + 4*I)/5
     assert sqrt(2/(3 + 4*I)) == sqrt(2)/5*(2 - I)
     assert sqrt(n/(3 + 4*I)).subs(n, 2) == sqrt(2)/5*(2 - I)
-    assert sqrt(-2/(3 + 4*I)).exx == sqrt(2)/5*(1 + 2*I)
-    assert sqrt(-n/(3 + 4*I)).subs(n, 2).exx == sqrt(2)/5*(1 + 2*I)
+    assert sqrt(-2/(3 + 4*I)).exx == (sqrt(2)/5*(1 + 2*I)).ex
+    assert sqrt(-n/(3 + 4*I)).subs(n, 2).exx == (sqrt(2)/5*(1 + 2*I)).ex
     # power
     assert sqrt(1/(3 + I*4)) == (2 - I)/5
     assert sqrt(1/(3 - I)) == sqrt(10)*sqrt(3 + I)/10
