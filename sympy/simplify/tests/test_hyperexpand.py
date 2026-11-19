@@ -119,7 +119,7 @@ def test_hyperexpand_bases():
     assert hyperexpand(hyper([S.Half, 2], [Rational(3, 2)], z)) == \
         -1/(2*z - 2) + atanh(sqrt(z))/sqrt(z)/2
     assert hyperexpand(hyper([S.Half, S.Half], [Rational(5, 2)], z)) == \
-        (-3*z + 3)/4/(z*sqrt(-z + 1)) \
+        -(3*z - 3)/(4*z*sqrt(1 - z)) \
         + (6*z - 3)*asin(sqrt(z))/(4*z**Rational(3, 2))
     assert hyperexpand(hyper([1, 2], [Rational(3, 2)], z)) == -1/(2*z - 2) \
         - asin(sqrt(z))/(sqrt(z)*(2*z - 2)*sqrt(-z + 1))
@@ -138,7 +138,7 @@ def test_hyperexpand_bases():
 
 def test_hyperexpand_parametric():
     assert hyperexpand(hyper([a, S.Half + a], [S.Half], z)) \
-        == (1 + sqrt(z))**(-2*a)/2 + (1 - sqrt(z))**(-2*a)/2
+        == ((1 + sqrt(z))**(-2*a) + (1 - sqrt(z))**(-2*a))/2
     assert hyperexpand(hyper([a, Rational(-1, 2) + a], [2*a], z)) \
         == 2**(2*a - 1)*((-z + 1)**S.Half + 1)**(-2*a + 1)
 
@@ -146,7 +146,7 @@ def test_hyperexpand_parametric():
 def test_shifted_sum():
     from sympy.simplify.simplify import simplify
     assert simplify(hyperexpand(z**4*hyper([2], [3, S('3/2')], -z**2))) \
-        == z*sin(2*z) + (-z**2 + S.Half)*cos(2*z) - S.Half
+        == -(-2*z*sin(2*z) + (2*z**2 - 1)*cos(2*z) + 1)/2
 
 
 def _randrat():
@@ -446,7 +446,7 @@ def test_meijerg_lookup():
     from sympy.functions.special.error_functions import (Ci, Si)
     from sympy.functions.special.gamma_functions import uppergamma
     assert hyperexpand(meijerg([a], [], [b, a], [], z)) == \
-        z**b*exp(z)*gamma(-a + b + 1)*uppergamma(a - b, z)
+        z**b*exp(z)*gamma(1 - (a - b))*uppergamma(a - b, z)
     assert hyperexpand(meijerg([0], [], [0, 0], [], z)) == \
         exp(z)*uppergamma(0, z)
     assert can_do_meijer([a], [], [b, a + 1], [])
@@ -618,7 +618,7 @@ def test_lerchphi():
     assert hyperexpand(z*hyper([1, 1, 1, 1], [2, 2, 2], z)) == polylog(3, z)
 
     assert hyperexpand(hyper([1, a, 1 + S.Half], [a + 1, S.Half], z)) == \
-        -2*a/(z - 1) + (-2*a**2 + a)*lerchphi(z, 1, a)
+        -2*a/(z - 1) - (2*a**2 - a)*lerchphi(z, 1, a)
 
     # Now numerical tests. These make sure reductions etc are carried out
     # correctly
