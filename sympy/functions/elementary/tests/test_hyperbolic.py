@@ -1162,10 +1162,10 @@ def test_atanh_leading_term():
     assert atanh(I*x + 2).as_leading_term(x, cdir=1) == atanh(2) + I*pi
     assert atanh(-I*x + 2).as_leading_term(x, cdir=1) == atanh(2)
     assert atanh(I*x - 2).as_leading_term(x, cdir=1) == -atanh(2)
-    assert atanh(-I*x - 2).as_leading_term(x, cdir=1) == -I*pi - atanh(2)
+    assert atanh(-I*x - 2).as_leading_term(x, cdir=1).ex == -I*pi - atanh(2)
     # Tests concerning im(ndir) == 0
-    assert atanh(-I*x**2 + x - 2).as_leading_term(x, cdir=1) == -log(3)/2 - I*pi/2
-    assert atanh(-I*x**2 + x - 2).as_leading_term(x, cdir=-1) == -log(3)/2 - I*pi/2
+    assert atanh(-I*x**2 + x - 2).as_leading_term(x, cdir=1).ex == -log(3)/2 - I*pi/2
+    assert atanh(-I*x**2 + x - 2).as_leading_term(x, cdir=-1).ex == -log(3)/2 - I*pi/2
 
 
 def test_atanh_series():
@@ -1284,8 +1284,8 @@ def test_acoth_leading_term():
     assert acoth(I*x - 1/2).as_leading_term(x, cdir=1) == -I*pi - acoth(1/2)
     assert acoth(-I*x - 1/2).as_leading_term(x, cdir=1) == -acoth(1/2)
     # Tests concerning im(ndir) == 0
-    assert acoth(-I*x**2 - x - S(1)/2).as_leading_term(x, cdir=1) == -log(3)/2 + I*pi/2
-    assert acoth(-I*x**2 - x - S(1)/2).as_leading_term(x, cdir=-1) == -log(3)/2 + I*pi/2
+    assert acoth(-I*x**2 - x - S(1)/2).as_leading_term(x, cdir=1).ex == -log(3)/2 + I*pi/2
+    assert acoth(-I*x**2 - x - S(1)/2).as_leading_term(x, cdir=-1).ex == -log(3)/2 + I*pi/2
 
 
 def test_acoth_series():
