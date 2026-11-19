@@ -1143,10 +1143,10 @@ def test_atanh_leading_term():
     x = Symbol('x')
     assert atanh(x).as_leading_term(x) == x
     # Tests concerning branch points
-    assert atanh(x + 1).as_leading_term(x, cdir=1) == -log(x)/2 + log(2)/2 - I*pi/2
-    assert atanh(x + 1).as_leading_term(x, cdir=-1) == -log(x)/2 + log(2)/2 + I*pi/2
-    assert atanh(x - 1).as_leading_term(x, cdir=1) == log(x)/2 - log(2)/2
-    assert atanh(x - 1).as_leading_term(x, cdir=-1) == log(x)/2 - log(2)/2
+    assert atanh(x + 1).as_leading_term(x, cdir=1).ex == -log(x)/2 + log(2)/2 - I*pi/2
+    assert atanh(x + 1).as_leading_term(x, cdir=-1).ex == -log(x)/2 + log(2)/2 + I*pi/2
+    assert atanh(x - 1).as_leading_term(x, cdir=1).ex == log(x)/2 - log(2)/2
+    assert atanh(x - 1).as_leading_term(x, cdir=-1).ex == log(x)/2 - log(2)/2
     assert atanh(1/x).as_leading_term(x, cdir=1) == -I*pi/2
     assert atanh(1/x).as_leading_term(x, cdir=-1) == I*pi/2
     # Tests concerning points lying on branch cuts
@@ -1186,7 +1186,7 @@ def test_atanh_nseries():
     assert atanh(I*x - 2)._eval_nseries(x, 4, None, cdir=-1) == -atanh(2) - I*pi - \
     I*x/3 + 2*x**2/9 + 13*I*x**3/81 + O(x**4)
     # Tests concerning im(ndir) == 0
-    assert atanh(-I*x**2 + x - 2)._eval_nseries(x, 4, None) == -I*pi/2 - log(3)/2 - x/3 + \
+    assert atanh(-I*x**2 + x - 2)._eval_nseries(x, 4, None).exx == -I*pi/2 - log(3)/2 - x/3 + \
     x**2*(-S(1)/4 + I/2) + x**2*(S(1)/36 - I/6) + x**3*(-S(1)/6 + I/2) + x**3*(S(1)/162 - I/18) + O(x**4)
 
 
@@ -1263,10 +1263,10 @@ def test_acoth_rewrite():
 def test_acoth_leading_term():
     x = Symbol('x')
     # Tests concerning branch points
-    assert acoth(x + 1).as_leading_term(x, cdir=1) == -log(x)/2 + log(2)/2
-    assert acoth(x + 1).as_leading_term(x, cdir=-1) == -log(x)/2 + log(2)/2
-    assert acoth(x - 1).as_leading_term(x, cdir=1) == log(x)/2 - log(2)/2 + I*pi/2
-    assert acoth(x - 1).as_leading_term(x, cdir=-1) == log(x)/2 - log(2)/2 - I*pi/2
+    assert acoth(x + 1).as_leading_term(x, cdir=1).ex == -log(x)/2 + log(2)/2
+    assert acoth(x + 1).as_leading_term(x, cdir=-1).ex == -log(x)/2 + log(2)/2
+    assert acoth(x - 1).as_leading_term(x, cdir=1).ex == log(x)/2 - log(2)/2 + I*pi/2
+    assert acoth(x - 1).as_leading_term(x, cdir=-1).ex == log(x)/2 - log(2)/2 - I*pi/2
     # Tests concerning points lying on branch cuts
     assert acoth(x).as_leading_term(x, cdir=-1) == I*pi/2
     assert acoth(x).as_leading_term(x, cdir=1) == -I*pi/2
@@ -1304,7 +1304,7 @@ def test_acoth_nseries():
     assert acoth(I*x - S(1)/2)._eval_nseries(x, 4, None, cdir=-1) == -acoth(S(1)/2) + \
     4*I*x/3 + 8*x**2/9 - 112*I*x**3/81 + O(x**4)
     # Tests concerning im(ndir) == 0
-    assert acoth(-I*x**2 - x - S(1)/2)._eval_nseries(x, 4, None) == I*pi/2 - log(3)/2 - \
+    assert acoth(-I*x**2 - x - S(1)/2)._eval_nseries(x, 4, None).exx == I*pi/2 - log(3)/2 - \
     4*x/3 + x**2*(-S(8)/9 + 2*I/3) - 2*I*x**2 + x**3*(S(104)/81 - 16*I/9) - 8*x**3/3 + O(x**4)
 
 
@@ -1450,7 +1450,7 @@ def test_coth_rewrite():
 
 def test_csch_rewrite():
     x = Symbol('x')
-    assert csch(x).rewrite(exp) == 1 / (exp(x)/2 - exp(-x)/2) \
+    assert csch(x).rewrite(exp) == 2/(exp(x) - exp(-x)) \
         == csch(x).rewrite('tractable')
     assert csch(x).rewrite(cosh) == I/cosh(x + I*pi/2, evaluate=False)
     tanh_half = tanh(S.Half*x)
@@ -1461,7 +1461,7 @@ def test_csch_rewrite():
 
 def test_sech_rewrite():
     x = Symbol('x')
-    assert sech(x).rewrite(exp) == 1 / (exp(x)/2 + exp(-x)/2) \
+    assert sech(x).rewrite(exp) == 2/(exp(x) + exp(-x)) \
         == sech(x).rewrite('tractable')
     assert sech(x).rewrite(sinh) == I/sinh(x + I*pi/2, evaluate=False)
     tanh_half = tanh(S.Half*x)**2
