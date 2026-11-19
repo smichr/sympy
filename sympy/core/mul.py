@@ -2179,13 +2179,25 @@ def _keep_coeff(coeff, factors, clear=True, sign=False):
         return m
 
 
+def _expand_2arg_term(e):
+    if not e.is_Mul:
+        return e
+    c, factors = e.as_coeff_mul()
+    if c is S.One:
+        return e
+    adds = [i for i, f in enumerate(factors) if f.is_Add]
+    if len(adds) != 1:
+        return e
+    factors = list(factors)
+    i = adds[0]
+    factors[i] = _unevaluated_Add(*(c*a for a in factors[i].args))
+    return Mul(*factors)
+
+
 def _expand_2arg_once(e):
-    if e.is_Mul:
-        c, r = e.as_coeff_Mul()
-        if c.is_Number:
-            if r.is_Add:
-                return _unevaluated_Add(*(c*ri for ri in r.args))
-    return e
+    if e.is_Add:
+        return Add._from_args([_expand_2arg_term(a) for a in e.args])
+    return _expand_2arg_term(e)
 
 
 def expand_2arg(e):
