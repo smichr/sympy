@@ -642,8 +642,8 @@ def test_partial_simp():
     # Now test that formulae are partially simplified.
     a, b, z = symbols('a b z')
     assert hyperexpand(hyper([3, a], [1, b], z)) == \
-        (-a*b/2 + a*z/2 + 2*a)*hyper([a + 1], [b], z) \
-        + (a*b/2 - 2*a + 1)*hyper([a], [b], z)
+        (-a*b + a*z + 4*a)*hyper([a + 1], [b], z)/2 + \
+        (a*b - 4*a + 2)*hyper([a], [b], z)/2
     assert tn(
         hyperexpand(hyper([3, d], [1, e], z)), hyper([3, d], [1, e], z), z)
     assert hyperexpand(hyper([3], [1, a, b], z)) == \

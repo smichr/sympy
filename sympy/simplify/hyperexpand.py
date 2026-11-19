@@ -1571,14 +1571,14 @@ def devise_plan(target, origin, z):
     def do_shifts(fro, to, inc, dec):
         ops = []
         for i in range(len(fro)):
-            if to[i] - fro[i] > 0:
+            if (to[i] - fro[i]).exx > 0:
                 sh = inc
                 ch = 1
             else:
                 sh = dec
                 ch = -1
 
-            while to[i] != fro[i]:
+            while (to[i] - fro[i]).exx != 0:
                 ops += [sh(fro, i)]
                 fro[i] += ch
 
