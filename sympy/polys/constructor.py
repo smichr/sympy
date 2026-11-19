@@ -274,7 +274,7 @@ def _construct_composite(coeffs, opt):
             denom = denom[zeros]
 
             for monom, coeff in numer.items():
-                coeff /= denom
+                coeff = (coeff/denom).ex
                 coeffs.add(coeff)
                 numer[monom] = coeff
     else:

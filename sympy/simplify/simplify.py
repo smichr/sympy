@@ -439,7 +439,8 @@ def signsimp(expr, evaluate=None):
         rv = e.func(*[signsimp(a) for a in e.args])
         if not evaluate and isinstance(rv, Add
                 ) and rv.could_extract_minus_sign():
-            return Mul(S.NegativeOne, (-rv).ex, evaluate=False)
+            return Mul(S.NegativeOne,
+                   Add(*(-a for a in rv.args)), evaluate=False)
         return rv
     if evaluate:
         e = e.replace(lambda x: x.is_Mul and -(-x) != x, lambda x: -(-x))
