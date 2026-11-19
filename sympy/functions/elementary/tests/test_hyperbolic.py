@@ -1043,10 +1043,19 @@ def test_acsch_nseries():
     assert acsch(x - I/2)._eval_nseries(x, 4, None, cdir=-1) == I*pi + \
     acsch(I/2) + 4*sqrt(3)*I*x/3 + 8*sqrt(3)*x**2/9 - 16*sqrt(3)*I*x**3/9 + O(x**4)
     # Tests concerning re(ndir) == 0
-    assert acsch(I/2 + I*x - x**2)._eval_nseries(x, 4, None) == -I*pi/2 + \
-    log(2 - sqrt(3)) + x*(12 - 8*sqrt(3))/(-6 + 3*sqrt(3)) + x**2*(-96 + \
-    sqrt(3)*(56 - 84*I) + 144*I)/(-63 + 36*sqrt(3)) + x**3*(2688 - 2688*I + \
-    sqrt(3)*(-1552 + 1552*I))/(-873 + 504*sqrt(3)) + O(x**4)
+    from sympy.simplify.simplify import simplify
+    result = acsch(I/2 + I*x - x**2)._eval_nseries(x, 4, None)
+    expected = (-I*pi/2 + log(2 - sqrt(3)) +
+        x*(12 - 8*sqrt(3))/(-6 + 3*sqrt(3)) +
+        x**2*(-96 + sqrt(3)*(56 - 84*I) + 144*I)/(-63 + 36*sqrt(3)) +
+        x**3*(2688 - 2688*I + sqrt(3)*(-1552 + 1552*I))/(-873 + 504*sqrt(3)) +
+        O(x**4))
+    assert result.getO() == expected.getO()
+    # Compare each coefficient exactly, including the cubic term that an
+    # underresolved internal log series previously calculated incorrectly.
+    for k in range(4):
+        assert simplify(result.removeO().coeff(x, k) -
+                        expected.removeO().coeff(x, k)) == 0
 
 
 def test_acsch_rewrite():
