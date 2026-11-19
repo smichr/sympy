@@ -1028,7 +1028,13 @@ class log(DefinedFunction):
             except ValueError:
                 a, b = s.removeO().as_leading_term(t, cdir=1), S.Zero
 
-        p = (z/(a*t**b) - 1).cancel()._eval_nseries(t, n=n, logx=logx, cdir=1)
+        poly = (z/(a*t**b) - 1).cancel()
+        p = poly._eval_nseries(t, n=n, logx=logx, cdir=1)
+        order = p.getO()
+        if order is not None and order.getn() < n:
+            # An internal series can terminate before the requested order,
+            # leaving terms of the logarithm's series undetermined.
+            p = poly.series(t, 0, n)
         if p.has(exp):
             p = logcombine(p)
         if isinstance(p, Order):
