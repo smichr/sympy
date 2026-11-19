@@ -1707,7 +1707,10 @@ class Pow(Expr):
                 elif im(ndir).is_zero:
                     log_leadterm = log(b)._eval_as_leading_term(x, logx=logx, cdir=cdir)
                     if log_leadterm.is_infinite is False:
-                        return exp(e*log_leadterm)
+                        # Expose rational factors before evaluating the phase.
+                        # Otherwise exp((log(3) - I*pi)/2) can retain a
+                        # branch-sensitive half-power which powsimp mishandles.
+                        return exp((e*log_leadterm).ex)
             return self.func(f, e)
 
     @cacheit
