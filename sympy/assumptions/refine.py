@@ -200,7 +200,7 @@ def refine_Pow(expr, assumptions):
                     expr = expr.base**(Add(*terms))
 
                 # Handle (-1)**((-1)**n/2 + m/2)
-                e2 = 2*expr.exp
+                e2 = (2*expr.exp).ex
                 if ask(Q.even(e2), assumptions):
                     if e2.could_extract_minus_sign():
                         e2 *= expr.base
@@ -237,6 +237,7 @@ def refine_exp(expr, assumptions):
     coeff = expr.exp.as_coefficient(S.Pi * S.ImaginaryUnit)
     if coeff is None:
         return expr
+    coeff = coeff.ex
 
     integer_terms = []
     remaining_terms = []
