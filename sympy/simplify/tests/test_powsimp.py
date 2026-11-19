@@ -370,6 +370,15 @@ def test_issue_22546():
     assert powsimp(x**e/y**e) == ans
 
 
+def test_powsimp_complex_exponential_phase():
+    # Splitting exp((log(3) - I*pi)/2) into a principal square root
+    # changes its phase: the original factor is -I*sqrt(3).
+    with distribute(False):
+        expr = -I*exp((log(3) - I*pi)/2)
+        result = powsimp(expr, deep=True, combine='exp')
+        assert abs((result + sqrt(3)).evalf()) < 1e-12
+
+
 def test_powsimp_factored_exponent():
     with distribute(False):
         e = 3**(2*x + 2)
