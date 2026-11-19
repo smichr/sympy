@@ -252,6 +252,10 @@ def powsimp(expr, deep=False, combine='all', force=False, measure=count_ops):
                     if c is not S.One:
                         if m.is_integer:
                             return (b, Integer(c.q)), m*Integer(c.p)
+                        if b is S.Exp1 and c.q != 1 and m.is_real is not True:
+                            # (exp(m))**(1/q) need not equal exp(m/q)
+                            # when m has a complex phase: preserve the branch.
+                            return (b**e, S.One), S.One
                         return (b**m, Integer(c.q)), Integer(c.p)
                     else:
                         return (b**e, S.One), S.One
