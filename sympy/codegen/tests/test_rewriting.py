@@ -84,12 +84,12 @@ def test_expm1_opt():
     expr2 = 3*exp(x) - 3
     opt2 = optimize(expr2, [expm1_opt])
     assert 3*expm1(x) == opt2
-    assert opt2.rewrite(exp) == expr2
+    assert opt2.rewrite(exp).ec == expr2
 
     expr3 = 3*exp(x) - 5
     opt3 = optimize(expr3, [expm1_opt])
     assert 3*expm1(x) - 2 == opt3
-    assert opt3.rewrite(exp) == expr3
+    assert opt3.rewrite(exp).ec == expr3
     expm1_opt_non_opportunistic = FuncMinusOneOptim(exp, expm1, opportunistic=False)
     assert expr3 == optimize(expr3, [expm1_opt_non_opportunistic])
     assert opt1 == optimize(expr1, [expm1_opt_non_opportunistic])
@@ -98,12 +98,12 @@ def test_expm1_opt():
     expr4 = 3*exp(x) + log(x) - 3
     opt4 = optimize(expr4, [expm1_opt])
     assert 3*expm1(x) + log(x) == opt4
-    assert opt4.rewrite(exp) == expr4
+    assert opt4.rewrite(exp).ec == expr4
 
     expr5 = 3*exp(2*x) - 3
     opt5 = optimize(expr5, [expm1_opt])
     assert 3*expm1(2*x) == opt5
-    assert opt5.rewrite(exp) == expr5
+    assert opt5.rewrite(exp).ec == expr5
 
     expr6 = (2*exp(x) + 1)/(exp(x) + 1) + 1
     opt6 = optimize(expr6, [expm1_opt])
@@ -157,12 +157,12 @@ def test_cosm1_opt():
     expr2 = 3*cos(x) - 3
     opt2 = optimize(expr2, [cosm1_opt])
     assert 3*cosm1(x) == opt2
-    assert opt2.rewrite(cos) == expr2
+    assert opt2.rewrite(cos).ec == expr2
 
     expr3 = 3*cos(x) - 5
     opt3 = optimize(expr3, [cosm1_opt])
     assert 3*cosm1(x) - 2 == opt3
-    assert opt3.rewrite(cos) == expr3
+    assert opt3.rewrite(cos).ec == expr3
     cosm1_opt_non_opportunistic = FuncMinusOneOptim(cos, cosm1, opportunistic=False)
     assert expr3 == optimize(expr3, [cosm1_opt_non_opportunistic])
     assert opt1 == optimize(expr1, [cosm1_opt_non_opportunistic])
@@ -171,17 +171,17 @@ def test_cosm1_opt():
     expr4 = 3*cos(x) + log(x) - 3
     opt4 = optimize(expr4, [cosm1_opt])
     assert 3*cosm1(x) + log(x) == opt4
-    assert opt4.rewrite(cos) == expr4
+    assert opt4.rewrite(cos).ec == expr4
 
     expr5 = 3*cos(2*x) - 3
     opt5 = optimize(expr5, [cosm1_opt])
     assert 3*cosm1(2*x) == opt5
-    assert opt5.rewrite(cos) == expr5
+    assert opt5.rewrite(cos).ec == expr5
 
     expr6 = 2 - 2*cos(x)
     opt6 = optimize(expr6, [cosm1_opt])
     assert -2*cosm1(x) == opt6
-    assert opt6.rewrite(cos) == expr6
+    assert opt6.rewrite(cos).ec == expr6
 
 
 def test_cosm1_two_cos_terms():
@@ -290,20 +290,20 @@ def test_optims_c99():
     expr3 = log(x)/log(2) + log(17*x + 17)
     opt3 = optimize(expr3, optims_c99)
     delta3 = opt3 - (log2(x) + log(17) + log1p(x))
-    assert delta3 == 0
+    assert delta3.ec == 0
     assert (opt3.rewrite(log) - expr3).simplify() == 0
 
     expr4 = 2**x + 3*log(5*x + 7)/(13*log(2)) + 11*exp(x) - 11 + log(17*x + 17)
     opt4 = optimize(expr4, optims_c99).simplify()
     delta4 = opt4 - (exp2(x) + 3*log2(5*x + 7)/13 + 11*expm1(x) + log(17) + log1p(x))
-    assert delta4 == 0
+    assert delta4.ec == 0
     assert (opt4.rewrite(exp).rewrite(log).rewrite(Pow) - expr4).simplify() == 0
 
     expr5 = 3*exp(2*x) - 3
     opt5 = optimize(expr5, optims_c99)
     delta5 = opt5 - 3*expm1(2*x)
     assert delta5 == 0
-    assert opt5.rewrite(exp) == expr5
+    assert opt5.rewrite(exp).ec == expr5
 
     expr6 = exp(2*x) - 3
     opt6 = optimize(expr6, optims_c99)
@@ -312,7 +312,7 @@ def test_optims_c99():
     expr7 = log(3*x + 3)
     opt7 = optimize(expr7, optims_c99)
     delta7 = opt7 - (log(3) + log1p(x))
-    assert delta7 == 0
+    assert delta7.ec == 0
     assert (opt7.rewrite(log) - expr7).simplify() == 0
 
     expr8 = log(2*x + 3)
