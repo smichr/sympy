@@ -118,9 +118,10 @@ def test_hyperexpand_bases():
     assert hyperexpand(hyper([1, 2], [3], z)) == -2/z - 2*log(-z + 1)/z**2
     assert hyperexpand(hyper([S.Half, 2], [Rational(3, 2)], z)) == \
         -1/(2*z - 2) + atanh(sqrt(z))/sqrt(z)/2
-    assert hyperexpand(hyper([S.Half, S.Half], [Rational(5, 2)], z)) == \
-        -(3*z - 3)/(4*z*sqrt(1 - z)) \
-        + (6*z - 3)*asin(sqrt(z))/(4*z**Rational(3, 2))
+    # Verify the identity without requiring distributed numeric coefficients.
+    assert (hyperexpand(hyper([S.Half, S.Half], [Rational(5, 2)], z)) - (
+        -(3*z - 3)/(4*z*sqrt(1 - z))
+        + (6*z - 3)*asin(sqrt(z))/(4*z**Rational(3, 2)))).expand() == 0
     assert hyperexpand(hyper([1, 2], [Rational(3, 2)], z)) == -1/(2*z - 2) \
         - asin(sqrt(z))/(sqrt(z)*(2*z - 2)*sqrt(-z + 1))
     assert hyperexpand(hyper([Rational(-1, 2) - 1, 1, 2], [S.Half, 3], z)) == \
@@ -145,8 +146,8 @@ def test_hyperexpand_parametric():
 
 def test_shifted_sum():
     from sympy.simplify.simplify import simplify
-    assert simplify(hyperexpand(z**4*hyper([2], [3, S('3/2')], -z**2))) \
-        == -(-2*z*sin(2*z) + (2*z**2 - 1)*cos(2*z) + 1)/2
+    assert (simplify(hyperexpand(z**4*hyper([2], [3, S('3/2')], -z**2))) - (
+        z*sin(2*z) + (-z**2 + S.Half)*cos(2*z) - S.Half)).expand() == 0
 
 
 def _randrat():
@@ -429,8 +430,8 @@ def test_meijerg_expand():
 def test_meijerg_lookup():
     from sympy.functions.special.error_functions import (Ci, Si)
     from sympy.functions.special.gamma_functions import uppergamma
-    assert hyperexpand(meijerg([a], [], [b, a], [], z)) == \
-        z**b*exp(z)*gamma(1 - (a - b))*uppergamma(a - b, z)
+    assert (hyperexpand(meijerg([a], [], [b, a], [], z)) -
+        z**b*exp(z)*gamma(1 - (a - b))*uppergamma(a - b, z)).expand() == 0
     assert hyperexpand(meijerg([0], [], [0, 0], [], z)) == \
         exp(z)*uppergamma(0, z)
     assert can_do_meijer([a], [], [b, a + 1], [])
@@ -621,9 +622,9 @@ def test_lerchphi():
 
     # test a bug
     from sympy.functions.elementary.complexes import Abs
-    assert hyperexpand(hyper([S.Half, S.Half, S.Half, 1],
-                             [Rational(3, 2), Rational(3, 2), Rational(3, 2)], Rational(1, 4))) == \
-        Abs(-polylog(3, exp_polar(I*pi)/2) + polylog(3, S.Half))
+    assert (hyperexpand(hyper([S.Half, S.Half, S.Half, 1],
+                              [Rational(3, 2), Rational(3, 2), Rational(3, 2)], Rational(1, 4))) -
+            Abs(-polylog(3, exp_polar(I*pi)/2) + polylog(3, S.Half))).expand() == 0
 
 
 def test_partial_simp():
