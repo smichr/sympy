@@ -707,6 +707,12 @@ def test_issue_28219():
     assert Pow(x, -1, evaluate=False).as_real_imag() == (1/x, S.Zero)
 
 
+def test_power_leading_term_complex_phase():
+    with distribute(False):
+        expr = sqrt(-I*x**2 + x - 3)
+        assert expr.as_leading_term(x, cdir=1) == -I*sqrt(3)
+
+
 def test_power_canonical_mul():
     with distribute(False):
         p = sqrt((8 + 15*I)/8)
