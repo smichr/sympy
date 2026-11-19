@@ -2032,6 +2032,13 @@ class asech(InverseHyperbolicFunction):
     def _eval_as_leading_term(self, x, logx, cdir):
         arg = self.args[0]
         x0 = arg.subs(x, 0).cancel()
+        # Near 1, asech(1 - t) ~ sqrt(2*t). Use the leading term
+        # directly rather than expanding the logarithmic representation.
+        if x0 is S.One:
+            t = (1 - arg).as_leading_term(x, logx=logx, cdir=cdir)
+            coeff, power = t.as_coeff_exponent(x)
+            if not coeff.has(x) and power.is_positive:
+                return sqrt(2*coeff)*x**(power/2)
         # Handling branch points
         if x0 in (-S.One, S.Zero, S.One, S.ComplexInfinity):
             return self.rewrite(log)._eval_as_leading_term(x, logx=logx, cdir=cdir)
