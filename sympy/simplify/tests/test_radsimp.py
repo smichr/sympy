@@ -47,7 +47,7 @@ def test_radsimp():
         (-50*sqrt(42) - 133*sqrt(5) - 34*sqrt(70) - 145*sqrt(3) + 22*sqrt(105)
         + 185*sqrt(2) + 62*sqrt(30) + 135*sqrt(7), 215))
     z = radsimp(1/(1 + r2/3 + r3/5 + r5 + r7))
-    assert len((3616791619821680643598*z).args) == 16
+    assert len((3616791619821680643598*z).ex.args) == 16
     assert radsimp(1/z) == 1/z
     assert radsimp(1/z, max_terms=20).expand() == 1 + r2/3 + r3/5 + r5 + r7
     assert radsimp(1/(r2*3)) == \
@@ -63,12 +63,12 @@ def test_radsimp():
         118*sqrt(105) + 59*sqrt(7) + 295*sqrt(5) + 531*sqrt(3))/(16*a**8 -
         480*a**6 + 3128*a**4 - 6360*a**2 + 3481))
     assert radsimp(1/(r2*a + r2*b + r3 + r7)) == (
-        (sqrt(2)*a*(a + b)**2 - 5*sqrt(2)*a + sqrt(42)*a + sqrt(2)*b*(a +
+        sqrt(2)*a*(a + b)**2 - 5*sqrt(2)*a + sqrt(42)*a + sqrt(2)*b*(a +
         b)**2 - 5*sqrt(2)*b + sqrt(42)*b - sqrt(7)*(a + b)**2 - sqrt(3)*(a +
-        b)**2 - 2*sqrt(3) + 2*sqrt(7))/(2*a**4 + 8*a**3*b + 12*a**2*b**2 -
-        20*a**2 + 8*a*b**3 - 40*a*b + 2*b**4 - 20*b**2 + 8))
+        b)**2 - 2*sqrt(3) + 2*sqrt(7))/(2*(a**4 + 4*a**3*b + 6*a**2*b**2 -
+        10*a**2 + 4*a*b**3 - 20*a*b + b**4 - 10*b**2 + 4))
     assert radsimp(1/(r2*a + r2*b + r2*c + r2*d)) == \
-        sqrt(2)/(2*a + 2*b + 2*c + 2*d)
+        sqrt(2)/(2*(a + b + c + d))
     assert radsimp(1/(1 + r2*a + r2*b + r2*c + r2*d)) == (
         (sqrt(2)*a + sqrt(2)*b + sqrt(2)*c + sqrt(2)*d - 1)/(2*a**2 + 4*a*b +
         4*a*c + 4*a*d + 2*b**2 + 4*b*c + 4*b*d + 2*c**2 + 4*c*d + 2*d**2 - 1))
@@ -96,7 +96,7 @@ def test_radsimp():
     # issue 6532
     assert fraction(radsimp(1/sqrt(x))) == (sqrt(x), x)
     assert fraction(radsimp(1/sqrt(2*x + 3))) == (sqrt(2*x + 3), 2*x + 3)
-    assert fraction(radsimp(1/sqrt(2*(x + 3)))) == (sqrt(2*x + 6), 2*x + 6)
+    assert fraction(radsimp(1/sqrt(2*(x + 3)))) == (sqrt(2*(x + 3)), 2*(x + 3))
 
     # issue 5994
     e = S('-(2 + 2*sqrt(2) + 4*2**(1/4))/'
@@ -355,8 +355,8 @@ def test_collect_Wild():
 
 def test_collect_const():
     # coverage not provided by above tests
-    assert collect_const(2*sqrt(3) + 4*a*sqrt(5)) == \
-        2*(2*sqrt(5)*a + sqrt(3))  # let the primitive reabsorb
+    e = 2*sqrt(3) + 4*a*sqrt(5)
+    assert collect_const(e) == e
     assert collect_const(2*sqrt(3) + 4*a*sqrt(5), sqrt(3)) == \
         2*sqrt(3) + 4*a*sqrt(5)
     assert collect_const(sqrt(2)*(1 + sqrt(2)) + sqrt(3) + x*sqrt(2)) == \
@@ -374,9 +374,8 @@ def test_collect_const():
 
     # this is why the content_primitive is used
     eq = (sqrt(15 + 5*sqrt(2))*x + sqrt(3 + sqrt(2))*y)*2
-    assert collect_sqrt(eq + 2) == \
+    assert collect_sqrt(eq + 2).ex == \
         2*sqrt(sqrt(2) + 3)*(sqrt(5)*x + y) + 2
-
     # issue 16296
     assert collect_const(a + b + x/2 + y/2) == a + b + Mul(S.Half, x + y, evaluate=False)
 

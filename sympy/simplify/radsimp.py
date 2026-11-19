@@ -548,6 +548,8 @@ def collect_sqrt(expr, evaluate=None):
     # this step will help to standardize any complex arguments
     # of sqrts
     coeff, expr = expr.as_content_primitive()
+    if expr.is_Add and any(a.is_Add for a in expr.args):
+        expr = _unevaluated_Add(*expr.args)
     vars = set()
     for a in Add.make_args(expr):
         for m in a.args_cnc()[0]:
