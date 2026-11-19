@@ -3684,7 +3684,7 @@ class Expr(Basic, EvalfMixin):
 
     @property
     def ex(self):
-        """Expand rational coefficients over sums without full expansion.
+        """Expand rational coefficients over sums in terms without full expansion.
 
         Examples
         ========
@@ -3704,7 +3704,7 @@ class Expr(Basic, EvalfMixin):
 
     @property
     def ec(self):
-        """Distribute an outer numeric coefficient and canonicalize the result."""
+        """Return a canonical sum after distributing rationals on terms."""
         from .add import Add
         result = self.ex
         return Add(*result.args) if result.is_Add else result
