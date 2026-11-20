@@ -7166,6 +7166,19 @@ def factor(f, *gens, deep=False, **args):
 
     """
     f = sympify(f)
+    if (not deep and not gens and not args and isinstance(f, Add) and
+            any(a.is_Pow and a.base.is_Add and a.exp.is_Integer
+                and a.exp.is_positive
+                for term in f.args for a in Mul.make_args(term))):
+        # Try factoring with the unexpanded composite generators first.
+        # The normal path refines any factors exposed by this attempt.
+        try:
+            pre = factor(f, expand=False)
+        except PolynomialError:
+            pass
+        else:
+            if pre != f:
+                f = pre
     if deep:
         def _try_factor(expr):
             """

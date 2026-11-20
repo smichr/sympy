@@ -2718,6 +2718,22 @@ def test_sqf():
     ])
 
 
+def test_factor_structural_precheck():
+    # Independent composite generators can reveal a difference of squares.
+    f = (x - 1)**2 - (y - 3)**2
+    assert factor(f) == (x - y + 2)*(x + y - 4)
+
+    # Dependent generators are fine; their resulting factors are refined.
+    assert factor((x - 1)**2 - (x + 1)**2) == -4*x
+    assert factor((x**2 - 1)**2 - (x - 1)**2) == x*(x - 1)**2*(x + 2)
+
+    # An unsuccessful structural attempt must still use ordinary factoring.
+    assert factor((x**2 - 1)**2 + 4*x**2) == (x**2 + 1)**2
+
+    # Explicit generators continue through the existing path.
+    assert factor(f, x, y) == (x - y + 2)*(x + y - 4)
+
+
 def test_factor():
     f = x**5 - x**3 - x**2 + 1
 
