@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, overload, Literal, Any, cast, Callable
 
 from functools import wraps, reduce
 from operator import mul
+from math import gcd as igcd
 from collections import Counter, defaultdict
 
 from sympy.core import (
@@ -7098,12 +7099,17 @@ def factor_list(f, *gens, **args):
 
 
 def _prefactor_powers(expr):
-    """Split two-term powers without expanding their composite bases.
+    """Try small power identities without expanding composite bases.
 
-    The resulting factors are subsequently refined by ordinary factorization.
+    Use the GCD of two exponents to split differences of powers, or sums
+    with a common odd divisor. Limit the degree of generated sum factors
+    to avoid constructing large intermediate polynomials.
     """
-    if (not isinstance(expr, Add) or expr.is_commutative is not True or
-            len(expr.args) != 2):
+    if not isinstance(expr, Expr) or expr.is_commutative is not True:
+        return expr
+    if expr.is_Mul:
+        return Mul(*(_prefactor_powers(a) for a in expr.args))
+    if not expr.is_Add or len(expr.args) != 2:
         return expr
 
     terms = []
@@ -7116,29 +7122,33 @@ def _prefactor_powers(expr):
             return expr
         terms.append((sign, base, int(exp)))
 
-    if not any(base.is_Add for _, base, _ in terms):
+    (sa, a, p), (sb, b, q) = terms
+    if not any(not base.is_Atom for base in (a, b)):
         return expr
 
-    (sa, a, p), (sb, b, q) = terms
+    d = igcd(p, q)
+    if sa != sb and d % 2 == 0:
+        k = 2
+    else:
+        # Only use short geometric sums. Higher degrees are left to Poly.
+        odd = d // (d & -d)
+        k = next((i for i in range(3, 32, 2) if odd % i == 0), None)
+    if k is None:
+        return expr
+
+    if sa != sb and sa == -1:
+        a, b, p, q = b, a, q, p
+    u, v = a**(p//k), b**(q//k)
+
     if sa != sb:
-        if p % 2 or q % 2:
-            return expr
-        if sa == -1:
-            a, b = b, a
-            p, q = q, p
-        u, v = a**(p//2), b**(q//2)
-        return _prefactor_powers(u - v)*_prefactor_powers(u + v)
+        if k == 2:
+            rest = u + v
+        else:
+            rest = Add(*(u**(k - 1 - j)*v**j for j in range(k)))
+        return _prefactor_powers(u - v)*rest
 
-    # Small odd divisors yield a manageable sum-of-odd-powers identity.
-    for d in (3, 5, 7):
-        if p % d == 0 and q % d == 0:
-            u, v = a**(p//d), b**(q//d)
-            rest = Add(*[(-1)**k*u**(d - 1 - k)*v**k
-                         for k in range(d)])
-            return sa*_prefactor_powers(u + v)*rest
-
-    return expr
-
+    rest = Add(*((-1)**j*u**(k - 1 - j)*v**j for j in range(k)))
+    return sa*_prefactor_powers(u + v)*rest
 
 @public
 def factor(f, *gens, deep=False, **args):
@@ -7158,6 +7168,9 @@ def factor(f, *gens, deep=False, **args):
     By default, the factorization is computed over the rationals. To factor
     over other domain, e.g. an algebraic or finite field, use appropriate
     options: ``extension``, ``modulus`` or ``domain``.
+
+    With ``expand=False`` in symbolic mode, common term factors and simple
+    power identities are tried before factoring the unexpanded expression.
 
     Examples
     ========
@@ -7209,7 +7222,11 @@ def factor(f, *gens, deep=False, **args):
 
     """
     f = sympify(f)
-    if not deep and not gens and not args:
+    if (not deep and not gens and len(args) == 1 and
+            args.get('expand') is False and
+            isinstance(f, Expr) and f.is_commutative is True):
+        if f.is_Add:
+            f = factor_terms(f)
         f = _prefactor_powers(f)
     if deep:
         def _try_factor(expr):

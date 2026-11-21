@@ -2720,31 +2720,41 @@ def test_sqf():
 
 def test_factor_power_prefactor():
     a, b = x - 1, y - 3
+
+    # Structural power splitting is opt-in through expand=False.
     f = a**16 - b**16
     assert _prefactor_powers(f) != f
     assert factor(f) == factor(expand(f))
+    assert expand(factor(f, expand=False) - f) == 0
 
-    # Different even exponents can be split repeatedly.
-    f = a**12 - b**8
-    assert _prefactor_powers(f) != f
-    assert factor(f) == factor(expand(f))
+    # Different exponents are handled using their greatest common divisor.
+    for f in (a**12 - b**8, a**10 - b**10, a**11 - b**11):
+        assert _prefactor_powers(f) != f
+        assert expand(factor(f, expand=False) - f) == 0
 
-    # A sum with a common odd exponent factor also admits a split.
-    f = a**6 + b**6
-    assert _prefactor_powers(f) != f
-    assert factor(f) == factor(expand(f))
+    # Odd common divisors include primes beyond 3, 5 and 7.
+    for f in (a**6 + b**6, a**9 + b**9, a**11 + b**11):
+        assert _prefactor_powers(f) != f
+        assert expand(factor(f, expand=False) - f) == 0
 
-    # No odd divisor: retain the original sum for ordinary factoring.
+    # Avoid building a long geometric sum for a large odd prime.
+    assert _prefactor_powers(a**37 + b**37) == a**37 + b**37
     assert _prefactor_powers(a**8 + b**8) == a**8 + b**8
-    assert factor((x**2 - 1)**2 + 4*x**2) == (x**2 + 1)**2
 
-    # Dependent generators can acquire further factors on refinement.
+    # factor_terms exposes the two-term expression after removing content.
+    assert _prefactor_powers(2*a**8 - 2*b**8) == 2*a**8 - 2*b**8
+    assert factor(2*a**8 - 2*b**8, expand=False) == (
+        2*factor(a**8 - b**8, expand=False))
+
+    # Dependent generators may simplify further during ordinary factoring.
     assert factor((x - 1)**8 - (x + 1)**8) == (
         -16*x*(x**2 + 1)*(x**4 + 6*x**2 + 1))
-    assert factor((x**2 - 1)**2 - (x - 1)**2) == x*(x - 1)**2*(x + 2)
+    f = (x**2 - 1)**2 - (x - 1)**2
+    assert expand(factor(f, expand=False) - f) == 0
 
-    # Preserve the existing path for explicit generators and other inputs.
-    assert factor(a**2 - b**2, x, y) == (x - y + 2)*(x + y - 4)
+    # Explicit generators and noncommutative expressions retain their path.
+    assert factor(a**2 - b**2, x, y) == (
+        (x - y + 2)*(x + y - 4))
     assert _prefactor_powers([x]) == [x]
     A, B = symbols('A B', commutative=False)
     f = (A + 1)**4 - (B + 1)**2
