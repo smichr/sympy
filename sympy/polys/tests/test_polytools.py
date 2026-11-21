@@ -2737,6 +2737,13 @@ def test_factor_power_prefactor():
         assert _prefactor_powers(f) != f
         assert expand(factor(f, expand=False) - f) == 0
 
+    # The same direct identities apply to ordinary symbol bases.
+    for f in (x**8 - y**8, x**12 - y**8, x**9 + y**9):
+        assert _prefactor_powers(f) != f
+        assert factor(f, expand=False) == factor(f)
+
+    assert _prefactor_powers(x**8 + y**8) == x**8 + y**8
+
     # Avoid building a long geometric sum for a large odd prime.
     assert _prefactor_powers(a**37 + b**37) == a**37 + b**37
     assert _prefactor_powers(a**8 + b**8) == a**8 + b**8

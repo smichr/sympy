@@ -7123,9 +7123,6 @@ def _prefactor_powers(expr):
         terms.append((sign, base, int(exp)))
 
     (sa, a, p), (sb, b, q) = terms
-    if not any(not base.is_Atom for base in (a, b)):
-        return expr
-
     d = igcd(p, q)
     if sa != sb and d % 2 == 0:
         k = 2
