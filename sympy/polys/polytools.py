@@ -7097,6 +7097,49 @@ def factor_list(f, *gens, **args):
     return _generic_factor_list(f, gens, args, method='factor')
 
 
+def _prefactor_powers(expr):
+    """Split two-term powers without expanding their composite bases.
+
+    The resulting factors are subsequently refined by ordinary factorization.
+    """
+    if (not isinstance(expr, Add) or expr.is_commutative is not True or
+            len(expr.args) != 2):
+        return expr
+
+    terms = []
+    for term in expr.args:
+        sign, power = term.as_coeff_Mul()
+        if sign not in (1, -1):
+            return expr
+        base, exp = power.as_base_exp()
+        if exp.is_Integer is not True or exp.is_positive is not True:
+            return expr
+        terms.append((sign, base, int(exp)))
+
+    if not any(base.is_Add for _, base, _ in terms):
+        return expr
+
+    (sa, a, p), (sb, b, q) = terms
+    if sa != sb:
+        if p % 2 or q % 2:
+            return expr
+        if sa == -1:
+            a, b = b, a
+            p, q = q, p
+        u, v = a**(p//2), b**(q//2)
+        return _prefactor_powers(u - v)*_prefactor_powers(u + v)
+
+    # Small odd divisors yield a manageable sum-of-odd-powers identity.
+    for d in (3, 5, 7):
+        if p % d == 0 and q % d == 0:
+            u, v = a**(p//d), b**(q//d)
+            rest = Add(*[(-1)**k*u**(d - 1 - k)*v**k
+                         for k in range(d)])
+            return sa*_prefactor_powers(u + v)*rest
+
+    return expr
+
+
 @public
 def factor(f, *gens, deep=False, **args):
     """
@@ -7166,19 +7209,8 @@ def factor(f, *gens, deep=False, **args):
 
     """
     f = sympify(f)
-    if (not deep and not gens and not args and isinstance(f, Add) and
-            any(a.is_Pow and a.base.is_Add and a.exp.is_Integer
-                and a.exp.is_positive
-                for term in f.args for a in Mul.make_args(term))):
-        # Try factoring with the unexpanded composite generators first.
-        # The normal path refines any factors exposed by this attempt.
-        try:
-            pre = factor(f, expand=False)
-        except PolynomialError:
-            pass
-        else:
-            if pre != f:
-                f = pre
+    if not deep and not gens and not args:
+        f = _prefactor_powers(f)
     if deep:
         def _try_factor(expr):
             """

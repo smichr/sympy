@@ -23,7 +23,7 @@ from sympy.polys.polytools import (
     sturm,
     gff_list, gff,
     sqf_norm, sqf_part, sqf_list, sqf,
-    factor_list, factor,
+    factor_list, factor, _prefactor_powers,
     intervals, refine_root, count_roots,
     all_roots, real_roots, nroots, ground_roots,
     nth_power_roots_poly,
@@ -2718,20 +2718,37 @@ def test_sqf():
     ])
 
 
-def test_factor_structural_precheck():
-    # Independent composite generators can reveal a difference of squares.
-    f = (x - 1)**2 - (y - 3)**2
-    assert factor(f) == (x - y + 2)*(x + y - 4)
+def test_factor_power_prefactor():
+    a, b = x - 1, y - 3
+    f = a**16 - b**16
+    assert _prefactor_powers(f) != f
+    assert factor(f) == factor(expand(f))
 
-    # Dependent generators are fine; their resulting factors are refined.
-    assert factor((x - 1)**2 - (x + 1)**2) == -4*x
-    assert factor((x**2 - 1)**2 - (x - 1)**2) == x*(x - 1)**2*(x + 2)
+    # Different even exponents can be split repeatedly.
+    f = a**12 - b**8
+    assert _prefactor_powers(f) != f
+    assert factor(f) == factor(expand(f))
 
-    # An unsuccessful structural attempt must still use ordinary factoring.
+    # A sum with a common odd exponent factor also admits a split.
+    f = a**6 + b**6
+    assert _prefactor_powers(f) != f
+    assert factor(f) == factor(expand(f))
+
+    # No odd divisor: retain the original sum for ordinary factoring.
+    assert _prefactor_powers(a**8 + b**8) == a**8 + b**8
     assert factor((x**2 - 1)**2 + 4*x**2) == (x**2 + 1)**2
 
-    # Explicit generators continue through the existing path.
-    assert factor(f, x, y) == (x - y + 2)*(x + y - 4)
+    # Dependent generators can acquire further factors on refinement.
+    assert factor((x - 1)**8 - (x + 1)**8) == (
+        -16*x*(x**2 + 1)*(x**4 + 6*x**2 + 1))
+    assert factor((x**2 - 1)**2 - (x - 1)**2) == x*(x - 1)**2*(x + 2)
+
+    # Preserve the existing path for explicit generators and other inputs.
+    assert factor(a**2 - b**2, x, y) == (x - y + 2)*(x + y - 4)
+    assert _prefactor_powers([x]) == [x]
+    A, B = symbols('A B', commutative=False)
+    f = (A + 1)**4 - (B + 1)**2
+    assert _prefactor_powers(f) == f
 
 
 def test_factor():
