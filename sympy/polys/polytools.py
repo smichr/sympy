@@ -7098,17 +7098,17 @@ def factor_list(f, *gens, **args):
     return _generic_factor_list(f, gens, args, method='factor')
 
 
-def _prefactor_powers(expr):
-    """Try small power identities without expanding composite bases.
+def _prefactor_powers(expr, even_only=False):
+    """Try power identities without expanding their bases.
 
-    Use the GCD of two exponents to split differences of powers, or sums
-    with a common odd divisor. Limit the degree of generated sum factors
-    to avoid constructing large intermediate polynomials.
+    With ``even_only=True``, split only differences of even powers.
+    Otherwise, also use bounded odd-power geometric sums.
     """
     if not isinstance(expr, Expr) or expr.is_commutative is not True:
         return expr
     if expr.is_Mul:
-        return Mul(*(_prefactor_powers(a) for a in expr.args))
+        return Mul(*(_prefactor_powers(a, even_only=even_only)
+                     for a in expr.args))
     if not expr.is_Add or len(expr.args) != 2:
         return expr
 
@@ -7127,6 +7127,8 @@ def _prefactor_powers(expr):
     if sa != sb and d % 2 == 0:
         k = 2
     else:
+        if even_only:
+            return expr
         # Only use short geometric sums. Higher degrees are left to Poly.
         odd = d // (d & -d)
         k = next((i for i in range(3, 32, 2) if odd % i == 0), None)
@@ -7142,10 +7144,10 @@ def _prefactor_powers(expr):
             rest = u + v
         else:
             rest = Add(*(u**(k - 1 - j)*v**j for j in range(k)))
-        return _prefactor_powers(u - v)*rest
+        return _prefactor_powers(u - v, even_only=even_only)*rest
 
     rest = Add(*((-1)**j*u**(k - 1 - j)*v**j for j in range(k)))
-    return sa*_prefactor_powers(u + v)*rest
+    return sa*_prefactor_powers(u + v, even_only=even_only)*rest
 
 @public
 def factor(f, *gens, deep=False, **args):
@@ -7219,12 +7221,15 @@ def factor(f, *gens, deep=False, **args):
 
     """
     f = sympify(f)
-    if (not deep and not gens and len(args) == 1 and
-            args.get('expand') is False and
-            isinstance(f, Expr) and f.is_commutative is True):
-        if f.is_Add:
-            f = factor_terms(f)
-        f = _prefactor_powers(f)
+    if not deep and not gens and isinstance(f, Expr):
+        if not args and f.is_Add:
+            # A cheap split before the general polynomial factorizer.
+            f = _prefactor_powers(f, even_only=True)
+        elif (len(args) == 1 and args.get('expand') is False and
+              f.is_commutative is True):
+            if f.is_Add:
+                f = factor_terms(f)
+            f = _prefactor_powers(f)
     if deep:
         def _try_factor(expr):
             """

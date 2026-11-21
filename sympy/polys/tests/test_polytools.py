@@ -2718,6 +2718,26 @@ def test_sqf():
     ])
 
 
+def test_factor_power_prefactor_default():
+    # Only the inexpensive even-power difference is recognized directly.
+    f = x**16 - y**16
+    assert _prefactor_powers(f, even_only=True) == (
+        (x - y)*(x + y)*(x**2 + y**2)*(x**4 + y**4)*(x**8 + y**8))
+    assert factor(f) == factor(f, expand=False)
+
+    a, b = x - 1, y - 3
+    f = a**16 - b**16
+    assert factor(f) == factor(expand(f))
+    assert factor(a**12 - b**8) == factor(expand(a**12 - b**8))
+
+    # Odd powers and the broader GCD prepass remain expand=False-only.
+    f = x**9 + y**9
+    assert _prefactor_powers(f, even_only=True) == f
+    assert _prefactor_powers(f) != f
+    assert factor(f) == factor(f, expand=False)
+    assert _prefactor_powers(x**8 + y**8, even_only=True) == x**8 + y**8
+
+
 def test_factor_power_prefactor():
     a, b = x - 1, y - 3
 
