@@ -92,15 +92,17 @@ def test_expand_2arg_property():
     assert x.ex == x
 
     q = a - (x + y) + 2*(x + 2*(y - 3))
-    assert q.ex == q
+    assert q.ex != q
+    assert q.ex.has(2*x + 4*(y - 3))
     assert ((2*q).ex/2).ex == q  # no structure lost
 
 
     # The newly created Add has the ordering expected by the ordinary Add.
     assert (2*(x - y)).ex.args == (2*x - 2*y).args
 
-    # Non-two-argument Mul products are not expanded by this helper.
-    assert (2*z*(x + y)).ex == 2*z*(x + y)
+    # The coefficient is distributed into the single Add factor while
+    # preserving other multiplicative factors.
+    assert (2*z*(x + y)).ex == z*(2*x + 2*y)
 
 
 def test_arit0():
@@ -1834,7 +1836,7 @@ def test_Add_as_content_primitive():
     # the coefficient may sort to a position other than 0
     p = 3 + x + y
     assert (2*p).expand().as_content_primitive() == (2, p)
-    assert (2.0*p).expand().as_content_primitive() == (1, (2.*p).ex)
+    assert (2.0*p).expand().as_content_primitive() == (1, (2.*p).ec)
     p *= -1
     assert (2*p).expand().as_content_primitive() == (2, p.ex)
 
