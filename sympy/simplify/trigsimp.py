@@ -644,7 +644,10 @@ def exptrigsimp(expr):
             else:
                 choices.append(op)
             choices.append(e.rewrite(sin))
-        choices.append(e.rewrite(cos))
+        op = e.rewrite(cos)
+        # Canonicalize any shallow numerical distribution introduced by
+        # rewriting before comparing operation counts.
+        choices.append(op.ec if isinstance(op, Expr) else op)
         return min(*choices, key=count_ops)
     newexpr = bottom_up(expr, exp_trig)
 
