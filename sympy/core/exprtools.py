@@ -305,6 +305,11 @@ def _monotonic_sign(self):
                                         return Dummy('npos', nonpositive=True)
 
             n, d = self.as_numer_denom()
+            if n.is_Add and not n.is_number and not d.is_number:
+                # Without coefficient distribution, subtraction may hide a
+                # constant numerator, e.g. x - (x + 1). Normalize only
+                # the numerator needed for sign determination.
+                n = n.ec
             den = None
             if n.is_number:
                 den = _monotonic_sign(d)
