@@ -2182,7 +2182,7 @@ def _keep_coeff(coeff, factors, clear=True, sign=False):
 def _expand_2arg_term(e):
     if not e.is_Mul:
         return e
-    c, factors = e.as_coeff_mul()
+    c, factors = e.as_coeff_mul(rational=False)
     if c is S.One:
         return e
     adds = [i for i, f in enumerate(factors) if f.is_Add]
