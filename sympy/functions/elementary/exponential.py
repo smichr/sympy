@@ -1031,9 +1031,10 @@ class log(DefinedFunction):
         poly = (z/(a*t**b) - 1).cancel()
         p = poly._eval_nseries(t, n=n, logx=logx, cdir=1)
         order = p.getO()
-        if order is not None and order.getn() < n:
+        if not p.is_Order and order is not None and order.getn() < n:
             # An internal series can terminate before the requested order,
             # leaving terms of the logarithm's series undetermined.
+            # A pure Order has no coefficients to recover by retrying.
             p = poly.series(t, 0, n)
         if p.has(exp):
             p = logcombine(p)
