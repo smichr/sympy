@@ -1,6 +1,7 @@
 """Tests for Gosper's algorithm for hypergeometric summation. """
 from __future__ import annotations
 
+from sympy.core.mul import Mul
 from sympy.core.numbers import (Rational, pi)
 from sympy.core.singleton import S
 from sympy.core.symbol import Symbol
@@ -58,6 +59,15 @@ def test_gosper_sum():
         (n, 0, m)).simplify() == -exp(m*log(a) + m*log(b))*gamma(a + 1) \
         *gamma(b + 1)/(gamma(a)*gamma(b)*gamma(a + m + 1)*gamma(b + m + 1)) \
         + 1/(gamma(a)*gamma(b))
+
+
+
+def test_gosper_sum_removable_endpoint():
+    # Do not treat the zero of an unevaluated factor as zero for the
+    # endpoint contribution when the Gosper certificate has a pole there.
+    f = Mul(-1, k - n, evaluate=False)
+    assert gosper_sum(f, (k, 1, n)) == n*(n - 1)/2
+
 
 
 def test_gosper_sum_indefinite():
