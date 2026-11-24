@@ -68,6 +68,11 @@ def test_gosper_sum_removable_endpoint():
     f = Mul(-1, k - n, evaluate=False)
     assert gosper_sum(f, (k, 1, n)) == n*(n - 1)/2
 
+    # Even recognizing the vanishing endpoint may require distribution:
+    # f(n) = 0, but f(n).is_zero is indeterminate without expansion.
+    f = Mul(-1, k*(2*n + 2) - 2*n**2 - 2*n, evaluate=False)
+    assert gosper_sum(f, (k, 1, n)) == n*(n - 1)*(n + 1)
+
 
 
 def test_gosper_sum_indefinite():
