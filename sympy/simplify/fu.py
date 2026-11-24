@@ -451,9 +451,6 @@ def TR8(rv, first=True):
             newd = TR8(d, first=False)
             if newn != n or newd != d:
                 rv = gcd_terms(newn/newd)
-                if rv.is_Mul and rv.args[0].is_Rational and \
-                        len(rv.args) == 2 and rv.args[1].is_Add:
-                    rv = Mul(*rv.as_coeff_Mul())
             return rv
 
         args = {cos: [], sin: [], None: []}
@@ -492,8 +489,14 @@ def TR8(rv, first=True):
             args.append(sin(s.pop()))
         return TR8(expand_mul(Mul(*args)))
 
-    return bottom_up(rv, f)
-
+    result = bottom_up(rv, f)
+    if result != rv and result.is_Add:
+        previous = set(Add.make_args(rv))
+        result = Add(*(
+            expand_mul(t) if t not in previous and t.has(cos, sin) else t
+            for t in result.args
+        ))
+    return result
 
 def TR9(rv):
     """Sum of ``cos`` or ``sin`` terms as a product of ``cos`` or ``sin``.
@@ -2025,7 +2028,7 @@ def _osbornei(e, d):
         if not isinstance(rv, (TrigonometricFunction, HyperbolicFunction)):
             return rv
         if isinstance(rv, HyperbolicFunction):
-            a = rv.args[0].xreplace({d: I})
+            a = rv.args[0].xreplace({d: -I})
             return rv.func(a)
         const, x = rv.args[0].as_independent(d, as_Add=True)
         a = x.xreplace({d: S.One}) + const*I
@@ -2087,7 +2090,7 @@ def hyper_as_trig(rv):
     d = Dummy()
 
     return _osborne(masked, d), lambda x: collect(signsimp(
-        _osbornei(x, d).xreplace(dict(reps))), S.ImaginaryUnit)
+        _osbornei(x, d).xreplace({d: -I}).xreplace(dict(reps))), I)
 
 
 def sincos_to_sum(expr):

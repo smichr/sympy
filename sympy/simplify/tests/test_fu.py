@@ -7,7 +7,7 @@ from sympy.core.singleton import S
 from sympy.core.symbol import (Dummy, Symbol, symbols)
 from sympy.functions.elementary.hyperbolic import (cosh, coth, csch, sech, sinh, tanh)
 from sympy.functions.elementary.miscellaneous import (root, sqrt)
-from sympy.functions.elementary.trigonometric import (cos, cot, csc, sec, sin, tan)
+from sympy.functions.elementary.trigonometric import (cos, cot, csc, sec, sin, tan, atan)
 from sympy.simplify.powsimp import powsimp
 from sympy.simplify.fu import (
     L, TR1, TR10, TR10i, TR11, _TR11, TR12, TR12i, TR13, TR14, TR15, TR16,
@@ -491,3 +491,16 @@ def test_issue_25590():
     # XXX The result may not be optimal than
     # sin(2*x)*B*A + cos(x)**2 and may change in the future
     assert (2*cos(x)*sin(x)*B*A + cos(x)**2).simplify() == sin(2*x)*B*A + cos(2*x)/2 + S.One/2
+
+
+def test_hyper_as_trig_odd():
+    # affirms that Dummy() d = -I
+    a = atan(sinh(x/2))
+    expr = sinh(x/4 - I*a/2)*cosh(x/4 + I*a/2)
+    expected = (sinh(x/2) - I*sin(a))/2
+
+    t, restore = hyper_as_trig(expr)
+    result = restore(fu(t))
+
+    assert result.free_symbols == {x}  # no leaked Dummy
+    assert result.equals(expected) is True
