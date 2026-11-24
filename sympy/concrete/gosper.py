@@ -216,9 +216,12 @@ def gosper_sum(f, k):
         # the summand vanishes. Cancel the removable factor *before*
         # substituting, otherwise that endpoint contribution is lost.
         if getattr(f, 'is_rational_function', None) and f.is_rational_function(k):
-            if f.subs(k, b).is_zero:
+            at_b = f.subs(k, b)
+            at_a = f.subs(k, a)
+            # The zero can itself be hidden in an unexpanded polynomial.
+            if at_b.is_zero or (at_b.is_zero is None and at_b.expand().is_zero):
                 upper = cancel(upper)
-            if f.subs(k, a).is_zero:
+            if at_a.is_zero or (at_a.is_zero is None and at_a.expand().is_zero):
                 lower = cancel(lower)
         result = upper.subs(k, b) - lower.subs(k, a)
 
