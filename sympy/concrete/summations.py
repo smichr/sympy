@@ -318,8 +318,8 @@ class Sum(AddWithLimits, ExprWithIntLimits):
             return
         w, y, z = Wild('w', exclude=[i]), Wild('y', exclude=[i]), Wild('z', exclude=[i])
         if result := f.match((w * i + y) ** (-z)):
-            coeff = 1 / result[w] ** result[z]
-            s = result[z]
+            s = result[z].ec
+            coeff = 1 / result[w] ** s
             q = result[y] / result[w] + a
             return Piecewise((coeff * zeta(s, q),
                               And(Not(Contains(-q, S.Naturals0)), re(s) > S.One)),
