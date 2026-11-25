@@ -2611,12 +2611,14 @@ def test_radical_root_evalf_prec():
     assert ask(Q.imaginary(r)) is None
     assert ask(Q.nonzero(r)) is None
 
-    r_pos = roots(y**4 - y - 1, y, multiple=True)[3]
+    rts = roots(y**4 - y - 1, y, multiple=True)
+    r_pos, = [r for r in rts if r.evalf(20).is_positive]
+    r_neg, = [r for r in rts if r.evalf(20).is_negative]
+
     assert ask(Q.real(r_pos)) is True
     assert ask(Q.positive(r_pos)) is True
     assert ask(Q.negative(r_pos)) is False
 
-    r_neg = roots(y**4 - y - 1, y, multiple=True)[2]
     assert ask(Q.real(r_neg)) is True
     assert ask(Q.positive(r_neg)) is False
     assert ask(Q.negative(r_neg)) is True
