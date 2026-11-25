@@ -142,9 +142,9 @@ def test_karr_convention():
 
     # issue #27893
     n = Symbol('n', integer=True)
-    assert Sum(1/(x**2 + 1), (x, oo, 0)).doit(deep=False) == Rational(-1, 2) + pi / (2 * tanh(pi))
+    assert Sum(1/(x**2 + 1), (x, oo, 0)).doit(deep=False).exx == Rational(-1, 2) + pi / (2 * tanh(pi))
     assert Sum(c**x/factorial(x), (x, oo, 0)).doit(deep=False).simplify() == exp(c) - 1 # exponential series
-    assert Sum((-1)**x/x, (x, oo,0)).doit() == -log(2) # alternating harmnic series
+    assert Sum((-1)**x/x, (x, oo,0)).doit() == -log(2) # alternating harmonic series
     assert Sum((1/2)**x,(x, oo, -1)).doit() == S(2) # geometric series
     assert Sum(1/x, (x, oo, 0)).doit() == oo # harmonic series, divergent
     assert Sum((-1)**x/(2*x+1), (x, oo, -1)).doit() == pi/4 # leibniz series
@@ -278,14 +278,14 @@ def test_polynomial_sums():
 
 def test_geometric_sums():
     assert summation(pi**n, (n, 0, b)) == (1 - pi**(b + 1)) / (1 - pi)
-    assert summation(2 * 3**n, (n, 0, b)) == 3**(b + 1) - 1
+    assert summation(2 * 3**n, (n, 0, b)).ex == 3**(b + 1) - 1
     assert summation(S.Half**n, (n, 1, oo)) == 1
-    assert summation(2**n, (n, 0, b)) == 2**(b + 1) - 1
+    assert summation(2**n, (n, 0, b)).ex == 2**(b + 1) - 1
     assert summation(2**n, (n, 1, oo)) is oo
     assert summation(2**(-n), (n, 1, oo)) == 1
     assert summation(3**(-n), (n, 4, oo)) == Rational(1, 54)
     assert summation(2**(-4*n + 3), (n, 1, oo)) == Rational(8, 15)
-    assert summation(2**(n + 1), (n, 1, b)).expand() == 4*(2**b - 1)
+    assert summation(2**(n + 1), (n, 1, b)).expand() == (4*(2**b - 1)).ex
 
     # issue 6664:
     assert summation(x**n, (n, 0, oo)) == \
@@ -296,8 +296,8 @@ def test_geometric_sums():
 
     # issue 6802:
     assert summation((-1)**(2*x + 2), (x, 0, n)) == n + 1
-    assert summation((-2)**(2*x + 2), (x, 0, n)) == 4*4**(n + 1)/S(3) - Rational(4, 3)
-    assert summation((-1)**x, (x, 0, n)) == -(-1)**(n + 1)/S(2) + S.Half
+    assert summation((-2)**(2*x + 2), (x, 0, n)).ex == 4*4**(n + 1)/S(3) - Rational(4, 3)
+    assert summation((-1)**x, (x, 0, n)).ex == -(-1)**(n + 1)/S(2) + S.Half
     assert summation(y**x, (x, a, b)) == \
         Piecewise((-a + b + 1, Eq(y, 1)), ((y**a - y**(b + 1))/(-y + 1), True))
     assert summation((-2)**(y*x + 2), (x, 0, n)) == \
@@ -344,7 +344,7 @@ def test_geometric_sums():
     )
 
     #Issue 23491
-    assert Sum(1/(n**2 + 1), (n, 1, oo)).doit() == S(-1)/2 + pi/(2*tanh(pi))
+    assert Sum(1/(n**2 + 1), (n, 1, oo)).doit().exx == S(-1)/2 + pi/(2*tanh(pi))
 
 def test_harmonic_sums():
     assert summation(1/k, (k, 0, n)) == Sum(1/k, (k, 0, n))
@@ -452,7 +452,7 @@ def test_euler_maclaurin():
     def check_exact(f, a, b, m, n):
         A = Sum(f, (k, a, b))
         s, e = A.euler_maclaurin(m, n)
-        assert (e == 0) and (s.expand() == A.doit())
+        assert (e == 0) and (s.expand() == A.doit().ec)
     check_exact(k**4, a, b, 0, 2)
     check_exact(k**4 + 2*k, a, b, 1, 2)
     check_exact(k**4 + k**2, a, b, 1, 5)
@@ -902,13 +902,13 @@ def test_change_index():
         Sum((x+1)**2, (x, a - 1, b - 1))
     assert Sum(x**2, (x, a, b)).change_index( x, -x, y) == \
         Sum((-y)**2, (y, -b, -a))
-    assert Sum(x, (x, a, b)).change_index( x, -x - 1) == \
+    assert Sum(x, (x, a, b)).change_index( x, -x - 1).exx == \
         Sum(-x - 1, (x, -b - 1, -a - 1))
     assert Sum(x*y, (x, a, b), (y, c, d)).change_index( x, x - 1, z) == \
         Sum((z + 1)*y, (z, a - 1, b - 1), (y, c, d))
     assert Sum(x, (x, a, b)).change_index( x, x + v) == \
         Sum(-v + x, (x, a + v, b + v))
-    assert Sum(x, (x, a, b)).change_index( x, -x - v) == \
+    assert Sum(x, (x, a, b)).change_index( x, -x - v).exx == \
         Sum(-v - x, (x, -b - v, -a - v))
     assert Sum(x, (x, a, b)).change_index(x, w*x, v) == \
         Sum(v/w, (v, b*w, a*w))
@@ -1231,7 +1231,7 @@ def test_issue_14640():
             (n + 1, Eq(1/a, 1)),
             ((-a**(-n - 1) + 1)/(1 - 1/a), True))/(a - b)
 
-    assert Sum((b*a**i - c*a**i)**-2, (i, 0, n)).doit() == Piecewise(
+    assert Sum((b*a**i - c*a**i)**-2, (i, 0, n)).doit().exx == Piecewise(
         (n + 1, Eq(a**(-2), 1)),
         ((-a**(-2*n - 2) + 1)/(1 - 1/a**2), True))/(b - c)**2
 
@@ -1611,7 +1611,7 @@ def test_summation_by_residues():
     # even function which works for -oo to k
     ans = Rational(1, 2) + pi/(2*tanh(pi))
     assert eval_sum_residue((1/(k**2+1)), (k, -oo, S(0))).exx == ans
-    assert eval_sum_residue((1/(k**2+1)), (k, oo, -S(1))) == -ans  # Karr convention
+    assert eval_sum_residue((1/(k**2+1)), (k, oo, -S(1))).exx == -ans  # Karr convention
 
     # function which is neither even nor odd which works for -oo to k
     assert eval_sum_residue(1 / (k**2 + 2*k +2), (k, -oo, S(0))).exx == 1 + pi/(2*tanh(pi))
