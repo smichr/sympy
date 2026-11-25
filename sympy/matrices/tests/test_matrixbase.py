@@ -538,11 +538,15 @@ def test_non_matmul():
 def test_neg():
     n = Matrix(1, 2, [1, 2])
     assert -n == Matrix(1, 2, [-1, -2])
+    n = Matrix([[x + 1]])
+    assert -n == Matrix([[-(x + 1)]])
 
 
 def test_sub():
     n = Matrix(1, 2, [1, 2])
     assert n - n == Matrix(1, 2, [0, 0])
+    n = Matrix([[x + 1]])
+    assert n - n == zeros(1)
 
 
 def test_div():

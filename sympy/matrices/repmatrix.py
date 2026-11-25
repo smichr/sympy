@@ -376,6 +376,10 @@ class RepMatrix(MatrixBase):
         rep = DomainMatrix.eye((rows, cols), ZZ)
         return cls._fromrep(rep)
 
+    def __neg__(self):
+        return self._fromrep(-self._rep)
+
+
     def _eval_add(self, other):
         return classof(self, other)._fromrep(self._rep + other._rep)
 
