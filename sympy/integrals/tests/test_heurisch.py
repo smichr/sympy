@@ -130,7 +130,7 @@ def test_heurisch_trigonometric():
 
     assert heurisch(sin(x)/(cos(x)**2+1), x) == -atan(cos(x)) #fixes issue 13723
     assert heurisch(1/(cos(x)+2), x) == 2*sqrt(3)*atan(sqrt(3)*tan(x/2)/3)/3
-    assert heurisch(2*sin(x)*cos(x)/(sin(x)**4 + 1), x) == atan(sqrt(2)*sin(x)
+    assert heurisch(2*sin(x)*cos(x)/(sin(x)**4 + 1), x).ex == atan(sqrt(2)*sin(x)
         - 1) - atan(sqrt(2)*sin(x) + 1)
 
     assert heurisch(1/cosh(x), x) == 2*atan(tanh(x/2))
@@ -363,14 +363,14 @@ def test_issue_22527():
 
 def test_heurisch_complex_erf_issue_26338():
     r = symbols('r', real=True)
-    a = sqrt(pi)*erf((1 + I)/2)/2
+    a = sqrt(pi)*erf(S.Half + I/2)/2
     assert integrate(exp(-I*r**2/2), (r, 0, 1)) == a - I*a
 
     a = exp(-x**2/(2*(2 - I)**2))
     assert heurisch(a, x, hints=[]) is None  # None, not a wrong soln
     a = exp(-r**2/(2*(2 - I)**2))
     assert heurisch(a, r, hints=[]) is None
-    a = sqrt(pi)*erf((1 + I)/2)/2
+    a = sqrt(pi)*erf(S.Half + I/2)/2
     assert integrate(exp(-I*x**2/2), (x, 0, 1)) == a - I*a
 
 

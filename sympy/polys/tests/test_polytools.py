@@ -69,11 +69,11 @@ from sympy.core.relational import Eq
 from sympy.core.singleton import S
 from sympy.core.symbol import Symbol, symbols
 from sympy.functions.elementary.complexes import (im, re)
-from sympy.functions.elementary.exponential import exp
+from sympy.functions.elementary.exponential import exp, log
 from sympy.functions.elementary.hyperbolic import tanh
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.functions.elementary.piecewise import Piecewise
-from sympy.functions.elementary.trigonometric import cos, sin
+from sympy.functions.elementary.trigonometric import atan, cos, cot, sin, tan
 from sympy.matrices.dense import Matrix
 from sympy.matrices.expressions.matexpr import MatrixSymbol
 from sympy.polys.rootoftools import rootof
@@ -3638,6 +3638,17 @@ def test_cancel():
     assert cancel(expr) == (z*sin(M[1, 4] + M[2, 1] * 5 * M[4, 0]) - 5 * M[1, 2]) / z
 
     assert cancel((x**2 + 1)/(x - I)) == x + I
+
+
+def test_cancel_rational_exponentials():
+    for arg, expected in [
+        ((log(x + 1) - log(x))/2, 1/(2*x + 1)),
+        ((log(x) - log(x + 1))/2, -1/(2*x + 1)),
+    ]:
+        f = (exp(arg) - exp(-arg))/(exp(arg) + exp(-arg))
+        assert cancel(f) == expected
+    assert cancel(tan(atan(x).rewrite(log)).rewrite(exp)) == x
+    assert cancel(cot(atan(x).rewrite(log)).rewrite(exp)) == 1/x
 
 
 def test_cancel_modulus():

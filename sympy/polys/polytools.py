@@ -7836,6 +7836,18 @@ def cancel(f, *gens, _signsimp=True, **args):
         if f.has(Piecewise):
             raise PolynomialError()
         R, (F, G) = sring((p, q), *gens, **args)
+        if not isinstance(f, Tuple) and not (gens or args) and any(
+                g.is_Pow and g.exp.is_Rational and g.exp.is_negative
+                for g in R.symbols):
+            # Multiplying while forming p and q can introduce denominators.
+            pn, pd = p.as_numer_denom()
+            qn, qd = q.as_numer_denom()
+            if pd != 1 or qd != 1:
+                if pd == qd:
+                    p, q = pn, qn
+                else:
+                    p, q = pn*qd, qn*pd
+                R, (F, G) = sring((p, q))
         if not R.ngens:
             if not isinstance(f, Tuple):
                 return f.expand()

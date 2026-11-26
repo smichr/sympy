@@ -47,7 +47,6 @@ from .heurisch import _symbols
 from sympy.polys.polyerrors import PolynomialError
 from sympy.polys.polytools import (real_roots, cancel, Poly, gcd,
     reduced)
-from sympy.polys.rationaltools import together
 from sympy.polys.rootoftools import RootSum
 from sympy.utilities.iterables import numbered_symbols
 
@@ -242,7 +241,7 @@ class DifferentialExtension:
             # rewrite the trigonometric components
             for candidates, rule in rewritables.items():
                 self.newf = self.newf.rewrite(candidates, rule)
-            self.newf = cancel(together(self.newf))
+            self.newf = cancel(self.newf)
         else:
             if any(i.has(x) for i in self.f.atoms(sin, cos, cot, tan, sinh,
                     cosh, coth, tanh, asin, acos, acot, atan)):
