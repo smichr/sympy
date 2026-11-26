@@ -3790,7 +3790,13 @@ class Exp1(NumberSymbol, metaclass=Singleton):
 
             coeff = arg.coeff(pi*I)
             if coeff:
-                if (2*coeff).is_integer:
+                if coeff.is_Mul:
+                    coeff = coeff.ec
+                twice = 2*coeff
+                integer = twice.is_integer
+                if integer is None:
+                    integer = twice.ec.is_integer
+                if integer:
                     if coeff.is_even:
                         return S.One
                     elif coeff.is_odd:
