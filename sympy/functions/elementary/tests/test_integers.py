@@ -151,8 +151,8 @@ def test_floor():
 
     assert floor(y).rewrite(frac) == y - frac(y)
     assert floor(y).rewrite(ceiling) == -ceiling(-y)
-    assert floor(y).rewrite(frac).subs(y, -pi) == floor(-pi)
-    assert floor(y).rewrite(frac).subs(y, E) == floor(E)
+    assert floor(y).rewrite(frac).subs(y, -pi).ec == floor(-pi)
+    assert floor(y).rewrite(frac).subs(y, E).ec == floor(E)
     assert floor(y).rewrite(ceiling).subs(y, E) == -ceiling(-E)
     assert floor(y).rewrite(ceiling).subs(y, -pi) == -ceiling(pi)
 

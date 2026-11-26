@@ -1779,7 +1779,7 @@ def is_ge(lhs, rhs, assumptions=None):
             if diff is not S.NaN:
                 rv = is_extended_nonnegative(diff, assumptions)
                 if rv is None and (lhs.is_Add or rhs.is_Add):
-                    rv = is_extended_nonnegative(diff.ex, assumptions)
+                    rv = is_extended_nonnegative(diff.ec, assumptions)
                 if rv is not None:
                     return rv
 
@@ -1993,6 +1993,8 @@ def is_eq(lhs: Basic, rhs: Basic, assumptions=None) -> bool | None:
         rv = None
         _n = AssumptionsWrapper(n, assumptions)
         _d = AssumptionsWrapper(d, assumptions)
+        if n.is_Add and _n.is_finite and _n.is_zero is None:
+            _n = AssumptionsWrapper(n.ec, assumptions)
         if _n.is_zero:
             rv = _d.is_nonzero
         elif _n.is_finite:
