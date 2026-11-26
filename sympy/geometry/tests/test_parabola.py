@@ -129,7 +129,7 @@ def test_parabola_intersection():
     assert parabola1.intersection(Segment2D((-12, -65), (14, -68))) == []
     # parabola with ray
     assert parabola1.intersection(Ray2D((-4, -5), (4, 3))) == [Point2D(0, -1), Point2D(4, 3)]
-    assert parabola1.intersection(Ray2D((0, 7), (1, 14))) == [Point2D(14 + 2*sqrt(57), 105 + 14*sqrt(57))]
+    assert parabola1.intersection(Ray2D((0, 7), (1, 14))) == [Point2D((7*(2*sqrt(57) + 15) - 7)/7, 7*(2*sqrt(57) + 15))]
     assert parabola1.intersection(Ray2D((0, 7), (0, 14))) == []
     # parabola with ellipse/circle
     assert parabola1.intersection(Circle(p1, 2)) == [Point2D(-2, 0), Point2D(2, 0)]

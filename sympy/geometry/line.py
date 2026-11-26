@@ -27,6 +27,7 @@ from sympy.core.singleton import S
 from sympy.core.sorting import ordered
 from sympy.core.symbol import _symbol, Dummy, uniquely_named_symbol
 from sympy.core.sympify import sympify
+from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.functions.elementary.piecewise import Piecewise
 from sympy.functions.elementary.trigonometric import (_pi_coeff, acos, tan, atan2)
 from .entity import GeometryEntity, GeometrySet
@@ -1300,6 +1301,14 @@ class Line(LinearEntity):
         """
         if not isinstance(other, GeometryEntity):
             other = Point(other, dim=self.ambient_dimension)
+        if isinstance(other, Point) and \
+                self.ambient_dimension == other.ambient_dimension == 2:
+            v = self.direction
+            w = other - self.p1
+            d = v.x*w.y - v.y*w.x
+            if d.could_extract_minus_sign():
+                d = -d
+            return sqrt(d**2/v.dot(v))
         if self.contains(other):
             return S.Zero
         return self.perpendicular_segment(other).length

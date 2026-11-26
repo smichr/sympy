@@ -468,16 +468,19 @@ def test_equation():
     assert Line(Point(2, 0), Point(2, 1)).equation() == x - 2
     assert Line(p2, Point(2, 1)).equation() == y - 1
 
+    def ptcheck(a, b):
+        return all((i - j).exx == 0 for i, j in zip(a, b, strict=True))
+
     assert Line3D(Point(x1, x1, x1), Point(y1, y1, y1)
         ).equation() == (-x + y, -x + z)
-    assert Line3D(Point(1, 2, 3), Point(2, 3, 4)
-        ).equation() == (-x + y - 1, -x + z - 2)
-    assert Line3D(Point(1, 2, 3), Point(1, 3, 4)
-        ).equation() == (x - 1, -y + z - 1)
-    assert Line3D(Point(1, 2, 3), Point(2, 2, 4)
-        ).equation() == (y - 2, -x + z - 2)
-    assert Line3D(Point(1, 2, 3), Point(2, 3, 3)
-        ).equation() == (-x + y - 1, z - 3)
+    assert ptcheck(Line3D(Point(1, 2, 3), Point(2, 3, 4)
+        ).equation(), (-x + y - 1, -x + z - 2))
+    assert ptcheck(Line3D(Point(1, 2, 3), Point(1, 3, 4)
+        ).equation(), (x - 1, -y + z - 1))
+    assert ptcheck(Line3D(Point(1, 2, 3), Point(2, 2, 4)
+        ).equation(), (y - 2, -x + z - 2))
+    assert ptcheck(Line3D(Point(1, 2, 3), Point(2, 3, 3)
+        ).equation(), (-x + y - 1, z - 3))
     assert Line3D(Point(1, 2, 3), Point(1, 2, 4)
         ).equation() == (x - 1, y - 2)
     assert Line3D(Point(1, 2, 3), Point(1, 3, 3)
@@ -807,9 +810,9 @@ def test_ray_generation():
     assert Ray((1, 1), angle=3.0 * pi) == Ray((1, 1), (0, 1))
     assert Ray((1, 1), angle=4.0 * pi) == Ray((1, 1), (2, 1))
     assert Ray((1, 1), angle=0) == Ray((1, 1), (2, 1))
-    assert Ray((1, 1), angle=4.05 * pi) == Ray(Point(1, 1),
-                                               Point(2, -sqrt(5) * sqrt(2 * sqrt(5) + 10) / 4 - sqrt(
-                                                   2 * sqrt(5) + 10) / 4 + 2 + sqrt(5)))
+    assert Ray((1, 1), angle=4.05 * pi) == Ray(
+        Point2D(1, 1), Point2D(2, (-sqrt(10)*sqrt(sqrt(5) + 5
+        ) - sqrt(2)*sqrt(sqrt(5) + 5) + 4*sqrt(5) + 8)/4))
     assert Ray((1, 1), angle=4.02 * pi) == Ray(Point(1, 1),
                                                Point(2, 1 + tan(4.02 * pi)))
     assert Ray((1, 1), angle=5) == Ray((1, 1), (2, 1 + tan(5)))
