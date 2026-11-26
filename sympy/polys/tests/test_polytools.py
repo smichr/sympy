@@ -4304,7 +4304,6 @@ def test_schur_conditions():
          64*b2*b3*b4**2 - 64*b3*b4**3 + 64*b4**4),
         (b0**2 + 2*b0*b2 + 2*b0*b4 - b1**2 - 2*b1*b3 + b2**2 + 2*b2*b4 -
          b3**2 + b4**2)]
-    print(p1_.schur_conditions())
     assert p1_.schur_conditions() == [
         -2*(2*b0 - b1 + b3 - 2*b4)*(b0 - b1 + b2 - b3 + b4),
         -2*(2*(3*b0 - b2 + 3*b4)*(2*b0 - b1 + b3 - 2*b4) - (2*b0 + b1
