@@ -493,6 +493,10 @@ def test_jordan_form():
     P, J = A.jordan_form()
     assert simplify(P*J*P.inv()) == A
 
+    A = Matrix([[2, 4], [-4, 2]])
+    P, J = A.jordan_form()
+    assert simplify(P*J*P.inv()) == A
+
     assert Matrix(1, 1, [1]).jordan_form() == (Matrix([1]), Matrix([1]))
     assert Matrix(1, 1, [1]).jordan_form(calc_transform=False) == Matrix([1])
 
@@ -533,10 +537,9 @@ def test_singular_values():
         [0, 0],
         [0, 0]
         ])
-    assert A.singular_values() == \
-        [sqrt(sqrt(221) + 15), sqrt(15 - sqrt(221))]
-    assert A.T.singular_values() == \
-        [sqrt(sqrt(221) + 15), sqrt(15 - sqrt(221)), 0, 0]
+    expected = [sqrt(sqrt(221) + 15), sqrt(15 - sqrt(221))]
+    assert Matrix(A.singular_values()).equals(Matrix(expected))
+    assert Matrix(A.T.singular_values()).equals(Matrix(expected + [0, 0]))
 
 def test___eq__():
     assert (Matrix(
@@ -804,7 +807,10 @@ def test_issue_28793():
         (sqrt(2)*I*pi/2 + I*pi, 2, [Matrix([[0, 0, 0, 0, 1, 0, 0, 0]]).T,
                                     Matrix([[0, -1, 0, 0, 0, 0, 1, 0]]).T])
     ]
-    assert list(ordered(A.eigenvects())) == list(ordered(expected))
+    def normal_eigenvects(eigenvects):
+        return list(ordered((e.exx, n, v) for e, n, v in eigenvects))
+
+    assert normal_eigenvects(A.eigenvects()) == normal_eigenvects(expected)
 
     P, J = A.jordan_form()
     assert P.det() == 16*sqrt(2)

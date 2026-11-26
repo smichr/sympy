@@ -53,7 +53,9 @@ def test_dom_eigenvects_algebraic():
         (S(5)/2 - sqrt(33)/2, 1, [Matrix([[-sqrt(33)/6 - S(1)/2], [1]])]),
         (S(5)/2 + sqrt(33)/2, 1, [Matrix([[-S(1)/2 + sqrt(33)/6], [1]])]),
     ]
-    assert dom_eigenvects_to_sympy([], algebraic_eigenvects, Matrix) == sympy_eigenvects
+    actual = dom_eigenvects_to_sympy([], algebraic_eigenvects, Matrix)
+    assert [(e, n, [v.applyfunc(lambda x: x.exx) for v in vv])
+            for e, n, vv in actual] == sympy_eigenvects
 
 
 def test_dom_eigenvects_rootof():

@@ -1396,9 +1396,8 @@ def _jordan_form_rational_matrix(M, calc_transform):
 
     def get_alg_number(factor):
         minpoly = Poly.from_list(factor, l, domain=domain)
-        algebraic_num = AlgebraicNumber((minpoly, eigenvals_by_factor[(factor, multiplicity)][0]),
-                                alias='a')
-        return algebraic_num
+        root = eigenvals_by_factor[(factor, multiplicity)][0].expand()
+        return AlgebraicNumber((minpoly, root), alias='a')
 
     nullspace_cache = {}
     def nullity_chain(fac, algebraic_multiplicity):

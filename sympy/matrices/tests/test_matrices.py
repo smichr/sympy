@@ -1736,7 +1736,7 @@ def test_jordan_form_complex_issue_9274():
                      [0, 0, p, 1],
                      [0, 0, 0, p]])
     P, J = A.jordan_form()
-    assert J == Jmust1 or J == Jmust2
+    assert J.equals(Jmust1) or J.equals(Jmust2)
     assert simplify(P*J*P.inv()) == A
 
 def test_issue_10220():

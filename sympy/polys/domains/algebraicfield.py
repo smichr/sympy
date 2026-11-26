@@ -572,7 +572,7 @@ class AlgebraicField(
         """Returns the complex conjugate of ``a``. """
         try:
             # the conjugate of ext has the same minpoly as ext
-            z = self.ext.func((self.ext.minpoly, self.ext.conjugate()))
+            z = self.ext.func((self.ext.minpoly, self.ext.as_expr().conjugate()))
             conj = self.from_sympy(z)
         except CoercionFailed:
             raise DomainError("the algebraic field is not closed under conjugation")
