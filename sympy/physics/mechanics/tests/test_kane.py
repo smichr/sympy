@@ -711,6 +711,7 @@ def test_Ars_warning():
 
     assert msg in str(excinfo.value)
 
+
 def test_constraint_combos():
     # This tests the combinations of ways you can supply the constraints.
 
@@ -762,8 +763,8 @@ def test_constraint_combos():
     )
     assert kane.holonomic_constraints == Matrix([q1 - q2])
     assert kane.nonholonomic_constraints == Matrix([])
-    assert kane.velocity_constraints == Matrix([kane.kindiffdict()[q1.diff()] -
-                                                kane.kindiffdict()[q2.diff()]])
+    assert kane.velocity_constraints.equals(Matrix([kane.kindiffdict()[q1.diff()] -
+                                                kane.kindiffdict()[q2.diff()]]))
 
     # only nonholonomic constraints
     kane = KanesMethod(
@@ -791,9 +792,9 @@ def test_constraint_combos():
     )
     assert kane.holonomic_constraints == Matrix([q1 - q2])
     assert kane.nonholonomic_constraints == Matrix([u2 - u3])
-    assert kane.velocity_constraints == Matrix([kane.kindiffdict()[q1.diff()] -
+    assert kane.velocity_constraints.equals(Matrix([kane.kindiffdict()[q1.diff()] -
                                                 kane.kindiffdict()[q2.diff()],
-                                                u2 - u3])
+                                                u2 - u3]))
 
     # holonomic and velocity constraints
     kane = KanesMethod(
@@ -808,9 +809,9 @@ def test_constraint_combos():
     )
     assert kane.holonomic_constraints == Matrix([q1 - q2])
     assert kane.nonholonomic_constraints == Matrix([])
-    assert kane.velocity_constraints == Matrix([kane.kindiffdict()[q1.diff()] -
+    assert kane.velocity_constraints.equals(Matrix([kane.kindiffdict()[q1.diff()] -
                                                 kane.kindiffdict()[q2.diff()],
-                                                u2 - u3])
+                                                u2 - u3]))
 
     # nonholonomic and velocity not simultaneously allowed
     with raises(ValueError):

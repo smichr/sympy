@@ -682,7 +682,7 @@ def test_sparse_solve():
     Ac = SparseMatrix([[1], [S.ImaginaryUnit]])
     bc = SparseMatrix([1, 1])
     sc = Ac.solve_least_squares(bc, 'LDL')
-    assert sc == SparseMatrix([(1 - S.ImaginaryUnit)/2])
+    assert sc == SparseMatrix([S.Half - S.ImaginaryUnit/2])
     assert (Ac*sc - bc).norm() == 1
 
 
