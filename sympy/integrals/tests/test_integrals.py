@@ -421,7 +421,7 @@ def test_issue_13733():
     s = Symbol('s', positive=True)
     pz = exp(-(z - y)**2/(2*s*s))/sqrt(2*pi*s*s)
     pzgx = integrate(pz, (z, x, oo))
-    assert integrate(pzgx, (x, 0, oo)) == sqrt(2)*s*exp(-y**2/(2*s**2))/(2*sqrt(pi)) + \
+    assert integrate(pzgx, (x, 0, oo)).ec == sqrt(2)*s*exp(-y**2/(2*s**2))/(2*sqrt(pi)) + \
         y*erf(sqrt(2)*y/(2*s))/2 + y/2
 
 
@@ -516,7 +516,7 @@ def test_atan_floor_terms():
         pi*floor((3*r + pi/2)/pi)
     assert A(atan(tan(r/2) + cot(r/3)), r) == \
         atan(tan(r/2) + cot(r/3)) + pi*floor((r/2 + pi/2)/pi) - \
-        pi*floor(r/(3*pi)) - pi*floor((r/2 + pi/2)/(3*pi) - Rational(2, 3))
+        pi*floor(r/(3*pi)) - pi*floor(((r/2 + pi/2)/pi - 2)/3)
     # No correction in the cases that are not handled
     for arg in [tan(r) + tan(3*r) + tan(5*r), tan(r) + tan(sqrt(2)*r),
             tan(r) + tan(r + y), tan(r)*tan(3*r), tan(r) + r*tan(2*r),
@@ -539,7 +539,7 @@ def test_atan_floor_terms():
 
 
 def test_issue_18133():
-    assert integrate(exp(x)/(1 + x)**2, x) == -exp(-1)*expint(2, -x - 1)/(x + 1)
+    assert integrate(exp(x)/(1 + x)**2, x) == -exp(-1)*expint(2, -1*(x + 1))/(x + 1)
 
 
 def test_issue_21741():
@@ -826,7 +826,7 @@ def test_integrate_Abs_sign():
     assert integrate(2*t*sign(t**2 - 1), t) == Piecewise(
         (t**2, t < -1), (-t**2 + 2, t < 1), (t**2, True))
     assert integrate(sign(t), (t, s + 1)) == Piecewise(
-        (s + 1, s + 1 > 0), (-s - 1, s + 1 < 0), (0, True))
+        (s + 1, s + 1 > 0), (-1*(s + 1), s + 1 < 0), (0, True))
 
 
 def test_subs1():
@@ -881,7 +881,7 @@ def test_subs5():
     assert e.subs(x, 5) == Integral(exp(-x**2), (x, 5))
     e = Integral(exp(x), x)
     assert (e.subs(x,1) - e.subs(x,0) - Integral(exp(x), (x, 0, 1))
-        ).doit().is_zero
+        ).doit().ec == 0
 
 
 def test_subs6():
@@ -931,10 +931,10 @@ def test_expand_integral():
 def test_as_sum_midpoint1():
     e = Integral(sqrt(x**3 + 1), (x, 2, 10))
     assert e.as_sum(1, method="midpoint") == 8*sqrt(217)
-    assert e.as_sum(2, method="midpoint") == 4*sqrt(65) + 12*sqrt(57)
-    assert e.as_sum(3, method="midpoint") == 8*sqrt(217)/3 + \
+    assert e.as_sum(2, method="midpoint").ex == 4*sqrt(65) + 12*sqrt(57)
+    assert e.as_sum(3, method="midpoint").ex == 8*sqrt(217)/3 + \
         8*sqrt(3081)/27 + 8*sqrt(52809)/27
-    assert e.as_sum(4, method="midpoint") == 2*sqrt(730) + \
+    assert e.as_sum(4, method="midpoint").ex == 2*sqrt(730) + \
         4*sqrt(7) + 4*sqrt(86) + 6*sqrt(14)
     assert abs(e.as_sum(4, method="midpoint").n() - e.n()) < 0.5
 
@@ -1038,8 +1038,8 @@ def test_issue_4884():
         Piecewise(
             (2*sqrt(x)*(x + 1)**2/5 - 2*sqrt(x)*(x + 1)/15 - 4*sqrt(x)/15,
             Abs(x + 1) > 1),
-            (2*I*sqrt(-x)*(x + 1)**2/5 - 2*I*sqrt(-x)*(x + 1)/15 -
-            4*I*sqrt(-x)/15, True))
+            (2*I*sqrt(1 + -1*(x + 1))*(x + 1)**2/5 - 2*I*sqrt(1 + -1*(x + 1))*(x + 1)/15 -
+            4*I*sqrt(1 + -1*(x + 1))/15, True))
     assert integrate(x**x*(1 + log(x))) == x**x
 
 def test_issue_18153():
@@ -1216,7 +1216,7 @@ def test_issue_4376():
 
 
 def test_issue_4517():
-    assert integrate((sqrt(x) - x**3)/x**Rational(1, 3), x) == \
+    assert integrate((sqrt(x) - x**3)/x**Rational(1, 3), x).ex == \
         6*x**Rational(7, 6)/7 - 3*x**Rational(11, 3)/11
 
 
@@ -1235,7 +1235,7 @@ def test_issue_4527():
     #    (0, True))
     assert integrate(sin(k*x)*sin(m*x), (x,)) == Piecewise(
         (0, And(Eq(k, 0), Eq(m, 0))),
-        (-x*sin(m*x)**2/2 - x*cos(m*x)**2/2 + sin(m*x)*cos(m*x)/(2*m), Eq(k, -m)),
+        (-1*(x*sin(m*x)**2/2 + x*cos(m*x)**2/2 - sin(m*x)*cos(m*x)/(2*m)), Eq(k, -m)),
         (x*sin(m*x)**2/2 + x*cos(m*x)**2/2 - sin(m*x)*cos(m*x)/(2*m), Eq(k, m)),
         (m*sin(k*x)*cos(m*x)/(k**2 - m**2) -
          k*sin(m*x)*cos(k*x)/(k**2 - m**2), True))
@@ -1267,7 +1267,7 @@ def test_issue_3940():
 def test_issue_5413():
     # Note that this is not the same as testing ratint() because integrate()
     # pulls out the coefficient.
-    assert integrate(-a/(a**2 + x**2), x) == I*log(-I*a + x)/2 - I*log(I*a + x)/2
+    assert integrate(-a/(a**2 + x**2), x).ex == I*log(-I*a + x)/2 - I*log(I*a + x)/2
 
 
 def test_issue_4892a():
@@ -1288,6 +1288,8 @@ def test_issue_4892a():
         c*( A* h2 *log(c*t)/c + A*t*exp(-z)),
         (A*c*t - A*(-h1)*log(t)*exp(z))*exp(-z),
         (A*c*t - A*(-h2)*log(t)*exp(z))*exp(-z),
+        (A*c*t + A*h1*log(t)*exp(z))*exp(-z),
+        (A*c*t + A*h2*log(t)*exp(z))*exp(-z),
     ]
 
 
@@ -1326,7 +1328,7 @@ def test_atom_bug():
 
 def test_limit_bug():
     z = Symbol('z', zero=False)
-    assert integrate(sin(x*y*z), (x, 0, pi), (y, 0, pi)).together() == \
+    assert integrate(sin(x*y*z), (x, 0, pi), (y, 0, pi)).together().exx == \
         (log(z) - Ci(pi**2*z) + EulerGamma + 2*log(pi))/z
 
 
@@ -1469,8 +1471,8 @@ def test_issue_4492():
         deep=True) == Piecewise(
         (I*(2*x**5 - 15*x**3 + 25*x - 25*sqrt(x**2 - 5)*acosh(sqrt(5)*x/5)) /
             (8*sqrt(x**2 - 5)), (x > sqrt(5)) | (x < -sqrt(5))),
-        ((2*x**5 - 15*x**3 + 25*x - 25*sqrt(5 - x**2)*asin(sqrt(5)*x/5)) /
-            (-8*sqrt(-x**2 + 5)), True))
+        ((2*x**5 - 15*x**3 + 25*x - 25*sqrt(-1*(x**2 - 5))*asin(sqrt(5)*x/5)) /
+            (-8*sqrt(-1*(x**2 - 5))), True))
 
 
 def test_issue_2708():
@@ -1515,7 +1517,7 @@ def test_issue_8368i():
                 True))
     assert integrate(exp(-s*x)*sinh(x), (x, 0, oo)) == \
         Piecewise(
-            (   -1/(s + 1)/2 - 1/(-s + 1)/2,
+            (   -Rational(1, 2)*(1/(s + 1) + 1/(1 - s)),
                 And(
                     Abs(s) > 1,
                     Abs(arg(s)) < pi/2,
@@ -1567,7 +1569,7 @@ def test_issue_11876():
 
 
 def test_issue_4950():
-    assert integrate((-60*exp(x) - 19.2*exp(4*x))*exp(4*x), x) ==\
+    assert integrate((-60*exp(x) - 19.2*exp(4*x))*exp(4*x), x).ex ==\
         -2.4*exp(8*x) - 12.0*exp(5*x)
 
 
@@ -1622,7 +1624,7 @@ def test_issue_8440_14040():
 
 def test_issue_14096():
     assert integrate(1/(x + y)**2, (x, 0, 1)) == -1/(y + 1) + 1/y
-    assert integrate(1/(1 + x + y + z)**2, (x, 0, 1), (y, 0, 1), (z, 0, 1)) == \
+    assert integrate(1/(1 + x + y + z)**2, (x, 0, 1), (y, 0, 1), (z, 0, 1)).ec == \
         -4*log(4) - 6*log(2) + 9*log(3)
 
 
@@ -1744,7 +1746,7 @@ def test_issue_15640_log_substitutions():
     F = -x**4/log(x) + 4*Ei(4*log(x))
     assert integrate(f, x) == F and F.diff(x) == f
     f = sqrt(log(x))/x**2
-    F = -sqrt(pi)*erfc(sqrt(log(x)))/2 - sqrt(log(x))/x
+    F = -1*(sqrt(pi)*erfc(sqrt(log(x)))/2 + sqrt(log(x))/x)
     assert integrate(f, x) == F and F.diff(x) == f
 
 
@@ -1847,8 +1849,8 @@ def test_issue_17473():
 
 def test_issue_17671():
     assert integrate(log(log(x)) / x**2, [x, 1, oo]) == -EulerGamma
-    assert integrate(log(log(x)) / x**3, [x, 1, oo]) == -log(2)/2 - EulerGamma/2
-    assert integrate(log(log(x)) / x**10, [x, 1, oo]) == -log(9)/9 - EulerGamma/9
+    assert integrate(log(log(x)) / x**3, [x, 1, oo]).ex == -log(2)/2 - EulerGamma/2
+    assert integrate(log(log(x)) / x**10, [x, 1, oo]).ex == -2*log(3)/9 - EulerGamma/9
 
 
 def test_issue_2975():
@@ -1861,7 +1863,7 @@ def test_issue_2975():
 def test_issue_7827():
     x, n, M = symbols('x n M')
     N = Symbol('N', integer=True)
-    assert integrate(summation(x*n, (n, 1, N)), x) == x**2*(N**2/4 + N/4)
+    assert integrate(summation(x*n, (n, 1, N)), x) == x**2*(N**2 + N)/4
     assert integrate(summation(x*sin(n), (n,1,N)), x) == \
         Sum(x**2*sin(n)/2, (n, 1, N))
     assert integrate(summation(sin(n*x), (n,1,N)), x) == \
@@ -1903,8 +1905,8 @@ def test_issue_21034_slow():
 
 
 def test_issue_4187():
-    assert integrate(log(x)*exp(-x), x) == Ei(-x) - exp(-x)*log(x)
-    assert integrate(log(x)*exp(-x), (x, 0, oo)) == -EulerGamma
+    assert integrate(log(x)*exp(-x), x).ex == Ei(-x) - exp(-x)*log(x)
+    assert integrate(log(x)*exp(-x), (x, 0, oo)).exx == -EulerGamma
 
 
 def test_issue_5547():
@@ -1937,7 +1939,7 @@ def test_issue_21024():
     f = log(x)*log(4*x) + log(3*x + exp(2))
     F = x*log(x)**2 + x*log(3*x + exp(2)) - x*(-1 + 2*log(2)) + \
         (-2*x + 2*x*log(2))*log(x) + exp(2)*log(3*x + exp(2))/3
-    assert F == integrate(f, x)
+    assert F == integrate(f, x).ec
 
     f = (x + exp(3))/x**2
     F = log(x) - exp(3)/x
@@ -1957,7 +1959,7 @@ def test_issue_21024():
 
     f = log(x + exp(5)/x)
     F = x*log(x + exp(5)/x) - x + 2*exp(Rational(5, 2))*atan(x*exp(Rational(-5, 2)))
-    assert F == integrate(f, x)
+    assert F == integrate(f, x).ec
 
     f = x**5/(x + E)
     F = x**5/5 - E*x**4/4 + x**3*exp(2)/3 - x**2*exp(3)/2 + x*exp(4) - exp(5)*log(x + E)
@@ -1965,7 +1967,7 @@ def test_issue_21024():
 
     f = 4*x/(x + sinh(5))
     F = 4*x - 4*log(x + sinh(5))*sinh(5)
-    assert F == integrate(f, x)
+    assert F == integrate(f, x).ex
 
     f = x**2/(2*x + sinh(2))
     F = x**2/4 - x*sinh(2)/4 + log(2*x + sinh(2))*sinh(2)**2/8
@@ -1973,7 +1975,7 @@ def test_issue_21024():
 
     f = -x**2/(x + E)
     F = -x**2/2 + E*x - exp(2)*log(x + E)
-    assert F == integrate(f, x)
+    assert F == integrate(f, x).ex
 
     f = (2*x + 3)*exp(5)/x
     F = 2*x*exp(5) + 3*exp(5)*log(x)
@@ -1993,7 +1995,7 @@ def test_issue_21024():
 
     f = x**4/(x + exp(5))**2 + x
     F = x**3/3 + x**2*(Rational(1, 2) - exp(5)) + 3*x*exp(10) - 4*exp(15)*log(x + exp(5)) - exp(20)/(x + exp(5))
-    assert F == integrate(f, x)
+    assert F == integrate(f, x).ex
 
     f = x*(x + exp(10)/x**2) + x
     F = x**3/3 + x**2/2 + exp(10)*log(x)
@@ -2009,12 +2011,12 @@ def test_issue_21024():
 
     f = log(x + 4*sinh(4))
     F = x*log(x + 4*sinh(4)) - x + 4*log(x + 4*sinh(4))*sinh(4)
-    assert F == integrate(f, x)
+    assert F == integrate(f, x).ec
 
     f = -x + 20*(exp(-5) - atan(4)/x)**3*sin(4)/x
     F = (-x**2*exp(15)/2 + 20*log(x)*sin(4) - (-180*x**2*exp(5)*sin(4)*atan(4) + 90*x*exp(10)*sin(4)*atan(4)**2 - \
         20*exp(15)*sin(4)*atan(4)**3)/(3*x**3))*exp(-15)
-    assert F == integrate(f, x)
+    assert F == integrate(f, x).ex
 
     f = 2*x**2*exp(-4) + 6/x
     F_true = (2*x**3/3 + 6*exp(4)*log(x))*exp(-4)
@@ -2103,17 +2105,17 @@ def test_issue_11254d():
 
 
 def test_issue_22863():
-    i = integrate((3*x**3-x**2+2*x-4)/sqrt(x**2-3*x+2), (x, 0, 1))
+    i = integrate((3*x**3-x**2+2*x-4)/sqrt(x**2-3*x+2), (x, 0, 1)).ec
     assert i == -101*sqrt(2)/8 - 135*log(3 - 2*sqrt(2))/16
     assert math.isclose(i.n(), -2.98126694400554)
 
 
 def test_issue_9723():
-    assert integrate(sqrt(x + sqrt(x))) == \
+    assert integrate(sqrt(x + sqrt(x))).ex == \
         2*sqrt(sqrt(x) + x)*(sqrt(x)/12 + x/3 - S(1)/8) + log(2*sqrt(x) + 2*sqrt(sqrt(x) + x) + 1)/8
-    assert integrate(sqrt(2*x+3+sqrt(4*x+5))**3) == \
+    assert integrate(sqrt(2*x+3+sqrt(4*x+5))**3).exx == \
         sqrt(2*x + sqrt(4*x + 5) + 3) * \
-           (9*x/10 + 11*(4*x + 5)**(S(3)/2)/40 + sqrt(4*x + 5)/40 + (4*x + 5)**2/10 + S(11)/10)/2
+           (9*x/20 + 11*(4*x + 5)**(S(3)/2)/80 + sqrt(4*x + 5)/80 + (4*x + 5)**2/20 + S(11)/20)
 
 
 def test_issue_23704():
@@ -2125,7 +2127,7 @@ def test_issue_23704():
 
 
 def test_exp_substitution():
-    assert integrate(1/sqrt(1-exp(2*x))) == log(sqrt(1 - exp(2*x)) - 1)/2 - log(sqrt(1 - exp(2*x)) + 1)/2
+    assert integrate(1/sqrt(1-exp(2*x))).ex == log(sqrt(1 - exp(2*x)) - 1)/2 - log(sqrt(1 - exp(2*x)) + 1)/2
 
 
 def test_hyperbolic():
@@ -2173,7 +2175,7 @@ def test_sqrt_quadratic():
 
     assert integrate(sqrt(53225*x**2-66732*x+23013)) == \
            (x/2 - S(16683)/53225)*sqrt(53225*x**2 - 66732*x + 23013) + \
-           111576969*sqrt(2129)*asinh(53225*x/10563 - S(11122)/3521)/1133160250
+           111576969*sqrt(2129)*asinh(53225*(x - S(33366)/53225)/10563)/1133160250
     assert integrate(sqrt(a+b*x+c*x**2), x) == \
         Piecewise(((b/(4*c) + x/2)*sqrt(a + b*x + c*x**2) +
                    (a/2 - b**2/(8*c))*log(b + 2*sqrt(c)*sqrt(a + b*x + c*x**2) + 2*c*x)/sqrt(c),
@@ -2341,7 +2343,7 @@ def test_integration_of_piecewise_with_simbolic_boundaries():
         ),
         (nan, True))
 
-    assert integrate(f1 * I2, (t1, 0, 3)) == a1**3/6 + a1**2*a2/2 \
+    assert integrate(f1 * I2, (t1, 0, 3)).ec == a1**3/6 + a1**2*a2/2 \
         + a1**2*a3/2 + a1*a2**2/2 + a1*a2*a3 + a1*a3**2/2 + a2**3/6 + a2**2*a3/2 + a2*a3**2/2 + a3**3/6
 
     assert integrate( Piecewise( (2,t2<1) , (nan , True)) , (t2,0,t1) ) == \
