@@ -656,7 +656,7 @@ def test_issue_4319():
     x, y = symbols('x y')
 
     p = -x*(S.One/8 - y)
-    ans = {S.Zero, y - S.One/8}
+    ans = {S.Zero, -1*(S.One/8 - y)}
 
     def ok(pat):
         assert set(p.match(pat).values()) == ans

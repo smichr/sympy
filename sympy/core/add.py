@@ -551,7 +551,13 @@ class Add(Expr, AssocOp):
         return
 
     def matches(self, expr, repl_dict=None, old=False):
-        return self._matches_commutative(expr, repl_dict, old)
+        d = self._matches_commutative(expr, repl_dict, old)
+        if d is None and getattr(expr, 'is_Mul', False):
+            c, r = expr.as_coeff_Mul()
+            if c is not S.One and r.is_Add:
+                return self._matches_commutative(
+                    Add(*(c*a for a in r.args)), repl_dict, old)
+        return d
 
     @staticmethod
     def _combine_inverse(lhs, rhs):
