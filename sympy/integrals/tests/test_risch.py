@@ -476,7 +476,7 @@ def test_integrate_nonlinear_no_specials():
     DE = DifferentialExtension(extension={'D': [Poly(1, x),
         Poly(-t**2 - t/x - (1 - nu**2/x**2), t)], 'Tfuncs': [f]})
     assert integrate_nonlinear_no_specials(a, d, DE) == \
-        (-log(1 + f(x)**2 + x**2/2)/2 + (- 4 - x**2)/(4 + 2*x**2 + 4*f(x)**2), True)
+        (-log((x**2 + 2)/2 + f(x)**2)/2 + (- 4 - x**2)/(4 + 2*x**2 + 4*f(x)**2), True)
     assert integrate_nonlinear_no_specials(Poly(t, t), Poly(1, t), DE) == \
         (0, False)
 
@@ -661,6 +661,8 @@ def test_DifferentialExtension_misc():
         (Poly(0, x), Poly(1, x), [Poly(1, x)], [x], [], [], [None], [None])
     assert DifferentialExtension(tan(atan(x).rewrite(log)), x)._important_attrs == \
         (Poly(x, x), Poly(1, x), [Poly(1, x)], [x], [], [], [None], [None])
+    assert DifferentialExtension(cot(atan(x).rewrite(log)), x)._important_attrs == \
+        (Poly(1, x), Poly(x, x), [Poly(1, x)], [x], [], [], [None], [None])
 
 
 def test_DifferentialExtension_Rothstein():
@@ -727,7 +729,7 @@ def test_DecrementLevel():
 
 def test_risch_integrate():
     assert risch_integrate(t0*exp(x), x) == t0*exp(x)
-    assert risch_integrate(sin(x), x, rewrite_complex=True) == -exp(I*x)/2 - exp(-I*x)/2
+    assert risch_integrate(sin(x), x, rewrite_complex=True).ex == -exp(I*x)/2 - exp(-I*x)/2
 
     # From my GSoC writeup
     assert risch_integrate((1 + 2*x**2 + x**4 + 2*x**3*exp(2*x**2))/
@@ -748,7 +750,7 @@ def test_risch_integrate():
     ans2 = risch_integrate(e2, y)
     assert ans2 == log(1/y)*log(1 - 1/y)/2 - log(1/y)*log(1 + 1/y)/2 + \
             NonElementaryIntegral((I*pi*y**2 - 2*y*log(1/y) - I*pi)/(2*y**3 - 2*y), y)
-    assert expand_log(cancel(diff(ans2, y) - e2), force=True) == 0
+    assert expand_log(cancel(diff(ans2, y) - e2), force=True).exx == 0
 
     # These are tested here in addition to in test_DifferentialExtension above
     # (symlogs) to test that backsubs works correctly.  The integrals should be
@@ -779,14 +781,14 @@ def test_risch_integrate():
 
     # sinh(x).rewrite(exp)
     expr = exp(x)/2 - exp(-x)/2
-    assert risch_integrate(expr, x) == exp(x)/2 + exp(-x)/2
+    assert risch_integrate(expr, x).ex == exp(x)/2 + exp(-x)/2
 
     # sin(x).rewrite(exp)
     expr = -I*(exp(I*x) - exp(-I*x))/2
-    assert risch_integrate(expr, x) == -exp(I*x)/2 - exp(-I*x)/2
+    assert risch_integrate(expr, x).ex == -exp(I*x)/2 - exp(-I*x)/2
 
 def test_risch_integrate_float():
-    assert risch_integrate((-60*exp(x) - 19.2*exp(4*x))*exp(4*x), x) == -2.4*exp(8*x) - 12.0*exp(5*x)
+    assert risch_integrate((-60*exp(x) - 19.2*exp(4*x))*exp(4*x), x).ex == -2.4*exp(8*x) - 12.0*exp(5*x)
 
 
 def test_integrate_primitive_nonelementary_residual():
