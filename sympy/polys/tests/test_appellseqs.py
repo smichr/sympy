@@ -52,8 +52,8 @@ def test_bernoulli_c_poly():
     assert bernoulli_c_poly(6, x) == x**6 - 5*x**4 + 7*x**2 - Q(31,21)
 
 
-    assert 2**8 * bernoulli_poly(8, (x+1)/2).expand() == bernoulli_c_poly(8, x)
-    assert 2**9 * bernoulli_poly(9, (x+1)/2).expand() == bernoulli_c_poly(9, x)
+    assert (2**8 * bernoulli_poly(8, (x+1)/2).expand()).ec == bernoulli_c_poly(8, x)
+    assert (2**9 * bernoulli_poly(9, (x+1)/2).expand()).ec == bernoulli_c_poly(9, x)
 
     check_special(x, bernoulli_c_poly, 1)
 
@@ -69,8 +69,8 @@ def test_genocchi_poly():
     assert genocchi_poly(6, x) == 3 - 15*x**2 + 15*x**4 - 6*x**5
 
 
-    assert 2 * (bernoulli_poly(8, x) - bernoulli_c_poly(8, x)) == genocchi_poly(8, x)
-    assert 2 * (bernoulli_poly(9, x) - bernoulli_c_poly(9, x)) == genocchi_poly(9, x)
+    assert (2 * (bernoulli_poly(8, x) - bernoulli_c_poly(8, x))).ec == genocchi_poly(8, x)
+    assert (2 * (bernoulli_poly(9, x) - bernoulli_c_poly(9, x))).ec == genocchi_poly(9, x)
 
     check_special(1 - 2*x, genocchi_poly, 2)
 
@@ -86,8 +86,8 @@ def test_euler_poly():
     assert euler_poly(6, x) == x**6 - 3*x**5 + 5*x**3 - 3*x
 
 
-    assert genocchi_poly(9, x) == euler_poly(8, x) * -9
-    assert genocchi_poly(10, x) == euler_poly(9, x) * -10
+    assert genocchi_poly(9, x) == (euler_poly(8, x) * -9).ec
+    assert genocchi_poly(10, x) == (euler_poly(9, x) * -10).ec
 
     check_special(x - Q(1,2), euler_poly, 1)
 

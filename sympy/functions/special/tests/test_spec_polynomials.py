@@ -30,7 +30,7 @@ def test_jacobi():
     b = Symbol("b")
 
     assert jacobi(0, a, b, x) == 1
-    assert jacobi(1, a, b, x) == a/2 - b/2 + x*(a/2 + b/2 + 1)
+    assert jacobi(1, a, b, x) == (a - b)/2 + x*(a + b + 2)/2
 
     assert jacobi(n, a, a, x) == RisingFactorial(
         a + 1, n)*gegenbauer(n, a + S.Half, x)/RisingFactorial(2*a + 1, n)
@@ -70,7 +70,7 @@ def test_jacobi():
         ((-_k + n)*RisingFactorial(_k + a + b + 1, -_k + n)) + jacobi(n, a,
         b, x))/(_k + a + b + n + 1), (_k, 0, n - 1)))
     assert diff(jacobi(n, a, b, x), x) == \
-        (a/2 + b/2 + n/2 + S.Half)*jacobi(n - 1, a + 1, b + 1, x)
+        (a + b + n + 1)/2*jacobi(n - 1, a + 1, b + 1, x)
 
     assert jacobi_normalized(n, a, b, x) == \
            (jacobi(n, a, b, x)/sqrt(2**(a + b + 1)*gamma(a + n + 1)*gamma(b + n + 1)
@@ -79,10 +79,10 @@ def test_jacobi():
     raises(ValueError, lambda: jacobi(-2.1, a, b, x))
     raises(ValueError, lambda: jacobi(Dummy(positive=True, integer=True), 1, 2, oo))
 
-    assert jacobi(n, a, b, x).rewrite(Sum).dummy_eq(Sum((S.Half - x/2)
+    assert jacobi(n, a, b, x).rewrite(Sum).dummy_eq(Sum(((1 - x)/2)
         **_k*RisingFactorial(-n, _k)*RisingFactorial(_k + a + 1, -_k + n)*
         RisingFactorial(a + b + n + 1, _k)/factorial(_k), (_k, 0, n))/factorial(n))
-    assert jacobi(n, a, b, x).rewrite("polynomial").dummy_eq(Sum((S.Half - x/2)
+    assert jacobi(n, a, b, x).rewrite("polynomial").dummy_eq(Sum(((1 - x)/2)
         **_k*RisingFactorial(-n, _k)*RisingFactorial(_k + a + 1, -_k + n)*
         RisingFactorial(a + b + n + 1, _k)/factorial(_k), (_k, 0, n))/factorial(n))
     raises(ArgumentIndexError, lambda: jacobi(n, a, b, x).fdiff(5))
@@ -96,7 +96,7 @@ def test_gegenbauer():
     assert gegenbauer(1, a, x) == 2*a*x
     assert gegenbauer(2, a, x) == -a + x**2*(2*a**2 + 2*a)
     assert gegenbauer(3, a, x) == \
-        x**3*(4*a**3/3 + 4*a**2 + a*Rational(8, 3)) + x*(-2*a**2 - 2*a)
+        x**3*(4*a**3 + 12*a**2 + 8*a)/3 + x*(-2*a**2 - 2*a)
 
     assert gegenbauer(-1, a, x) == 0
     assert gegenbauer(n, S.Half, x) == legendre(n, x)
@@ -108,7 +108,7 @@ def test_gegenbauer():
 
     assert gegenbauer(n, a, -x) == (-1)**n*gegenbauer(n, a, x)
     assert gegenbauer(n, a, 0) == 2**n*sqrt(pi) * \
-        gamma(a + n/2)/(gamma(a)*gamma(-n/2 + S.Half)*gamma(n + 1))
+        gamma(a + n/2)/(gamma(a)*gamma((1 - n)/2)*gamma(n + 1))
     assert gegenbauer(n, a, 1) == gamma(2*a + n)/(gamma(2*a)*gamma(n + 1))
 
     assert gegenbauer(n, Rational(3, 4), -1) is zoo
@@ -124,10 +124,10 @@ def test_gegenbauer():
     _k = Dummy('k')
 
     assert diff(gegenbauer(n, a, x), n) == Derivative(gegenbauer(n, a, x), n)
-    assert diff(gegenbauer(n, a, x), a).dummy_eq(Sum((2*(-1)**(-_k + n) + 2)*
-        (_k + a)*gegenbauer(_k, a, x)/((-_k + n)*(_k + 2*a + n)) + ((2*_k +
-        2)/((_k + 2*a)*(2*_k + 2*a + 1)) + 2/(_k + 2*a + n))*gegenbauer(n, a
-        , x), (_k, 0, n - 1)))
+    assert diff(gegenbauer(n, a, x), a).dummy_eq(Sum(2*((-1)**(-_k + n) + 1)*
+        (_k + a)*gegenbauer(_k, a, x)/((-_k + n)*(_k + 2*a + n)) +
+        (2*(_k + 1)/((_k + 2*a)*(2*_k + 2*a + 1)) +
+        2/(_k + 2*a + n))*gegenbauer(n, a, x), (_k, 0, n - 1)))
     assert diff(gegenbauer(n, a, x), x) == 2*a*gegenbauer(n - 1, a + 1, x)
 
     assert gegenbauer(n, a, x).rewrite(Sum).dummy_eq(
@@ -187,10 +187,10 @@ def test_legendre():
     assert diff(legendre(n, x), n) == Derivative(legendre(n, x), n)
 
     _k = Dummy('k')
-    assert legendre(n, x).rewrite(Sum).dummy_eq(Sum((-1)**_k*(S.Half -
-            x/2)**_k*(x/2 + S.Half)**(-_k + n)*binomial(n, _k)**2, (_k, 0, n)))
-    assert legendre(n, x).rewrite("polynomial").dummy_eq(Sum((-1)**_k*(S.Half -
-            x/2)**_k*(x/2 + S.Half)**(-_k + n)*binomial(n, _k)**2, (_k, 0, n)))
+    assert legendre(n, x).rewrite(Sum).dummy_eq(Sum((-1)**_k*((1 - x)/2)**_k*
+            ((x + 1)/2)**(-_k + n)*binomial(n, _k)**2, (_k, 0, n)))
+    assert legendre(n, x).rewrite("polynomial").dummy_eq(Sum((-1)**_k*((1 - x)/2)**_k*
+            ((x + 1)/2)**(-_k + n)*binomial(n, _k)**2, (_k, 0, n)))
     raises(ArgumentIndexError, lambda: legendre(n, x).fdiff(1))
     raises(ArgumentIndexError, lambda: legendre(n, x).fdiff(3))
 
@@ -202,10 +202,10 @@ def test_assoc_legendre():
     assert Plm(0, 0, x) == 1
     assert Plm(1, 0, x) == x
     assert Plm(1, 1, x) == -Q
-    assert Plm(2, 0, x) == (3*x**2 - 1)/2
+    assert Plm(2, 0, x) == ((3*x**2 - 1)/2).ec
     assert Plm(2, 1, x) == -3*x*Q
     assert Plm(2, 2, x) == 3*Q**2
-    assert Plm(3, 0, x) == (5*x**3 - 3*x)/2
+    assert Plm(3, 0, x) == ((5*x**3 - 3*x)/2).ec
     assert Plm(3, 1, x).expand() == (( 3*(1 - 5*x**2)/2 ).expand() * Q).expand()
     assert Plm(3, 2, x) == 15*x * Q**2
     assert Plm(3, 3, x) == -15 * Q**3
@@ -224,8 +224,7 @@ def test_assoc_legendre():
     assert isinstance(X, assoc_legendre)
 
     assert Plm(n, 0, x) == legendre(n, x)
-    assert Plm(n, m, 0) == 2**m*sqrt(pi)/(gamma(-m/2 - n/2 +
-                           S.Half)*gamma(-m/2 + n/2 + 1))
+    assert Plm(n, m, 0) == 2**m*sqrt(pi)/(gamma((-m - n + 1)/2)*gamma(1 - (m - n)/2))
 
     assert diff(Plm(m, n, x), x) == (m*x*assoc_legendre(m, n, x) -
                 (m + n)*assoc_legendre(m - 1, n, x))/(x**2 - 1)
@@ -234,11 +233,11 @@ def test_assoc_legendre():
     assert Plm(m, n, x).rewrite(Sum).dummy_eq(
             (1 - x**2)**(n/2)*Sum((-1)**_k*2**(-m)*x**(-2*_k + m - n)*factorial
              (-2*_k + 2*m)/(factorial(_k)*factorial(-_k + m)*factorial(-2*_k + m
-              - n)), (_k, 0, floor(m/2 - n/2))))
+              - n)), (_k, 0, floor((m - n)/2))))
     assert Plm(m, n, x).rewrite("polynomial").dummy_eq(
             (1 - x**2)**(n/2)*Sum((-1)**_k*2**(-m)*x**(-2*_k + m - n)*factorial
              (-2*_k + 2*m)/(factorial(_k)*factorial(-_k + m)*factorial(-2*_k + m
-              - n)), (_k, 0, floor(m/2 - n/2))))
+              - n)), (_k, 0, floor((m - n)/2))))
     assert conjugate(assoc_legendre(n, m, x)) == \
         assoc_legendre(n, conjugate(m), conjugate(x))
     raises(ValueError, lambda: Plm(0, 1, x))
@@ -328,7 +327,7 @@ def test_hermite():
     assert hermite(n, -x) == (-1)**n*hermite(n, x)
     assert unchanged(hermite, -n, x)
 
-    assert hermite(n, 0) == 2**n*sqrt(pi)/gamma(S.Half - n/2)
+    assert hermite(n, 0) == 2**n*sqrt(pi)/gamma((1 - n)/2)
     assert hermite(n, oo) is oo
 
     assert conjugate(hermite(n, x)) == hermite(n, conjugate(x))
@@ -362,7 +361,7 @@ def test_hermite_prob():
     assert hermite_prob(n, -x) == (-1)**n*hermite_prob(n, x)
     assert unchanged(hermite_prob, -n, x)
 
-    assert hermite_prob(n, 0) == sqrt(pi)/gamma(S.Half - n/2)
+    assert hermite_prob(n, 0) == sqrt(pi)/gamma((1 - n)/2)
     assert hermite_prob(n, oo) is oo
 
     assert conjugate(hermite_prob(n, x)) == hermite_prob(n, conjugate(x))

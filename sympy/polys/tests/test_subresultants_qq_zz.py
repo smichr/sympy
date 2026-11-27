@@ -1,6 +1,6 @@
 from __future__ import annotations
 from sympy.core.symbol import Symbol
-from sympy.polys.polytools import (pquo, prem, sturm, subresultants)
+from sympy.polys.polytools import (Poly, pquo, prem, sturm, subresultants)
 from sympy.matrices import Matrix
 from sympy.polys.subresultants_qq_zz import (sylvester, res, res_q, res_z, bezout,
     subresultants_sylv,   modified_subresultants_sylv,
@@ -11,6 +11,10 @@ from sympy.polys.subresultants_qq_zz import (sylvester, res, res_q, res_z, bezou
     subresultants_amv_q, quo_z, rem_z, subresultants_amv,
     modified_subresultants_amv, subresultants_rem,
     subresultants_vv, subresultants_vv_2)
+
+
+def _polyseq(seq, x):
+    return [Poly(p, x) for p in seq]
 
 
 def test_sylvester():
@@ -42,15 +46,16 @@ def test_subresultants_sylv():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_sylv(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_sylv(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_sylv(p, q, x)[-1] == res(p, q, x)
-    assert subresultants_sylv(p, q, x) != euclid_amv(p, q, x)
+    assert _polyseq(subresultants_sylv(p, q, x), x) != _polyseq(euclid_amv(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_sylv(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_sylv(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_sylv(p, q, x) == euclid_amv(p, q, x)
+    assert _polyseq(subresultants_sylv(p, q, x), x) == _polyseq(euclid_amv(p, q, x), x)
 
 def test_modified_subresultants_sylv():
     x = Symbol('x')
@@ -58,14 +63,15 @@ def test_modified_subresultants_sylv():
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert modified_subresultants_sylv(p, q, x) == [i*j for i, j in zip(amv_factors, subresultants_amv(p, q, x))]
+    assert _polyseq(modified_subresultants_sylv(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, subresultants_amv(p, q, x), strict=True)], x)
     assert modified_subresultants_sylv(p, q, x)[-1] != res_q(p + x**8, q, x)
-    assert modified_subresultants_sylv(p, q, x) != sturm_amv(p, q, x)
+    assert _polyseq(modified_subresultants_sylv(p, q, x), x) != _polyseq(sturm_amv(p, q, x), x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert modified_subresultants_sylv(p, q, x) == sturm_amv(p, q, x)
-    assert modified_subresultants_sylv(-p, q, x) != sturm_amv(-p, q, x)
+    assert _polyseq(modified_subresultants_sylv(p, q, x), x) == _polyseq(sturm_amv(p, q, x), x)
+    assert _polyseq(modified_subresultants_sylv(-p, q, x), x) != _polyseq(sturm_amv(-p, q, x), x)
 
 def test_res():
     x = Symbol('x')
@@ -97,15 +103,16 @@ def test_subresultants_bezout():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_bezout(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_bezout(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_bezout(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert subresultants_bezout(p, q, x) != euclid_amv(p, q, x)
+    assert _polyseq(subresultants_bezout(p, q, x), x) != _polyseq(euclid_amv(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_bezout(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_bezout(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_bezout(p, q, x) == euclid_amv(p, q, x)
+    assert _polyseq(subresultants_bezout(p, q, x), x) == _polyseq(euclid_amv(p, q, x), x)
 
 def test_modified_subresultants_bezout():
     x = Symbol('x')
@@ -113,14 +120,15 @@ def test_modified_subresultants_bezout():
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert modified_subresultants_bezout(p, q, x) == [i*j for i, j in zip(amv_factors, subresultants_amv(p, q, x))]
+    assert _polyseq(modified_subresultants_bezout(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, subresultants_amv(p, q, x), strict=True)], x)
     assert modified_subresultants_bezout(p, q, x)[-1] != sylvester(p + x**8, q, x).det()
-    assert modified_subresultants_bezout(p, q, x) != sturm_amv(p, q, x)
+    assert _polyseq(modified_subresultants_bezout(p, q, x), x) != _polyseq(sturm_amv(p, q, x), x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert modified_subresultants_bezout(p, q, x) == sturm_amv(p, q, x)
-    assert modified_subresultants_bezout(-p, q, x) != sturm_amv(-p, q, x)
+    assert _polyseq(modified_subresultants_bezout(p, q, x), x) == _polyseq(sturm_amv(p, q, x), x)
+    assert _polyseq(modified_subresultants_bezout(-p, q, x), x) != _polyseq(sturm_amv(-p, q, x), x)
 
 def test_sturm_pg():
     x = Symbol('x')
@@ -129,14 +137,14 @@ def test_sturm_pg():
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     assert sturm_pg(p, q, x)[-1] != sylvester(p, q, x, 2).det()
     sam_factors = [1, 1, -1, -1, 1, 1]
-    assert sturm_pg(p, q, x) == [i*j for i,j in zip(sam_factors, euclid_pg(p, q, x))]
+    assert _polyseq(sturm_pg(p, q, x), x) == _polyseq([i*j for i,j in zip(sam_factors, euclid_pg(p, q, x), strict=True)], x)
 
     p = -9*x**5 - 5*x**3 - 9
     q = -45*x**4 - 15*x**2
     assert sturm_pg(p, q, x, 1)[-1] == sylvester(p, q, x, 1).det()
     assert sturm_pg(p, q, x)[-1] != sylvester(p, q, x, 2).det()
     assert sturm_pg(-p, q, x)[-1] == sylvester(-p, q, x, 2).det()
-    assert sturm_pg(-p, q, x) == modified_subresultants_pg(-p, q, x)
+    assert _polyseq(sturm_pg(-p, q, x), x) == _polyseq(modified_subresultants_pg(-p, q, x), x)
 
 def test_sturm_q():
     x = Symbol('x')
@@ -154,14 +162,14 @@ def test_sturm_amv():
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     assert sturm_amv(p, q, x)[-1] != sylvester(p, q, x, 2).det()
     sam_factors = [1, 1, -1, -1, 1, 1]
-    assert sturm_amv(p, q, x) == [i*j for i,j in zip(sam_factors, euclid_amv(p, q, x))]
+    assert _polyseq(sturm_amv(p, q, x), x) == _polyseq([i*j for i,j in zip(sam_factors, euclid_amv(p, q, x), strict=True)], x)
 
     p = -9*x**5 - 5*x**3 - 9
     q = -45*x**4 - 15*x**2
     assert sturm_amv(p, q, x, 1)[-1] == sylvester(p, q, x, 1).det()
     assert sturm_amv(p, q, x)[-1] != sylvester(p, q, x, 2).det()
     assert sturm_amv(-p, q, x)[-1] == sylvester(-p, q, x, 2).det()
-    assert sturm_pg(-p, q, x) == modified_subresultants_pg(-p, q, x)
+    assert _polyseq(sturm_pg(-p, q, x), x) == _polyseq(modified_subresultants_pg(-p, q, x), x)
 
 
 def test_euclid_pg():
@@ -170,13 +178,13 @@ def test_euclid_pg():
     p = x**6+x**5-x**4-x**3+x**2-x+1
     q = 6*x**5+5*x**4-4*x**3-3*x**2+2*x-1
     assert euclid_pg(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert euclid_pg(p, q, x) == subresultants_pg(p, q, x)
+    assert _polyseq(euclid_pg(p, q, x), x) == _polyseq(subresultants_pg(p, q, x), x)
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     assert euclid_pg(p, q, x)[-1] != sylvester(p, q, x, 2).det()
     sam_factors = [1, 1, -1, -1, 1, 1]
-    assert euclid_pg(p, q, x) == [i*j for i,j in zip(sam_factors, sturm_pg(p, q, x))]
+    assert _polyseq(euclid_pg(p, q, x), x) == _polyseq([i*j for i,j in zip(sam_factors, sturm_pg(p, q, x), strict=True)], x)
 
 
 def test_euclid_q():
@@ -193,13 +201,13 @@ def test_euclid_amv():
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
     assert euclid_amv(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert euclid_amv(p, q, x) == subresultants_amv(p, q, x)
+    assert _polyseq(euclid_amv(p, q, x), x) == _polyseq(subresultants_amv(p, q, x), x)
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     assert euclid_amv(p, q, x)[-1] != sylvester(p, q, x, 2).det()
     sam_factors = [1, 1, -1, -1, 1, 1]
-    assert euclid_amv(p, q, x) == [i*j for i,j in zip(sam_factors, sturm_amv(p, q, x))]
+    assert _polyseq(euclid_amv(p, q, x), x) == _polyseq([i*j for i,j in zip(sam_factors, sturm_amv(p, q, x), strict=True)], x)
 
 
 def test_modified_subresultants_pg():
@@ -208,14 +216,15 @@ def test_modified_subresultants_pg():
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert modified_subresultants_pg(p, q, x) == [i*j for i, j in zip(amv_factors, subresultants_pg(p, q, x))]
+    assert _polyseq(modified_subresultants_pg(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, subresultants_pg(p, q, x), strict=True)], x)
     assert modified_subresultants_pg(p, q, x)[-1] != sylvester(p + x**8, q, x).det()
-    assert modified_subresultants_pg(p, q, x) != sturm_pg(p, q, x)
+    assert _polyseq(modified_subresultants_pg(p, q, x), x) != _polyseq(sturm_pg(p, q, x), x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert modified_subresultants_pg(p, q, x) == sturm_pg(p, q, x)
-    assert modified_subresultants_pg(-p, q, x) != sturm_pg(-p, q, x)
+    assert _polyseq(modified_subresultants_pg(p, q, x), x) == _polyseq(sturm_pg(p, q, x), x)
+    assert _polyseq(modified_subresultants_pg(-p, q, x), x) != _polyseq(sturm_pg(-p, q, x), x)
 
 
 def test_subresultants_pg():
@@ -223,15 +232,16 @@ def test_subresultants_pg():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_pg(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_pg(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_pg(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert subresultants_pg(p, q, x) != euclid_pg(p, q, x)
+    assert _polyseq(subresultants_pg(p, q, x), x) != _polyseq(euclid_pg(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_pg(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_pg(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_pg(p, q, x) == euclid_pg(p, q, x)
+    assert _polyseq(subresultants_pg(p, q, x), x) == _polyseq(euclid_pg(p, q, x), x)
 
 
 def test_subresultants_amv_q():
@@ -239,15 +249,16 @@ def test_subresultants_amv_q():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_amv_q(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_amv_q(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_amv_q(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert subresultants_amv_q(p, q, x) != euclid_amv(p, q, x)
+    assert _polyseq(subresultants_amv_q(p, q, x), x) != _polyseq(euclid_amv(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_amv_q(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_amv_q(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_amv(p, q, x) == euclid_amv(p, q, x)
+    assert _polyseq(subresultants_amv(p, q, x), x) == _polyseq(euclid_amv(p, q, x), x)
 
 
 def test_rem_z():
@@ -273,15 +284,16 @@ def test_subresultants_amv():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_amv(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_amv(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_amv(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert subresultants_amv(p, q, x) != euclid_amv(p, q, x)
+    assert _polyseq(subresultants_amv(p, q, x), x) != _polyseq(euclid_amv(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_amv(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_amv(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_amv(p, q, x) == euclid_amv(p, q, x)
+    assert _polyseq(subresultants_amv(p, q, x), x) == _polyseq(euclid_amv(p, q, x), x)
 
 
 def test_modified_subresultants_amv():
@@ -290,14 +302,15 @@ def test_modified_subresultants_amv():
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert modified_subresultants_amv(p, q, x) == [i*j for i, j in zip(amv_factors, subresultants_amv(p, q, x))]
+    assert _polyseq(modified_subresultants_amv(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, subresultants_amv(p, q, x), strict=True)], x)
     assert modified_subresultants_amv(p, q, x)[-1] != sylvester(p + x**8, q, x).det()
-    assert modified_subresultants_amv(p, q, x) != sturm_amv(p, q, x)
+    assert _polyseq(modified_subresultants_amv(p, q, x), x) != _polyseq(sturm_amv(p, q, x), x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert modified_subresultants_amv(p, q, x) == sturm_amv(p, q, x)
-    assert modified_subresultants_amv(-p, q, x) != sturm_amv(-p, q, x)
+    assert _polyseq(modified_subresultants_amv(p, q, x), x) == _polyseq(sturm_amv(p, q, x), x)
+    assert _polyseq(modified_subresultants_amv(-p, q, x), x) != _polyseq(sturm_amv(-p, q, x), x)
 
 
 def test_subresultants_rem():
@@ -305,15 +318,16 @@ def test_subresultants_rem():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_rem(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_rem(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_rem(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert subresultants_rem(p, q, x) != euclid_amv(p, q, x)
+    assert _polyseq(subresultants_rem(p, q, x), x) != _polyseq(euclid_amv(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_rem(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_rem(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_rem(p, q, x) == euclid_amv(p, q, x)
+    assert _polyseq(subresultants_rem(p, q, x), x) == _polyseq(euclid_amv(p, q, x), x)
 
 
 def test_subresultants_vv():
@@ -321,15 +335,16 @@ def test_subresultants_vv():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_vv(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_vv(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_vv(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert subresultants_vv(p, q, x) != euclid_amv(p, q, x)
+    assert _polyseq(subresultants_vv(p, q, x), x) != _polyseq(euclid_amv(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_vv(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_vv(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_vv(p, q, x) == euclid_amv(p, q, x)
+    assert _polyseq(subresultants_vv(p, q, x), x) == _polyseq(euclid_amv(p, q, x), x)
 
 
 def test_subresultants_vv_2():
@@ -337,15 +352,16 @@ def test_subresultants_vv_2():
 
     p = x**8 + x**6 - 3*x**4 - 3*x**3 + 8*x**2 + 2*x - 5
     q = 3*x**6 + 5*x**4 - 4*x**2 - 9*x + 21
-    assert subresultants_vv_2(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_vv_2(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
     assert subresultants_vv_2(p, q, x)[-1] == sylvester(p, q, x).det()
-    assert subresultants_vv_2(p, q, x) != euclid_amv(p, q, x)
+    assert _polyseq(subresultants_vv_2(p, q, x), x) != _polyseq(euclid_amv(p, q, x), x)
     amv_factors = [1, 1, -1, 1, -1, 1]
-    assert subresultants_vv_2(p, q, x) == [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x))]
+    assert _polyseq(subresultants_vv_2(p, q, x), x) == _polyseq(
+        [i*j for i, j in zip(amv_factors, modified_subresultants_amv(p, q, x), strict=True)], x)
 
     p = x**3 - 7*x + 7
     q = 3*x**2 - 7
-    assert subresultants_vv_2(p, q, x) == euclid_amv(p, q, x)
+    assert _polyseq(subresultants_vv_2(p, q, x), x) == _polyseq(euclid_amv(p, q, x), x)
 
 
 def test_subresultants_pg_common_factor():
@@ -362,8 +378,8 @@ def test_subresultants_pg_common_factor():
     p = 4*x**3 + 3*x**2 + x + 2
     q = 2*x + 2
 
-    assert subresultants_pg(p, q, x) == subresultants(p, q, x)
-    assert modified_subresultants_pg(p, q, x) == subresultants(p, q, x)
+    assert _polyseq(subresultants_pg(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
+    assert _polyseq(modified_subresultants_pg(p, q, x), x) == _polyseq(subresultants(p, q, x), x)
 
     p = x**3 - x
     q = x**2 - x

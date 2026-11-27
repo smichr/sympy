@@ -640,7 +640,7 @@ def exptrigsimp(expr):
             # if e is an Add, we can try to factor it
             # helps with expressions with leading factors
             if e.is_Add:
-                choices.append(factor_terms(op))
+                choices.append(factor_terms(op.ec))
             else:
                 choices.append(op)
             choices.append(e.rewrite(sin))

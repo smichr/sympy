@@ -444,6 +444,7 @@ def test_exptrigsimp():
 
     assert exptrigsimp(exp(x) + exp(-x)) == 2*cosh(x)
     assert exptrigsimp(exp(x) - exp(-x)) == 2*sinh(x)
+    assert exptrigsimp(2*cosh(x) - 2*sinh(x)) == 2*exp(-x)
     assert exptrigsimp((2*exp(x)-2*exp(-x))/(exp(x)+exp(-x))) == 2*tanh(x)
     assert exptrigsimp((2*exp(2*x)-2)/(exp(2*x)+1)) == 2*tanh(x)
     e = [cos(x) + I*sin(x), cos(x) - I*sin(x),
