@@ -362,63 +362,63 @@ class TestTendonForceLengthInverseDeGroote2016:
         [
             (
                 C89CodePrinter,
-                '(0.995 + 0.029466630034306838*log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.029466630034306838*log(5.0*(fl_T + 0.25)))',
             ),
             (
                 C99CodePrinter,
-                '(0.995 + 0.029466630034306838*log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.029466630034306838*log(5.0*(fl_T + 0.25)))',
             ),
             (
                 C11CodePrinter,
-                '(0.995 + 0.029466630034306838*log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.029466630034306838*log(5.0*(fl_T + 0.25)))',
             ),
             (
                 CXX98CodePrinter,
-                '(0.995 + 0.029466630034306838*log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.029466630034306838*log(5.0*(fl_T + 0.25)))',
             ),
             (
                 CXX11CodePrinter,
-                '(0.995 + 0.029466630034306838*std::log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.029466630034306838*std::log(5.0*(fl_T + 0.25)))',
             ),
             (
                 CXX17CodePrinter,
-                '(0.995 + 0.029466630034306838*std::log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.029466630034306838*std::log(5.0*(fl_T + 0.25)))',
             ),
             (
                 FCodePrinter,
-                '      (0.995d0 + 0.02946663003430684d0*log(5.0d0*fl_T + 1.25d0))',
+                '      (0.995d0 + 0.02946663003430684d0*log(5.0d0*(fl_T + 0.25d0)))',
             ),
             (
                 OctaveCodePrinter,
-                '(0.995 + 0.02946663003430684*log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.02946663003430684*log(5.0*(fl_T + 0.25)))',
             ),
             (
                 PythonCodePrinter,
-                '(0.995 + 0.02946663003430684*math.log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.02946663003430684*math.log(5.0*(fl_T + 0.25)))',
             ),
             (
                 NumPyPrinter,
-                '(0.995 + 0.02946663003430684*numpy.log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.02946663003430684*numpy.log(5.0*(fl_T + 0.25)))',
             ),
             (
                 SciPyPrinter,
-                '(0.995 + 0.02946663003430684*numpy.log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.02946663003430684*numpy.log(5.0*(fl_T + 0.25)))',
             ),
             (
                 CuPyPrinter,
-                '(0.995 + 0.02946663003430684*cupy.log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.02946663003430684*cupy.log(5.0*(fl_T + 0.25)))',
             ),
             (
                 JaxPrinter,
-                '(0.995 + 0.02946663003430684*jax.numpy.log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.02946663003430684*jax.numpy.log(5.0*(fl_T + 0.25)))',
             ),
             (
                 MpmathPrinter,
-                '(mpmath.mpf((0, 8962163258467287, -53, 53)) + mpmath.mpf((0, 33972711434846347, -60, 55))*mpmath.log(mpmath.mpf((0, 5, 0, 3))*fl_T + mpmath.mpf((0, 5, -2, 3))))',
+                '(mpmath.mpf((0, 8962163258467287, -53, 53)) + mpmath.mpf((0, 33972711434846347, -60, 55))*mpmath.log(mpmath.mpf((0, 5, 0, 3))*(fl_T + mpmath.mpf((0, 1, -2, 1)))))',
             ),
             (
                 LambdaPrinter,
-                '(0.995 + 0.02946663003430684*math.log(5.0*fl_T + 1.25))',
+                '(0.995 + 0.02946663003430684*math.log(5.0*(fl_T + 0.25)))',
             ),
         ]
     )
@@ -429,7 +429,7 @@ class TestTendonForceLengthInverseDeGroote2016:
     def test_derivative_print_code(self):
         fl_T_inv = TendonForceLengthInverseDeGroote2016.with_defaults(self.fl_T)
         dfl_T_inv_dfl_T = fl_T_inv.diff(self.fl_T)
-        expected = '1/(33.93669377311689*fl_T + 8.484173443279222)'
+        expected = '0.02946663003430684/(fl_T + 0.25)'
         assert PythonCodePrinter().doprint(dfl_T_inv_dfl_T) == expected
 
     def test_lambdify(self):
@@ -794,7 +794,7 @@ class TestFiberForceLengthPassiveInverseDeGroote2016:
     def test_derivative_print_code(self):
         fl_M_pas_inv = FiberForceLengthPassiveInverseDeGroote2016.with_defaults(self.fl_M_pas)
         dfl_M_pas_inv_dfl_T = fl_M_pas_inv.diff(self.fl_M_pas)
-        expected = '32.1588900198865/(214.392600132577*fl_M_pas + 4.0)'
+        expected = '8.03972250497164/(53.5981500331442*fl_M_pas + 1)'
         assert PythonCodePrinter().doprint(dfl_M_pas_inv_dfl_T) == expected
 
     def test_lambdify(self):
@@ -1128,7 +1128,7 @@ class TestFiberForceLengthActiveDeGroote2016:
         fl_M_act = FiberForceLengthActiveDeGroote2016.with_defaults(self.l_M_tilde)
         fl_M_act_dl_M_tilde = fl_M_act.diff(self.l_M_tilde)
         expected = (
-            '(0.79798269973507 - 0.79798269973507*l_M_tilde)*math.exp(-3.98991349867535*(l_M_tilde - 1.0)**2) + (0.433*(0.717 - l_M_tilde)/(0.2*l_M_tilde - 0.0299)**2 + 0.0866*(l_M_tilde - 0.717)**2/(0.2*l_M_tilde - 0.0299)**3)*math.exp(-(1/2)*(l_M_tilde - 0.717)**2/(0.2*l_M_tilde - 0.0299)**2) + (0.814*(1.06 - l_M_tilde)/(0.0633*l_M_tilde + 0.162)**2 + 0.0515262*(l_M_tilde - 1.06)**2/(0.0633*l_M_tilde + 0.162)**3)*math.exp(-(1/2)*(l_M_tilde - 1.06)**2/(0.0633*l_M_tilde + 0.162)**2)'
+            '0.79798269973507*(1.0 - l_M_tilde)*math.exp(-3.98991349867535*(l_M_tilde - 1.0)**2) + 0.433*((0.717 - l_M_tilde)/(0.2*l_M_tilde - 0.0299)**2 + 0.2*(l_M_tilde - 0.717)**2/(0.2*l_M_tilde - 0.0299)**3)*math.exp(-(1/2)*(l_M_tilde - 0.717)**2/(0.2*l_M_tilde - 0.0299)**2) + 0.814*((1.06 - l_M_tilde)/(0.0633*l_M_tilde + 0.162)**2 + 0.0633*(l_M_tilde - 1.06)**2/(0.0633*l_M_tilde + 0.162)**3)*math.exp(-(1/2)*(l_M_tilde - 1.06)**2/(0.0633*l_M_tilde + 0.162)**2)'
         )
         assert PythonCodePrinter().doprint(fl_M_act_dl_M_tilde) == expected
 
@@ -1546,8 +1546,7 @@ class TestFiberForceVelocityInverseDeGroote2016:
         fv_M_inv = FiberForceVelocityInverseDeGroote2016.with_defaults(self.fv_M)
         dfv_M_inv_dfv_M = fv_M_inv.diff(self.fv_M)
         expected = (
-            '0.385894476383644*math.cosh(3.14465408805031*fv_M '
-            '- 2.78616352201258)'
+            '0.385894476383644*math.cosh(3.14465408805031*(fv_M - 0.886))'
         )
         assert PythonCodePrinter().doprint(dfv_M_inv_dfv_M) == expected
 

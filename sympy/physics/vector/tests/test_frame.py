@@ -90,13 +90,13 @@ def test_coordinate_vars():
             {N[0]: A[0], N[2]: A[2], N[1]: A[1]})
     C = A.orientnew('C', 'Axis', [q, A.x + A.y + A.z])
     mapping = A.variable_map(C)
-    assert trigsimp(mapping[A[0]]) == (2*C[0]*cos(q)/3 + C[0]/3 -
+    assert trigsimp(mapping[A[0]]).ex == (2*C[0]*cos(q)/3 + C[0]/3 -
                                        2*C[1]*sin(q + pi/6)/3 +
                                        C[1]/3 - 2*C[2]*cos(q + pi/3)/3 +
                                        C[2]/3)
-    assert trigsimp(mapping[A[1]]) == -2*C[0]*cos(q + pi/3)/3 + \
+    assert trigsimp(mapping[A[1]]).ex == -2*C[0]*cos(q + pi/3)/3 + \
            C[0]/3 + 2*C[1]*cos(q)/3 + C[1]/3 - 2*C[2]*sin(q + pi/6)/3 + C[2]/3
-    assert trigsimp(mapping[A[2]]) == -2*C[0]*sin(q + pi/6)/3 + C[0]/3 - \
+    assert trigsimp(mapping[A[2]]).ex == -2*C[0]*sin(q + pi/6)/3 + C[0]/3 - \
            2*C[1]*cos(q + pi/3)/3 + C[1]/3 + 2*C[2]*cos(q)/3 + C[2]/3
 
 

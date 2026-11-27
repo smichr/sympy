@@ -723,7 +723,7 @@ class Quaternion(Expr):
         return self.add(other)
 
     def __sub__(self, other: SExpr | Quaternion) -> Quaternion:
-        return self.add(other*-1)
+        return self.add(-other)
 
     def __mul__(self, other: SExpr | Quaternion) -> Quaternion:
         return self._generic_mul(self, _sympify(other))

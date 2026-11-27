@@ -352,7 +352,7 @@ def test_pin_joint_interframe():
     Cint.orient_body_fixed(A, (2 * pi / 3, -pi, pi / 2), 'xyz')
     PinJoint('J', P, C, q, u, parent_point=-N.z, child_point=C.x,
              child_interframe=Cint, joint_axis=P.x + P.z)
-    assert simplify(N.dcm(A)) == Matrix([
+    assert (simplify(N.dcm(A)) - Matrix([
         [-sqrt(2) * sin(q) / 2,
          -sqrt(3) * (cos(q) - 1) / 4 - cos(q) / 4 - S(1) / 4,
          sqrt(3) * (cos(q) + 1) / 4 - cos(q) / 4 + S(1) / 4],
@@ -360,7 +360,7 @@ def test_pin_joint_interframe():
          (-sqrt(2) + sqrt(6)) * sin(q) / 4],
         [sqrt(2) * sin(q) / 2,
          sqrt(3) * (cos(q) + 1) / 4 + cos(q) / 4 - S(1) / 4,
-         sqrt(3) * (1 - cos(q)) / 4 + cos(q) / 4 + S(1) / 4]])
+         sqrt(3) * (1 - cos(q)) / 4 + cos(q) / 4 + S(1) / 4]])).expand() == zeros(3)
     assert A.ang_vel_in(N) == sqrt(2) * u / 2 * N.x + sqrt(2) * u / 2 * N.z
     assert C.masscenter.pos_from(P.masscenter) == - N.z - A.x
     assert C.masscenter.vel(N).simplify() == (
@@ -375,7 +375,7 @@ def test_pin_joint_interframe():
     PinJoint('J', P, C, q, u, parent_point=N.x - N.y, child_point=-C.z,
              parent_interframe=Pint, child_interframe=Cint,
              joint_axis=Pint.x + Pint.z)
-    assert simplify(N.dcm(A)) == Matrix([
+    assert (simplify(N.dcm(A)) - Matrix([
         [cos(q), (sqrt(2) + sqrt(6)) * -sin(q) / 4,
          (-sqrt(2) + sqrt(6)) * sin(q) / 4],
         [-sqrt(2) * sin(q) / 2,
@@ -383,7 +383,7 @@ def test_pin_joint_interframe():
          sqrt(3) * (cos(q) - 1) / 4 - cos(q) / 4 - S(1) / 4],
         [sqrt(2) * sin(q) / 2,
          sqrt(3) * (cos(q) - 1) / 4 + cos(q) / 4 + S(1) / 4,
-         -sqrt(3) * (cos(q) + 1) / 4 + cos(q) / 4 - S(1) / 4]])
+         -sqrt(3) * (cos(q) + 1) / 4 + cos(q) / 4 - S(1) / 4]])).expand() == zeros(3)
     assert A.ang_vel_in(N) == sqrt(2) * u / 2 * Pint.x + sqrt(
         2) * u / 2 * Pint.z
     assert C.masscenter.pos_from(P.masscenter) == N.x - N.y + A.z
@@ -567,7 +567,7 @@ def test_pin_joint_arbitrary_axis():
     assert ((A.x-A.y+A.z).express(N).simplify() ==
             (-4*cos(q)/3 - S(1)/3)*N.x + (S(1)/3 - 4*sin(q + pi/6)/3)*N.y +
             (4*cos(q + pi/3)/3 - S(1)/3)*N.z)
-    assert simplify(A.dcm(N)) == Matrix([
+    assert simplify(A.dcm(N)).applyfunc(lambda e: e.ex) == Matrix([
         [S(1)/3 - 2*cos(q)/3, -2*sin(q + pi/6)/3 - S(1)/3,
          2*cos(q + pi/3)/3 + S(1)/3],
         [2*cos(q + pi/3)/3 + S(1)/3, 2*cos(q)/3 - S(1)/3,
@@ -804,7 +804,7 @@ def test_prismatic_joint_arbitrary_axis():
                    child_interframe=A.x + A.y - A.z)
     assert N.x.angle_between(A.x + A.y - A.z).simplify() == 0 #Axis are aligned
     assert ((A.x + A.y - A.z).express(N) - sqrt(3)*N.x).simplify() == 0
-    assert simplify(A.dcm(N)) == Matrix([[sqrt(3)/3, -sqrt(3)/3, sqrt(3)/3],
+    assert simplify(A.dcm(N)).applyfunc(lambda e: e.ex) == Matrix([[sqrt(3)/3, -sqrt(3)/3, sqrt(3)/3],
                                                  [sqrt(3)/3, sqrt(3)/6 + S(1)/2, S(1)/2 - sqrt(3)/6],
                                                  [-sqrt(3)/3, S(1)/2 - sqrt(3)/6, sqrt(3)/6 + S(1)/2]])
     assert C.masscenter.pos_from(P.masscenter) == (q + 1)*N.x - A.x

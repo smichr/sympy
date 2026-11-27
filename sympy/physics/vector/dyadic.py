@@ -165,7 +165,7 @@ class Dyadic(Printable, EvalfMixin):
         return not self == other
 
     def __neg__(self):
-        return self * -1
+        return Dyadic([(-c, v1, v2) for c, v1, v2 in self.args])
 
     def _latex(self, printer):
         ar = self.args  # just to shorten things
@@ -291,7 +291,7 @@ class Dyadic(Printable, EvalfMixin):
 
     def __sub__(self, other):
         """The subtraction operator. """
-        return self.__add__(other * -1)
+        return self.__add__(-other)
 
     def cross(self, other):
         """Returns the dyadic resulting from the dyadic vector cross product:

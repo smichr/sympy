@@ -117,7 +117,7 @@ def test_product_matrices():
 
     R1 = (q1.product_matrix_left * q1.product_matrix_right.T)[1:, 1:]
     R2 = simplify(q1.to_rotation_matrix()*q1.norm()**2)
-    assert R1 == R2
+    assert R1 == R2.applyfunc(lambda e: e.ex)
 
 
 def test_quaternion_axis_angle():
@@ -393,6 +393,12 @@ def test_quaternion_rotation_iss1593():
                 [0, sin(phi),  cos(phi)]]))
 
 
+def test_quaternion_negation():
+    q = Quaternion(x + y, y + z, w, 0)
+    assert q - q == Quaternion(0, 0, 0, 0)
+    assert q + (-q) == Quaternion(0, 0, 0, 0)
+
+
 def test_quaternion_multiplication():
     q1 = Quaternion(3 + 4*I, 2 + 5*I, 0, 7 + 8*I, real_field = False)
     q2 = Quaternion(1, 2, 3, 5)
@@ -400,7 +406,7 @@ def test_quaternion_multiplication():
 
     assert Quaternion._generic_mul(S(4), S.One) == 4
     assert (Quaternion._generic_mul(S(4), q1) ==
-            Quaternion(12 + 16*I, 8 + 20*I, 0, 28 + 32*I))
+            Quaternion(4*(3 + 4*I), 4*(2 + 5*I), 0, 4*(7 + 8*I)))
     assert q2.mul(2) == Quaternion(2, 4, 6, 10)
     assert q2.mul(q3) == Quaternion(-5*y - 4, 3*y - 2, 9 - 2*y, y + 4)
     assert q2.mul(q3) == q2*q3

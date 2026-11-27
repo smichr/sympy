@@ -179,7 +179,7 @@ class Vector(Printable, EvalfMixin):
         return Vector(newlist)
 
     def __neg__(self):
-        return self * -1
+        return Vector([(-m, frame) for m, frame in self.args])
 
     def outer(self, other):
         """Outer product between two Vectors.
@@ -331,7 +331,7 @@ class Vector(Printable, EvalfMixin):
 
     def __sub__(self, other):
         """The subtraction operator. """
-        return self.__add__(other * -1)
+        return self.__add__(-other)
 
     def cross(self, other):
         """The cross product operator for two Vectors.

@@ -11,6 +11,13 @@ from sympy.testing.pytest import raises
 A = ReferenceFrame('A')
 
 
+def test_negation():
+    x, y = symbols('x y')
+    d = (x + y)*(A.x | A.y) + (A.y | A.z)
+    assert d - d == 0
+    assert d + (-d) == 0
+
+
 def test_dyadic():
     d1 = A.x | A.x
     d2 = A.y | A.y

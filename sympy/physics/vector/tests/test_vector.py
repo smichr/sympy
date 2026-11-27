@@ -12,6 +12,13 @@ from sympy.testing.pytest import raises
 A = ReferenceFrame('A')
 
 
+def test_negation():
+    v = (x + y)*A.x + z*A.y
+    assert v - v == 0
+    assert v + (-v) == 0
+    assert (-v).args == [(-v.args[0][0], A)]
+
+
 def test_free_dynamicsymbols():
     A, B, C, D = symbols('A, B, C, D', cls=ReferenceFrame)
     a, b, c, d, e, f = dynamicsymbols('a, b, c, d, e, f')

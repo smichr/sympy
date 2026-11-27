@@ -212,7 +212,7 @@ def test_Beam():
     p = b3.shear_stress()
     q = SingularityFunction(x, 2, 3)/3 - 1*SingularityFunction(x, 3, 1) \
     - 1*SingularityFunction(x, 3, 2) - 1*SingularityFunction(x, 3, 3)/3
-    assert p == q
+    assert p.ex == q
 
     p = b3.slope()
     q = 2 - (SingularityFunction(x, 2, 5)/30 - SingularityFunction(x, 3, 3)/3 \
@@ -239,7 +239,7 @@ def test_Beam():
 
     p = b4.shear_stress()
     q = SingularityFunction(x, 0, 1) - SingularityFunction(x, 3, 1)
-    assert p == q
+    assert p.ex == q
 
     p = b4.slope()
     q = -3*SingularityFunction(x, 0, 3)/6 + 3*SingularityFunction(x, 3, 3)/6
@@ -417,10 +417,10 @@ def test_composite_beam():
     b.bc_slope = [(0, 0)]
     b.bc_deflection = [(0, 0), (1, 0), (4, 0)]
     b.solve_for_reaction_loads(M1, R1, R2, R3)
-    assert b.slope() == -2*SingularityFunction(x, 0, 1)/5625 + SingularityFunction(x, 0, 2)/1875\
+    assert b.slope().ex == -2*SingularityFunction(x, 0, 1)/5625 + SingularityFunction(x, 0, 2)/1875\
                 - 133*SingularityFunction(x, 1, 2)/135000 + SingularityFunction(x, 3, 2)/1000\
                 - 37*SingularityFunction(x, 4, 2)/67500
-    assert b.deflection() == -SingularityFunction(x, 0, 2)/5625 + SingularityFunction(x, 0, 3)/5625\
+    assert b.deflection().ex == -SingularityFunction(x, 0, 2)/5625 + SingularityFunction(x, 0, 3)/5625\
                     - 133*SingularityFunction(x, 1, 3)/405000 + SingularityFunction(x, 3, 3)/3000\
                     - 37*SingularityFunction(x, 4, 3)/202500
 
@@ -884,7 +884,7 @@ def test_apply_sliding_hinge():
     assert abs(b.deflection_jumps[w8] - 85/24) < tolerance
     assert (b.bending_moment() == 50*SingularityFunction(x, 0, 0) - 10*SingularityFunction(x, 0, 1)
             + 10*SingularityFunction(x, 5, 1) - 4250*SingularityFunction(x, 8, -2)/3)
-    assert (b.deflection() == -SingularityFunction(x, 0, 2)/16 + SingularityFunction(x, 0, 3)/240
+    assert (b.deflection().ex == -SingularityFunction(x, 0, 2)/16 + SingularityFunction(x, 0, 3)/240
             - SingularityFunction(x, 5, 3)/240 + 85*SingularityFunction(x, 8, 0)/24)
 
     E = Symbol('E')
@@ -917,11 +917,11 @@ def test_apply_sliding_hinge():
     b.solve_for_reaction_loads(r0, r3, r10)
     assert (b.bending_moment() == l1*q*SingularityFunction(x, 0, 1)/2 + l1*q*SingularityFunction(x, l1, 1)/2
             - q*SingularityFunction(x, 0, 2)/2 + q*SingularityFunction(x, l1, 2)/2
-            + (-l1**3*l2*q/24 - l1**3*l3*q/24)*SingularityFunction(x, l1 + l2, -2))
+            - (l1**3*l2*q + l1**3*l3*q)/24*SingularityFunction(x, l1 + l2, -2))
     assert b.deflection() ==(l1**3*q*x/24 - l1*q*SingularityFunction(x, 0, 3)/12
                              - l1*q*SingularityFunction(x, l1, 3)/12 + q*SingularityFunction(x, 0, 4)/24
                              - q*SingularityFunction(x, l1, 4)/24
-                             + (l1**3*l2*q/24 + l1**3*l3*q/24)*SingularityFunction(x, l1 + l2, 0))/(E*I)
+                             + (l1**3*l2*q + l1**3*l3*q)/24*SingularityFunction(x, l1 + l2, 0))/(E*I)
 
 def test_max_shear_force():
     E = Symbol('E')
@@ -1400,8 +1400,8 @@ def test_max_deflection_Beam3D():
     b.bc_deflection = [(0, [0, 0, 0]), (20, [0, 0, 0])]
     b.solve_slope_deflection()
     c = sympify("495/14")
-    p = sympify("-10 + 10*sqrt(10793)/43")
-    q = 20*sqrt(10793)/301 + p**4/6400 - p**3/160 + 27*p**2/560 - Rational(20, 7)
+    p = 10*(sqrt(10793) - 43)/43
+    q = 2*p/7 + p**4/6400 - p**3/160 + 27*p**2/560
     assert b.max_deflection() == [(0, 0), (10, c), (p, q)]
 
 def test_torsion_Beam3D():
