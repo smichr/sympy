@@ -201,3 +201,24 @@ def test_AlgebraicNumber_to_root():
     zeta3_squared = AlgebraicNumber(CRootOf(x**3 - 1, 2), coeffs=[1, 0, 0])
     assert zeta3_squared.to_root() == -S(1)/2 - sqrt(3)*I/2
     assert zeta3_squared.to_root(radicals=False) == CRootOf(x**2 + x + 1, 0)
+
+
+def test_AlgebraicNumber_is_zero():
+    a = AlgebraicNumber(sqrt(2), [1, 0, -2])
+    assert a.is_zero is True
+    assert AlgebraicNumber(I).is_zero is False
+    assert AlgebraicNumber(sqrt(2), [1, 0, -3]).is_zero is False
+
+
+def test_AlgebraicNumber_minpoly_of_element():
+    a = AlgebraicNumber(sqrt(2) + sqrt(3), [S.Half, 0, -9*S.Half, 0])
+    for b, expected in [
+        (a, x**2 - 2),
+        (a.field_element([Rational(1, 3)]), 3*x - 1),
+        (a.field_element([0]), x),
+        (AlgebraicNumber(sqrt(2)/2, [2, 0]), x**2 - 2),
+    ]:
+        p = b.minpoly_of_element()
+        assert p.as_expr(x) == expected
+        assert p.domain == QQ
+        assert b.minpoly_of_element() is p

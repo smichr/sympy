@@ -2616,6 +2616,9 @@ class AlgebraicNumber(Expr):
     def __hash__(self):
         return super().__hash__()
 
+    def _eval_is_zero(self):
+        return self.rep.is_zero
+
     def _eval_evalf(self, prec):
         return self.as_expr()._evalf(prec)
 
@@ -2832,9 +2835,21 @@ class AlgebraicNumber(Expr):
             if self.is_primitive_element:
                 self._own_minpoly = self.minpoly
             else:
-                from sympy.polys.numberfields.minpoly import minpoly
-                theta = self.primitive_element()
-                self._own_minpoly = minpoly(self.as_expr(theta), polys=True)
+                from sympy.polys.polytools import PurePoly, resultant
+                from sympy.core.symbol import Dummy
+
+                x = Dummy('x')
+                if self.rep.is_ground:
+                    p = PurePoly(x - self.as_expr(), x, domain='QQ')
+                else:
+                    t = Dummy('t')
+                    f = self.minpoly.as_expr(t)
+                    g = self.as_poly(t).as_expr()
+                    # All conjugates of g(theta) occur with the same
+                    # multiplicity because f is irreducible.
+                    p = PurePoly(resultant(f, x - g, t), x, domain='QQ')
+                    p = p.sqf_part()
+                self._own_minpoly = p.clear_denoms()[1]
         return self._own_minpoly
 
     def to_root(self, radicals=True, minpoly=None):
