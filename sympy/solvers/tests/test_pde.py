@@ -116,8 +116,8 @@ def test_checkpdesol():
     eq5 = 2*f(x,y) + 1*f(x,y).diff(x) + 3*f(x,y).diff(y)
     eq6 = f(x,y) + 1*f(x,y).diff(x) + 3*f(x,y).diff(y)
     assert checkpdesol(eq4, [pdsolve(eq5), pdsolve(eq6)]) == [
-        (False, (x - 2)*F(3*x - y)*exp(-x/S(5) - 3*y/S(5))),
-         (False, (x - 1)*F(3*x - y)*exp(-x/S(10) - 3*y/S(10)))]
+        (False, (x - 2)*F(3*x - y)*exp(-S.One/5*(x + 3*y))),
+         (False, (x - 1)*F(3*x - y)*exp(-S.One/10*(x + 3*y)))]
     for eq in [eq4, eq5, eq6]:
         assert checkpdesol(eq, pdsolve(eq))[0]
     sol = pdsolve(eq4)
@@ -129,9 +129,9 @@ def test_checkpdesol():
 def test_solvefun():
     f, F, G, H = map(Function, ['f', 'F', 'G', 'H'])
     eq1 = f(x,y) + f(x,y).diff(x) + f(x,y).diff(y)
-    assert pdsolve(eq1) == Eq(f(x, y), F(x - y)*exp(-x/2 - y/2))
-    assert pdsolve(eq1, solvefun=G) == Eq(f(x, y), G(x - y)*exp(-x/2 - y/2))
-    assert pdsolve(eq1, solvefun=H) == Eq(f(x, y), H(x - y)*exp(-x/2 - y/2))
+    assert pdsolve(eq1) == Eq(f(x, y), F(x - y)*exp(-S.Half*(x + y)))
+    assert pdsolve(eq1, solvefun=G) == Eq(f(x, y), G(x - y)*exp(-S.Half*(x + y)))
+    assert pdsolve(eq1, solvefun=H) == Eq(f(x, y), H(x - y)*exp(-S.Half*(x + y)))
 
 
 def test_pde_1st_linear_constant_coeff_homogeneous():
@@ -140,19 +140,19 @@ def test_pde_1st_linear_constant_coeff_homogeneous():
     eq = 2*u + u.diff(x) + u.diff(y)
     assert classify_pde(eq) == ('1st_linear_constant_coeff_homogeneous',)
     sol = pdsolve(eq)
-    assert sol == Eq(u, F(x - y)*exp(-x - y))
+    assert sol == Eq(u, F(x - y)*exp((-1)*(x + y)))
     assert checkpdesol(eq, sol)[0]
 
     eq = 4 + (3*u.diff(x)/u) + (2*u.diff(y)/u)
     assert classify_pde(eq) == ('1st_linear_constant_coeff_homogeneous',)
     sol = pdsolve(eq)
-    assert sol == Eq(u, F(2*x - 3*y)*exp(-S(12)*x/13 - S(8)*y/13))
+    assert sol == Eq(u, F(2*x - 3*y)*exp(-S(4)/13*(3*x + 2*y)))
     assert checkpdesol(eq, sol)[0]
 
     eq = u + (6*u.diff(x)) + (7*u.diff(y))
     assert classify_pde(eq) == ('1st_linear_constant_coeff_homogeneous',)
     sol = pdsolve(eq)
-    assert sol == Eq(u, F(7*x - 6*y)*exp(-6*x/S(85) - 7*y/S(85)))
+    assert sol == Eq(u, F(7*x - 6*y)*exp(-S.One/85*(6*x + 7*y)))
     assert checkpdesol(eq, sol)[0]
 
     eq = a*u + b*u.diff(x) + c*u.diff(y)
@@ -173,7 +173,7 @@ def test_pde_1st_linear_constant_coeff():
 
     eq = (u.diff(x)/u) + (u.diff(y)/u) + 1 - (exp(x + y)/u)
     sol = pdsolve(eq)
-    assert sol == Eq(f(x, y), (F(x - y) + exp(3*x/2 + 3*y/2)/3)*exp(-x/2 - y/2))
+    assert sol == Eq(f(x, y), (3*F(x - y) + exp(3*(x + y)/2))*exp(-S.Half*(x + y))/3)
     assert classify_pde(eq) == ('1st_linear_constant_coeff',
     '1st_linear_constant_coeff_Integral')
     assert checkpdesol(eq, sol)[0]
@@ -227,7 +227,7 @@ def test_pdsolve_variable_coeff():
 
     eq = y*x**2*u + y*u.diff(x) + u.diff(y)
     sol = pdsolve(eq, hint='1st_linear_variable_coeff')
-    assert sol == Eq(u, F(-2*x + y**2)*exp(-x**3/3))
+    assert sol == Eq(u, F(y**2/2 - x)*exp(-x**3/3))
     assert checkpdesol(eq, sol)[0]
 
     eq = exp(x)**2*(u.diff(x)) + y

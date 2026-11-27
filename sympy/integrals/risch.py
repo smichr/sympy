@@ -322,6 +322,10 @@ class DifferentialExtension:
         self.backsubs += [(j, i) for i, j in ratpows_repl]
         self.newf = self.newf.xreplace(dict(ratpows_repl))
 
+        # Exponential dependence must be recognized before constructing
+        # extensions; grouped coefficients can hide additive shifts.
+        self.newf = self.newf.replace(exp, lambda arg: exp(arg.ec))
+
         # To make the process deterministic, the args are sorted
         # so that functions with smaller op-counts are processed first.
         # Ties are broken with the default_sort_key.

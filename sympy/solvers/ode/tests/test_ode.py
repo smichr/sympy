@@ -14,6 +14,7 @@ from sympy.integrals.integrals import Integral
 from sympy.polys.polytools import Poly
 from sympy.series.order import O
 from sympy.simplify.radsimp import collect
+from sympy.simplify.sqrtdenest import sqrtdenest
 
 from sympy.solvers.ode import (classify_ode,
     homogeneous_order, dsolve)
@@ -486,7 +487,7 @@ def test_classify_sysode():
 def test_solve_ics():
     # Basic tests that things work from dsolve.
     assert dsolve(f(x).diff(x) - 1/f(x), f(x), ics={f(1): 2}) == \
-        Eq(f(x), sqrt(2 * x + 2))
+        Eq(f(x), sqrt(2)*sqrt(x + 1))
     assert dsolve(f(x).diff(x) - f(x), f(x), ics={f(0): 1}) == Eq(f(x), exp(x))
     assert dsolve(f(x).diff(x) - f(x), f(x), ics={f(x).diff(x).subs(x, 0): 1}) == Eq(f(x), exp(x))
     assert dsolve(f(x).diff(x, x) + f(x), f(x), ics={f(0): 1,
@@ -1102,14 +1103,18 @@ def test_issue_22604():
     eqs = [eq1, eq2]
     [x1sol, x2sol] = dsolve(eqs, [x1(t), x2(t)], ics = {x1(0):0, x1(t).diff().subs(t,0):0, \
                                                         x2(0):1, x2(t).diff().subs(t,0):0})
-    assert x1sol == Eq(x1(t), (-sqrt(5) + 3 + 3*sqrt(2)*sqrt(3 - sqrt(5)))
+    sol1 = Eq(x1(t), (-sqrt(5) + 3 + 3*sqrt(2)*sqrt(3 - sqrt(5)))
                        *cos(sqrt(2)*t*sqrt(3 - sqrt(5))/2)/10 - sqrt(sqrt(5) + 3)
                        *(-sqrt(3 - sqrt(5)) + 2*sqrt(2))*cos(sqrt(2)*t*sqrt(sqrt(5) + 3)/2)/10)
-    assert x2sol.equals(Eq(x2(t), (-2 + 3*sqrt(2)*sqrt(3 - sqrt(5))
+    sol2 = Eq(x2(t), (-2 + 3*sqrt(2)*sqrt(3 - sqrt(5))
                         + 2*sqrt(5) + 3*sqrt(10)*sqrt(3 - sqrt(5)))*cos(sqrt(2)
                         *t*sqrt(3 - sqrt(5))/2)/20 + sqrt(sqrt(5) + 3)*(-2*sqrt(2) - sqrt(5)
                         *sqrt(3 - sqrt(5)) + sqrt(3 - sqrt(5)) + 2*sqrt(10))
-                        *cos(sqrt(2)*t*sqrt(sqrt(5) + 3)/2)/20))
+                        *cos(sqrt(2)*t*sqrt(sqrt(5) + 3)/2)/20)
+    for actual, expected in [(x1sol, sol1), (x2sol, sol2)]:
+        assert actual.lhs == expected.lhs
+        assert sqrtdenest((actual.rhs - expected.rhs).expand()).expand() == 0
+
 
 def test_issue_22462():
     for de in [

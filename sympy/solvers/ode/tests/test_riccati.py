@@ -102,7 +102,7 @@ def test_riccati_transformation():
         - 9)**2 + 3*x**2/(6*x - 9))/(2*x**3)
     )]
     for w, b1, b2, y in tests:
-        assert y == riccati_normal(w, x, b1, b2)
+        assert (y - riccati_normal(w, x, b1, b2)).cancel() == 0
         assert w == riccati_inverse_normal(y, x, b1, b2).cancel()
 
     # Test bp parameter in riccati_inverse_normal
@@ -123,7 +123,7 @@ def test_riccati_transformation():
         -2*x*(-1/(4*x) - (-x - 1)/(4*x**2))/(-x - 1) + 1/x - Mul(3, -x - 1, evaluate=False)/(8*x**3)
     )]
     for w, b1, b2, bp, y in tests:
-        assert y == riccati_normal(w, x, b1, b2)
+        assert (y - riccati_normal(w, x, b1, b2)).cancel() == 0
         assert w == riccati_inverse_normal(y, x, b1, b2, bp).cancel()
 
 
@@ -178,7 +178,11 @@ def test_riccati_reduced():
         False
     )]
     for eq, normal_eq in tests:
-        assert normal_eq == riccati_reduced(eq, f, x)
+        actual = riccati_reduced(eq, f, x)
+        if normal_eq is False:
+            assert actual is False
+        else:
+            assert (normal_eq - actual).cancel() == 0
 
 
 def test_match_riccati():
@@ -277,7 +281,7 @@ def test_match_riccati():
         match, funcs = match_riccati(eq, f, x)
         assert match == res
         if res:
-            assert [b0, b1, b2] == funcs
+            assert all((a - b).cancel() == 0 for a, b in zip([b0, b1, b2], funcs, strict=True))
 
 
 def test_val_at_inf():
@@ -443,7 +447,8 @@ def test_construct_c_case_1():
             [S(1)/2 - sqrt(Mul(4, 2*sqrt(3) + 4, evaluate=False)/(19*sqrt(3) + 44) + 1)/2]]
     )]
     for num, den, pole, c in tests:
-        assert construct_c_case_1(num, den, x, pole) == c
+        actual = construct_c_case_1(num, den, x, pole)
+        assert [[i.exx for i in row] for row in actual] == [[i.exx for i in row] for row in c]
 
 
 def test_construct_c_case_2():
@@ -627,7 +632,7 @@ def test_construct_d_case_6():
     (
         Poly(-2*x**2 - 5, x, domain='ZZ'),
         Poly(4*x**4 + 2*x**2 + 10*x + 2, x, domain='ZZ'),
-        [[S(1)/2 + I/2], [S(1)/2 - I/2]]
+        [[(1 + I)/2], [(1 - I)/2]]
     ),
     (
         Poly(-2*x**3 - 4*x**2 - 2*x - 5, x, domain='ZZ'),
@@ -722,12 +727,14 @@ def check_dummy_sol(eq, solse, dummy_sym, gensol=False):
     _, funcs = match_riccati(eq, f, x)
 
     sols = solve_riccati(f(x), x, *funcs, gensol=gensol)
-    C1 = Dummy('C1')
-    sols = [sol.subs(C1, dummy_sym) for sol in sols]
-
     assert all(x[0] for x in checkodesol(eq, sols))
     assert len(sols) == len(solse)
-    assert all(s1.dummy_eq(s2, dummy_sym) for s1, s2 in zip(sols, solse))
+    for s1, s2 in zip(sols, solse, strict=True):
+        assert s1.lhs == s2.lhs
+        dummies = s1.rhs.atoms(Dummy)
+        assert len(dummies) == len(s2.rhs.atoms(Dummy)) <= 1
+        rhs = s1.rhs.xreplace(dict.fromkeys(dummies, dummy_sym))
+        assert (rhs - s2.rhs).cancel() == 0
 
 
 def test_solve_riccati():

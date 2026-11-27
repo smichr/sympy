@@ -729,6 +729,9 @@ def test_DecrementLevel():
 
 def test_risch_integrate():
     assert risch_integrate(t0*exp(x), x) == t0*exp(x)
+
+    f = exp(x/4)*exp(3*(a + 2*x)/10)*exp((2*a - x)/10)
+    assert risch_integrate(f, x) == 4*exp(a/2)*exp(3*x/4)/3
     assert risch_integrate(sin(x), x, rewrite_complex=True).ex == -exp(I*x)/2 - exp(-I*x)/2
 
     # From my GSoC writeup

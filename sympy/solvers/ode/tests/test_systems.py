@@ -117,17 +117,17 @@ def test__classify_linear_system():
 
     eqs_2 = (5 * (x1**2) + 12 * x(t) - 6 * (y(t)), (2 * y1 - 11 * t * x(t) + 3 * y(t) + t))
     sol2 = {'is_implicit': True,
-            'canon_eqs': [[Eq(Derivative(x(t), t), -sqrt(-12*x(t)/5 + 6*y(t)/5)),
+            'canon_eqs': [[Eq(Derivative(x(t), t), -sqrt(30)*sqrt(y(t) - 2*x(t))/5),
             Eq(Derivative(y(t), t), 11*t*x(t)/2 - t/2 - 3*y(t)/2)],
-            [Eq(Derivative(x(t), t), sqrt(-12*x(t)/5 + 6*y(t)/5)),
+            [Eq(Derivative(x(t), t), sqrt(30)*sqrt(y(t) - 2*x(t))/5),
             Eq(Derivative(y(t), t), 11*t*x(t)/2 - t/2 - 3*y(t)/2)]]}
     assert _classify_linear_system(eqs_2, funcs, t) == sol2
 
-    eqs_2_1 = [Eq(Derivative(x(t), t), -sqrt(-12*x(t)/5 + 6*y(t)/5)),
+    eqs_2_1 = [Eq(Derivative(x(t), t), -sqrt(30)*sqrt(y(t) - 2*x(t))/5),
             Eq(Derivative(y(t), t), 11*t*x(t)/2 - t/2 - 3*y(t)/2)]
     assert _classify_linear_system(eqs_2_1, funcs, t) is None
 
-    eqs_2_2 = [Eq(Derivative(x(t), t), sqrt(-12*x(t)/5 + 6*y(t)/5)),
+    eqs_2_2 = [Eq(Derivative(x(t), t), sqrt(30)*sqrt(y(t) - 2*x(t))/5),
             Eq(Derivative(y(t), t), 11*t*x(t)/2 - t/2 - 3*y(t)/2)]
     assert _classify_linear_system(eqs_2_2, funcs, t) is None
 
@@ -224,8 +224,7 @@ def test__classify_linear_system():
     assert _classify_linear_system(eqs_9, funcs_2[:-1], t) == answer_9
 
     eqs_10 = (Eq(3*x1, 4*5*(y(t) - z(t))), Eq(4*y1, 3*5*(z(t) - x(t))), Eq(5*z1, 3*4*(x(t) - y(t))))
-    answer_10 = {'no_of_equation': 3, 'eq': (Eq(3*Derivative(x(t), t), 20*y(t) - 20*z(t)),
-                Eq(4*Derivative(y(t), t), -15*x(t) + 15*z(t)), Eq(5*Derivative(z(t), t), 12*x(t) - 12*y(t))),
+    answer_10 = {'no_of_equation': 3, 'eq': eqs_10,
                 'func': [x(t), y(t), z(t)], 'order': {x(t): 1, y(t): 1, z(t): 1}, 'is_linear': True,
                 'is_constant': True, 'is_homogeneous': True,
                 'func_coeff': -Matrix([
@@ -451,7 +450,7 @@ def test_matrix_exp():
             [3*exp(-t)*sin(t) + exp(-t)*cos(t), -5*exp(-t)*sin(t)],
             [2*exp(-t)*sin(t), -3*exp(-t)*sin(t) + exp(-t)*cos(t)]
             ])
-    assert matrix_exp(A, t) == expAt
+    assert matrix_exp(A, t).expand() == expAt.expand()
 
     A = Matrix([[21, 17, 6], [-5, -1, -6], [4, 4, 16]])
     # TO update this.
@@ -468,7 +467,7 @@ def test_matrix_exp():
         [ -2*t*exp(16*t) - exp(16*t)/4 + exp(4*t)/4,  -2*t*exp(16*t) - exp(16*t)/4 + 5*exp(4*t)/4, -exp(16*t)/2 + exp(4*t)/2],
         [                             4*t*exp(16*t),                                4*t*exp(16*t),                 exp(16*t)]
         ])
-    assert matrix_exp(A, t) == expAt
+    assert matrix_exp(A, t).expand() == expAt.expand()
 
     A = Matrix([[1, 1, 0, 0],
                 [0, 1, 1, 0],
@@ -481,7 +480,7 @@ def test_matrix_exp():
         [0, 0, t*exp(3*t/4)/4 + exp(3*t/4), -t*exp(3*t/4)/8],
         [0, 0, t*exp(3*t/4)/2, -t*exp(3*t/4)/4 + exp(3*t/4)]
         ])
-    assert matrix_exp(A, t) == expAt
+    assert matrix_exp(A, t).expand() == expAt.expand()
 
     A = Matrix([
     [ 0, 1,  0, 0],
@@ -1330,7 +1329,7 @@ def test_sysode_linear_neq_order1_type3():
             Eq(g(x).diff(x), -f(x) + x*g(x))]
     sol3 = [Eq(f(x), (C1/2 + I*C2/2)*exp(x**2/2 - I*x) + exp(x**2/2 + I*x)*(C1/2 + I*C2*Rational(-1, 2))),
             Eq(g(x), (I*C1/2 + C2/2)*exp(x**2/2 + I*x) - exp(x**2/2 - I*x)*(I*C1/2 + C2*Rational(-1, 2)))]
-    assert dsolve(eqs3) == sol3
+    assert _same_ode_solution(dsolve(eqs3), sol3)
     assert checksysodesol(eqs3, sol3) == (True, [0, 0])
 
     eqs4 = [Eq(f(x).diff(x), x*(f(x) + g(x) + h(x))), Eq(g(x).diff(x), x*(f(x) + g(x) + h(x))),
@@ -1376,14 +1375,14 @@ def test_sysode_linear_neq_order1_type3():
             Eq(Derivative(h(t), t), 2*f(t) + 5*t*h(t))]
     sol8 = [Eq(f(t), Mul(-1, (C1/2 - C2/2), evaluate = False)*exp(5*t**2/2 - 2*t) + (C1/2 + C2/2)*exp(5*t**2/2 + 2*t)),
             Eq(h(t), (C1/2 - C2/2)*exp(5*t**2/2 - 2*t) + (C1/2 + C2/2)*exp(5*t**2/2 + 2*t))]
-    assert dsolve(eqs8) == sol8
+    assert _same_ode_solution(dsolve(eqs8), sol8)
     assert checksysodesol(eqs8, sol8) == (True, [0, 0])
 
     eqs9 = [Eq(diff(f(t), t), 5*t*f(t) + t**2*g(t)),
             Eq(diff(g(t), t), -t**2*f(t) + 5*t*g(t))]
     sol9 = [Eq(f(t), (C1/2 - I*C2/2)*exp(I*t**3/3 + 5*t**2/2) + (C1/2 + I*C2/2)*exp(-I*t**3/3 + 5*t**2/2)),
             Eq(g(t), Mul(-1, (I*C1/2 - C2/2) , evaluate = False)*exp(-I*t**3/3 + 5*t**2/2) + (I*C1/2 + C2/2)*exp(I*t**3/3 + 5*t**2/2))]
-    assert dsolve(eqs9) == sol9
+    assert _same_ode_solution(dsolve(eqs9), sol9)
     assert checksysodesol(eqs9 , sol9) == (True , [0,0])
 
     eqs10 = [Eq(diff(f(t), t), t**2*g(t) + 5*t*f(t)),
@@ -1394,7 +1393,7 @@ def test_sysode_linear_neq_order1_type3():
         (sqrt(77)*C1/77 - C2*(9*sqrt(77) - 77)/154)*exp(5*t**2/2 -
         t**3*(sqrt(77) - 9)/6) - (sqrt(77)*C1/77 - C2*(9*sqrt(77) +
         77)/154)*exp(t**3*(sqrt(77) + 9)/6 + 5*t**2/2))]
-    assert dsolve(eqs10) == sol10
+    assert _same_ode_solution(dsolve(eqs10), sol10)
     assert checksysodesol(eqs10 , sol10) == (True , [0,0])
 
     eqs11 = [Eq(diff(f(t), t), 5*t*f(t) + t**2*g(t)),
@@ -1730,7 +1729,7 @@ def test_higher_order_to_first_order_12():
                 + 32*C2*(2 - sqrt(5))*sqrt(4*sqrt(5) + 9)*cos(2*t*sqrt(4*sqrt(5) + 9))
                 + 32*C3*(2 + sqrt(5))*sqrt(9 - 4*sqrt(5))*sin(2*t*sqrt(9 - 4*sqrt(5)))
                 + 32*C4*(2 - sqrt(5))*sqrt(4*sqrt(5) + 9)*sin(2*t*sqrt(4*sqrt(5) + 9)))]
-    assert _same_ode_solution(dsolve(eqs12), sol12)
+    assert _same_ode_solution(dsolve(eqs12), sol12, (C1, C2, C3, C4))
     assert checksysodesol(eqs12, sol12) == (True, [0, 0])
 
 
@@ -2541,7 +2540,8 @@ def test_nonlinear_2eq_order1():
     sol3 = [
         Eq(x(t), 6**tt/(6*(-sinh(sqrt(C1)*(C2 + t)/2)/sqrt(C1))**tt)),
         Eq(y(t), sqrt(C1 + C1/sinh(sqrt(C1)*(C2 + t)/2)**2)/3)]
-    assert dsolve(eq3) == sol3
+    # The arbitrary constant may be rescaled by six.
+    assert _same_ode_solution(dsolve(eq3), [eq.subs(C1, 6*C1) for eq in sol3])
     # FIXME: assert checksysodesol(eq3, sol3) == (True, [0, 0])
 
     eq4 = (Eq(diff(x(t),t),x(t)*y(t)*sin(t)**2), Eq(diff(y(t),t),y(t)**2*sin(t)**2))

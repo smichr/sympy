@@ -2080,15 +2080,20 @@ def constantsimp(expr, constants):
         commons, rexpr = cse(expr)
         commons.reverse()
         rexpr = rexpr[0]
+        absorbed = False
         for s in commons:
             cs = list(s[1].atoms(Symbol))
             if len(cs) == 1 and cs[0] in Cs and \
                 cs[0] not in rexpr.atoms(Symbol) and \
                 not any(cs[0] in ex for ex in commons if ex != s):
                 rexpr = rexpr.subs(s[0], cs[0])
+                absorbed = True
             else:
                 rexpr = rexpr.subs(*s)
-        expr = rexpr
+        # CSE may rearrange signs even without eliminating any constants.
+        # Keep the original expression unless a constant was absorbed.
+        if absorbed:
+            expr = rexpr
     except IndexError:
         pass
     expr = __remove_linear_redundancies(expr, Cs)
