@@ -545,6 +545,10 @@ class Abs(DefinedFunction):
         if not isinstance(arg, Expr):
             raise TypeError("Bad argument type for Abs(): %s" % type(arg))
 
+        if (arg.is_Mul and len(arg.args) == 2
+                and arg.args[0] is S.NegativeOne):
+            return cls(arg.args[1])
+
         # handle what we can
         arg = signsimp(arg, evaluate=False)
         n, d = arg.as_numer_denom()

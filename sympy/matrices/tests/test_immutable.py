@@ -48,7 +48,8 @@ def test_subs():
     assert C.subs([[x, -1], [y, -2]]) == A
     assert C.subs([(x, -1), (y, -2)]) == A
     assert C.subs({x: -1, y: -2}) == A
-    assert C.subs({x: y - 1, y: x - 1}, simultaneous=True) == \
+    assert C.subs({x: y - 1, y: x - 1}, simultaneous=True).applyfunc(
+        lambda e: e.exx) == \
         ImmutableMatrix([[1 - y, (x - 1)*(y - 1)], [2 - x - y, (x - 1)**2]])
 
 

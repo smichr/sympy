@@ -84,7 +84,7 @@ def test_re():
     assert re(a * (2 + b*I)) == 2*a
 
     assert re((1 + sqrt(a + b*I))/2) == \
-        (a**2 + b**2)**Rational(1, 4)*cos(atan2(b, a)/2)/2 + S.Half
+        ((a**2 + b**2)**Rational(1, 4)*cos(atan2(b, a)/2) + 1)/2
 
     assert re(x).rewrite(im) == x - S.ImaginaryUnit*im(x)
     assert (x + re(y)).rewrite(re, im) == x + y - S.ImaginaryUnit*im(y)
@@ -354,8 +354,8 @@ def test_as_real_imag():
     a, b = symbols('a,b', real=True)
     assert ((1 + sqrt(a + b*I))/2).as_real_imag() == \
            (
-               (a**2 + b**2)**Rational(
-                   1, 4)*cos(atan2(b, a)/2)/2 + S.Half,
+               ((a**2 + b**2)**Rational(
+                   1, 4)*cos(atan2(b, a)/2) + 1)/2,
                (a**2 + b**2)**Rational(1, 4)*sin(atan2(b, a)/2)/2)
 
     assert sqrt(a**2).as_real_imag() == (sqrt(a**2), 0)
@@ -998,8 +998,10 @@ def test_issue_14238():
 
 def test_issue_22189():
     x = Symbol('x')
-    for a in (sqrt(7 - 2*x) - 2, 1 - x):
+    for a in (sqrt(7 - 2*x) - 2, 1 - x, sqrt(7 - 2*x)):
         assert Abs(a) - Abs(-a) == 0, a
+        assert Abs(a) == Abs(-1*a)
+        assert Abs(a) == Abs(-1*(-a))
 
 
 def test_zero_assumptions():

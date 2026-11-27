@@ -483,7 +483,8 @@ def _cofactor(M, i, j, method="berkowitz"):
     if not M.is_square or M.rows < 1:
         raise NonSquareMatrixError()
 
-    return S.NegativeOne**((i + j) % 2) * M.minor(i, j, method)
+    minor = M.minor(i, j, method)
+    return -minor if (i + j) % 2 else minor
 
 
 def _cofactor_matrix(M, method="berkowitz"):

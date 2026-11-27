@@ -109,15 +109,15 @@ def test_pythoncomplex():
 def test_rootcomplex():
     R = Rational
     assert ((+1 + I)**R(1, 2)).expand(
-        complex=True) == 2**R(1, 4)*cos(  pi/8) + 2**R(1, 4)*sin(  pi/8)*I
+        complex=True) == (2**R(1, 4)*cos(pi/8) + 2**R(1, 4)*sin(pi/8)*I).expand()
     assert ((-1 - I)**R(1, 2)).expand(
-        complex=True) == 2**R(1, 4)*cos(3*pi/8) - 2**R(1, 4)*sin(3*pi/8)*I
+        complex=True) == (2**R(1, 4)*cos(3*pi/8) - 2**R(1, 4)*sin(3*pi/8)*I).expand()
     assert (sqrt(-10)*I).as_real_imag() == (-sqrt(10), 0)
 
 
 def test_expand_inverse():
-    assert (1/(1 + I)).expand(complex=True) == (1 - I)/2
-    assert ((1 + 2*I)**(-2)).expand(complex=True) == (-3 - 4*I)/25
+    assert (1/(1 + I)).expand(complex=True) == S.Half - I/2
+    assert ((1 + 2*I)**(-2)).expand(complex=True) == -Rational(3, 25) - 4*I/25
     assert ((1 + I)**(-8)).expand(complex=True) == Rational(1, 16)
 
 

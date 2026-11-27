@@ -434,13 +434,15 @@ def signsimp(expr, evaluate=None):
     e = sub_post(sub_pre(e))
     if not isinstance(e, (Expr, Relational)) or e.is_Atom:
         return e
-    if e.is_Add:
-        rv = e.func(*[signsimp(a) for a in e.args])
-        if not evaluate and isinstance(rv, Add
-                ) and rv.could_extract_minus_sign():
-            return Mul(S.NegativeOne,
-                   Add(*(-a for a in rv.args)), evaluate=False)
-        return rv
+    neg = (not evaluate and e.is_Mul and len(e.args) == 2
+           and e.args[0] is S.NegativeOne and e.args[1].is_Add)
+    if e.is_Add or neg:
+        add = e.args[1] if neg else e
+        rv = add.func(*[signsimp(a) for a in add.args])
+        if not evaluate and isinstance(rv, Add) and rv.could_extract_minus_sign():
+            rv = Add(*(-a for a in rv.args))
+            neg = not neg
+        return S.NegativeOne*rv if neg else rv
     if evaluate:
         e = e.replace(lambda x: x.is_Mul and -(-x) != x, lambda x: -(-x))
     return e

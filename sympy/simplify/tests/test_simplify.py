@@ -645,7 +645,10 @@ def test_signsimp():
     assert signsimp(Eq(e, 0)) is S.true
     assert Abs(x - 1) == Abs(1 - x)
     assert signsimp(y - x) == y - x
-    assert signsimp(y - x, evaluate=False) == Mul(-1, x - y, evaluate=False)
+    assert signsimp(y - x, evaluate=False) == -1*(x - y)
+    e = sqrt(7 - 2*x) - 2
+    assert signsimp(e, evaluate=False) == e
+    assert signsimp(-e, evaluate=False) == -1*e
 
 
 def test_besselsimp():
