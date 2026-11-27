@@ -59,7 +59,7 @@ def test_ratint():
     f = x**4 - 3*x**2 + 6
     g = x**6 - 5*x**4 + 5*x**2 + 4
 
-    assert ratint(f/g, x) == \
+    assert ratint(f/g, x).ex == \
         atan(x) + atan(x**3) + atan(x/2 - Rational(3, 2)*x**3 + S.Half*x**5)
 
     f = x**7 - 24*x**4 - 4*x**2 + 8*x - 8
@@ -90,7 +90,7 @@ def test_ratint():
         -I*3**half*log(half + x - half*I*3**half)/3 + \
         I*3**half*log(half + x + half*I*3**half)/3
 
-    assert ratint(1/(x**3 + 1), x, real=False) == log(1 + x)/3 + \
+    assert ratint(1/(x**3 + 1), x, real=False).exx == log(1 + x)/3 + \
         (Rational(-1, 6) + I*3**half/6)*log(-half + x + I*3**half/2) + \
         (Rational(-1, 6) - I*3**half/6)*log(-half + x - I*3**half/2)
 
@@ -190,7 +190,7 @@ def test_issue_28186():
     F = (-w**2/2 - w*x + 3*x*atan(w - x)
          - (x**2/2 - 1)*log(w**2 - 2*w*x + x**2 + 1)
          - (2*w*x - x**2 - 1)/(2*w**2 - 4*w*x + 2*x**2 + 2))
-    assert integrate(f, w) == F
+    assert integrate(f, w).ex == F
     assert (F.diff(w) - f).cancel() == 0
 
     a, b, c = symbols('a b c', real=True, seq=True)

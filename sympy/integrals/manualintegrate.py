@@ -2945,7 +2945,7 @@ def sqrt_quadratic_rule(integral: IntegralInfo, degenerate=True):
     def sqrt_quadratic_reduction_rule(integrand: Expr, n: Expr, const: Expr):
         # Implementation of Gradshteyn & Ryzhik 2.263.3
         k = (-n - 1) // 2
-        delta = 4*a*c - b**2
+        delta = (4*a*c - b**2).ec
         R = c*x**2 + b*x + a
 
         def double_root_step():

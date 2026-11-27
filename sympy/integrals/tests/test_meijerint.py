@@ -3,6 +3,7 @@ from sympy.core.function import expand, expand_func, expand_mul
 from sympy.core.numbers import (I, Rational, oo, pi)
 from sympy.core.singleton import S
 from sympy.core.sorting import default_sort_key
+from sympy.core.symbol import symbols
 from sympy.functions.elementary.complexes import Abs, arg, re, unpolarify
 from sympy.functions.elementary.exponential import (exp, exp_polar, log)
 from sympy.functions.elementary.hyperbolic import cosh, acosh, sinh
@@ -240,7 +241,7 @@ def test_bessel():
     from sympy.functions.special.bessel import (besseli, besselj)
     assert simplify(integrate(besselj(a, z)*besselj(b, z)/z, (z, 0, oo),
                      meijerg=True, conds='none')) == \
-        2*sin(pi*(a/2 - b/2))/(pi*(a - b)*(a + b))
+        2*sin(pi*(a - b)/2)/(pi*(a - b)*(a + b))
     assert simplify(integrate(besselj(a, z)*besselj(a, z)/z, (z, 0, oo),
                      meijerg=True, conds='none')) == 1/(2*a)
 
@@ -260,7 +261,7 @@ def test_bessel():
     #      reduced to order 0, 1?
     assert integrate(besselj(1, x), x, meijerg=True) == -besselj(0, x)
     assert integrate(besselj(1, x)**2/x, x, meijerg=True) == \
-        -(besselj(0, x)**2 + besselj(1, x)**2)/2
+        -besselj(0, x)**2/2 - besselj(1, x)**2/2
     # TODO more besseli when tables are extended or recursive mellin works
     assert integrate(besselj(0, x)**2/x**2, x, meijerg=True) == \
         -2*x*besselj(0, x)**2 - 2*x*besselj(1, x)**2 \
@@ -648,7 +649,7 @@ def test_messy():
     from sympy.functions.special.error_functions import (Chi, E1, Shi, Si)
     from sympy.integrals.transforms import (fourier_transform, laplace_transform)
     assert (laplace_transform(Si(x), x, s, simplify=True) ==
-            ((-atan(s) + pi/2)/s, 0, True))
+            ((pi - 2*atan(s))/(2*s), 0, True))
 
     assert laplace_transform(Shi(x), x, s, simplify=True) == (
         acoth(s)/s, -oo, s**2 > 1)
@@ -693,7 +694,7 @@ def test_issue_6252():
 
 
 def test_issue_6348():
-    assert integrate(exp(I*x)/(1 + x**2), (x, -oo, oo)).simplify().rewrite(exp) \
+    assert integrate(exp(I*x)/(1 + x**2), (x, -oo, oo)).simplify().rewrite(exp).exx \
         == pi*exp(-1)
 
 
@@ -740,9 +741,14 @@ def test_issue_8368():
 
 
 def test_issue_10211():
-    from sympy.abc import h, w
-    assert integrate((1/sqrt((y-x)**2 + h**2)**3), (x,0,w), (y,0,w)) == \
-        2*sqrt(1 + w**2/h**2)/h - 2/h
+    h = symbols('h', real=True, nonzero=True)
+    w = symbols('w', positive=True)
+    expected = 2*sqrt(h**2 + w**2)/h**2 - 2*Abs(h)/h**2
+    assert integrate(1/sqrt((y - x)**2 + h**2)**3, (x, 0, w), (y, 0, w)) == expected
+
+    h0, w0 = symbols('h w')
+    result = integrate(1/sqrt((y - x)**2 + h0**2)**3, (x, 0, w0), (y, 0, w0))
+    assert result.subs({h0: h, w0: w}) == expected
 
 
 def test_issue_11806():

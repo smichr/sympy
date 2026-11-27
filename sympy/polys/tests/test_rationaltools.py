@@ -43,8 +43,8 @@ def test_together():
     assert together(1/(x*y) + 1/(x*y)**4) == y**(-4)*x**(-4)*(1 + x**3*y**3)
     assert together(1/(x**7*y) + 1/(x*y)**4) == y**(-4)*x**(-7)*(x**3 + y**3)
 
-    assert together(5/(2 + 6/(3 + 7/(4 + 8/(5 + 9/x))))) == \
-        Rational(5, 2)*((171 + 119*x)/(279 + 203*x))
+    assert together(5/(2 + 6/(3 + 7/(4 + 8/(5 + 9/x))))).exx == \
+        (Rational(5, 2)*((171 + 119*x)/(279 + 203*x))).ex
 
     assert together(1 + 1/(x + 1)**2) == (1 + (x + 1)**2)/(x + 1)**2
     assert together(1 + 1/(x*(1 + x))) == (1 + x*(1 + x))/(x*(1 + x))
