@@ -41,7 +41,7 @@ def test_plane():
     assert pl4 == pl4b
     assert pl5 == Plane(Point3D(1, 2, 3), normal_vector=(1, 2, 3))
 
-    assert pl5.equation(x, y, z) == x + 2*y + 3*z - 14
+    assert pl5.equation(x, y, z).ec == x + 2*y + 3*z - 14
     assert pl3.equation(x, y, z) == x - 2*y + z
 
     assert pl3.p1 == p1

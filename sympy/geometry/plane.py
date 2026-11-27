@@ -294,7 +294,7 @@ class Plane(GeometryEntity):
 
         if isinstance(o, Point3D):
             n = Point3D(self.normal_vector)
-            a = n.dot(o - self.p1)
+            a = n.dot(o - self.p1).ec
             N = sqrt(n.dot(n))
             return Abs(a) / N
 
@@ -302,9 +302,9 @@ class Plane(GeometryEntity):
             A, B = o.points
             P = self.p1
             n = Point3D(self.normal_vector)
-            a = n.dot(A - P)
-            b = n.dot(B - P)
-            c = n.dot(B - A)
+            a = n.dot(A - P).ec
+            b = n.dot(B - P).ec
+            c = n.dot(B - A).ec
             N = sqrt(n.dot(n))
             return (Abs(a) + Abs(b) - Abs(c)) / (2 * N)
 
@@ -312,8 +312,8 @@ class Plane(GeometryEntity):
             A, B = o.points
             P = self.p1
             n = Point3D(self.normal_vector)
-            a = n.dot(A - P)
-            c = n.dot(B - A)
+            a = n.dot(A - P).ec
+            c = n.dot(B - A).ec
             N = sqrt(n.dot(n))
             return Abs(a) * (1 + Min(0, sign(a * c))) / N
 
@@ -321,15 +321,15 @@ class Plane(GeometryEntity):
             A, B = o.points
             P = self.p1
             n = Point3D(self.normal_vector)
-            a = n.dot(A - P)
-            c = n.dot(B - A)
+            a = n.dot(A - P).ec
+            c = n.dot(B - A).ec
             N = sqrt(n.dot(n))
             return Abs(a) * (1 - Abs(sign(c))) / N
 
         if isinstance(o, Plane):
             n = Point3D(self.normal_vector)
             m = Point3D(o.normal_vector)
-            a = n.dot(o.p1 - self.p1)
+            a = n.dot(o.p1 - self.p1).ec
             delta = n.dot(n) * m.dot(m) - n.dot(m)**2
             N = sqrt(n.dot(n))
             return Abs(a) * (1 - sign(delta)) / N

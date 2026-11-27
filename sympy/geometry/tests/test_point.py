@@ -43,7 +43,7 @@ def test_point():
 
     assert Point(34.05, sqrt(3)) == Point(Rational(681, 20), sqrt(3))
     assert Point.midpoint(p3, p4) == Point(half, half)
-    assert Point.midpoint(p1, p4) == Point(half + half*x1, half + half*x2)
+    assert Point.midpoint(p1, p4) == Point((x1 + 1)/2, (x2 + 1)/2)
     assert Point.midpoint(p2, p2) == p2
     assert p2.midpoint(p2) == p2
     assert p1.origin == Point(0, 0)
@@ -192,8 +192,8 @@ def test_point3D():
 
     assert Point(34.05, sqrt(3)) == Point(Rational(681, 20), sqrt(3))
     assert Point3D.midpoint(p3, p4) == Point3D(half, half, half)
-    assert Point3D.midpoint(p1, p4) == Point3D(half + half*x1, half + half*x2,
-                                         half + half*x3)
+    assert Point3D.midpoint(p1, p4) == Point3D((x1 + 1)/2, (x2 + 1)/2,
+                                         (x3 + 1)/2)
     assert Point3D.midpoint(p2, p2) == p2
     assert p2.midpoint(p2) == p2
 

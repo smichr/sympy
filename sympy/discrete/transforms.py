@@ -4,6 +4,7 @@ Walsh Hadamard Transform, Mobius Transform
 """
 from __future__ import annotations
 
+from operator import add, sub
 from typing import Sequence, SupportsIndex
 
 from sympy.core import S, Symbol, Expr, sympify
@@ -67,7 +68,7 @@ def _fourier_transform(
 
     if inverse:
         a = [(x/n).evalf(dps) for x in a] if dps is not None \
-                            else [x/n for x in a]
+                            else [(x/n).ex for x in a]
 
     return a
 
@@ -278,7 +279,7 @@ def _walsh_hadamard_transform(
         h *= 2
 
     if inverse:
-        a = [x/n for x in a]
+        a = [(x/n).ex for x in a]
 
     return a
 
@@ -354,12 +355,13 @@ def _mobius_transform(
 
     a += [S.Zero]*(n - len(a))
 
+    op = add if sgn == 1 else sub
     if subset:
         i = 1
         while i < n:
             for j in range(n):
                 if j & i:
-                    a[j] += sgn*a[j ^ i]
+                    a[j] = op(a[j], a[j ^ i])
             i *= 2
 
     else:
@@ -368,7 +370,7 @@ def _mobius_transform(
             for j in range(n):
                 if j & i:
                     continue
-                a[j] += sgn*a[j ^ i]
+                a[j] = op(a[j], a[j ^ i])
             i *= 2
 
     return a

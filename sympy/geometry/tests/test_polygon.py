@@ -458,25 +458,27 @@ def test_bisectors():
         Point2D(-1 + sin(acos(sqrt(26)/26)/2 + pi/4), 1 - sin(-acos(sqrt(26)/26)/2 + pi/4)))
 
 def test_incenter():
-    assert Triangle(Point(0, 0), Point(1, 0), Point(0, 1)).incenter \
-        == Point(1 - sqrt(2)/2, 1 - sqrt(2)/2)
+    assert Triangle(Point(0, 0), Point(1, 0), Point(0, 1)).incenter.equals(
+        Point(1 - sqrt(2)/2, 1 - sqrt(2)/2))
 
 def test_excenters():
     t = Triangle(Point(0, 0), Point(6, 0), Point(0, 2))
-    assert t.excenters[t.sides[0]] == Point(sqrt(10) + 4, sqrt(10) + 4)
-    assert t.excenters[t.sides[1]] == Point(2 - sqrt(10), -2 + sqrt(10))
-    assert t.excenters[t.sides[2]] == Point(2 + sqrt(10), -sqrt(10) - 2)
+    assert t.excenters[t.sides[0]].equals(Point(sqrt(10) + 4, sqrt(10) + 4))
+    assert t.excenters[t.sides[1]].equals(Point(2 - sqrt(10), -2 + sqrt(10)))
+    assert t.excenters[t.sides[2]].equals(Point(2 + sqrt(10), -sqrt(10) - 2))
 
 def test_inradius():
     assert Triangle(Point(0, 0), Point(4, 0), Point(0, 3)).inradius == 1
 
 def test_incircle():
-    assert Triangle(Point(0, 0), Point(2, 0), Point(0, 2)).incircle \
-        == Circle(Point(2 - sqrt(2), 2 - sqrt(2)), 2 - sqrt(2))
+    c = Triangle(Point(0, 0), Point(2, 0), Point(0, 2)).incircle
+    assert isinstance(c, Circle)
+    assert c.center.equals(Point(2 - sqrt(2), 2 - sqrt(2)))
+    assert c.radius.ex == 2 - sqrt(2)
 
 def test_exradii():
     t = Triangle(Point(0, 0), Point(6, 0), Point(0, 2))
-    assert t.exradii[t.sides[2]] == (-2 + sqrt(10))
+    assert t.exradii[t.sides[2]].ex == -2 + sqrt(10)
 
 def test_medians():
     t = Triangle(Point(0, 0), Point(1, 0), Point(0, 1))
@@ -640,10 +642,10 @@ def test_cut_section():
     # convex polygon
     p = RegularPolygon(Point2D(0, 0), 6, 6)
     s = p.cut_section(Line((0, 0), slope=1))
-    assert s[0] == Polygon(Point2D(-3*sqrt(3) + 9, -3*sqrt(3) + 9), Point2D(3, 3*sqrt(3)),
-        Point2D(-3, 3*sqrt(3)), Point2D(-6, 0), Point2D(-9 + 3*sqrt(3), -9 + 3*sqrt(3)))
-    assert s[1] == Polygon(Point2D(6, 0), Point2D(-3*sqrt(3) + 9, -3*sqrt(3) + 9),
-        Point2D(-9 + 3*sqrt(3), -9 + 3*sqrt(3)), Point2D(-3, -3*sqrt(3)), Point2D(3, -3*sqrt(3)))
+    assert s[0] == Polygon(Point2D(3*(3 - sqrt(3)), 3*(3 - sqrt(3))), Point2D(3, 3*sqrt(3)),
+        Point2D(-3, 3*sqrt(3)), Point2D(-6, 0), Point2D(3*(sqrt(3) - 3), 3*(sqrt(3) - 3)))
+    assert s[1] == Polygon(Point2D(6, 0), Point2D(3*(3 - sqrt(3)), 3*(3 - sqrt(3))),
+        Point2D(3*(sqrt(3) - 3), 3*(sqrt(3) - 3)), Point2D(-3, -3*sqrt(3)), Point2D(3, -3*sqrt(3)))
 
     # case where line does not intersects but coincides with the edge of polygon
     a, b = 20, 10

@@ -28,7 +28,7 @@ def test_idiff():
     explicit  = 12*x/sqrt(-x**2 + 4)**5
     assert ans.subs(y, solve(circ, y)[0]).equals(explicit)
     assert True in [sol.diff(x, 3).equals(explicit) for sol in solve(circ, y)]
-    assert idiff(x + t + y, [y, t], x) == -Derivative(t, x) - 1
+    assert idiff(x + t + y, [y, t], x).ex == -Derivative(t, x) - 1
     assert idiff(f(x) * exp(f(x)) - x * exp(x), f(x), x) == (x + 1)*exp(x)*exp(-f(x))/(f(x) + 1)
     assert idiff(f(x) - y * exp(x), [f(x), y], x) == (y + Derivative(y, x))*exp(x)
     assert idiff(f(x) - y * exp(x), [y, f(x)], x) == -y + Derivative(f(x), x)*exp(-x)

@@ -40,11 +40,13 @@ def test_curve():
     assert c.plot_interval(z) == [z, 0, 2]
 
     assert Curve([x, x], (x, 0, 1)).rotate(pi/2) == Curve([-x, x], (x, 0, 1))
-    assert Curve([x, x], (x, 0, 1)).rotate(pi/2, (1, 2)).scale(2, 3).translate(
-        1, 3).arbitrary_point(s) == \
-        Line((0, 0), (1, 1)).rotate(pi/2, (1, 2)).scale(2, 3).translate(
-            1, 3).arbitrary_point(s) == \
-        Point(-2*s + 7, 3*s + 6)
+    cp = Curve([x, x], (x, 0, 1)).rotate(pi/2, (1, 2)).scale(2, 3).translate(
+        1, 3).arbitrary_point(s)
+    lp = Line((0, 0), (1, 1)).rotate(pi/2, (1, 2)).scale(2, 3).translate(
+        1, 3).arbitrary_point(s)
+    p = Point(-2*s + 7, 3*s + 6)
+    assert cp.equals(p)
+    assert lp.equals(p)
 
     raises(ValueError, lambda: Curve((s), (s, 1, 2)))
     raises(ValueError, lambda: Curve((x, x * 2), (1, x)))
@@ -84,9 +86,11 @@ def test_transform():
     pts = [Point(0, 0), Point(S.Half, Rational(1, 4)), Point(1, 1)]
     pts_out = [Point(-4, -10), Point(-3, Rational(-37, 4)), Point(-2, -7)]
 
-    assert c.scale(2, 3, (4, 5)) == cout
+    scaled = c.scale(2, 3, (4, 5))
+    assert scaled.limits == cout.limits
+    assert all((a - b).exx == 0 for a, b in zip(scaled.functions, cout.functions, strict=True))
     assert [c.subs(x, xi/2) for xi in Tuple(0, 1, 2)] == pts
-    assert [cout.subs(x, xi/2) for xi in Tuple(0, 1, 2)] == pts_out
+    assert [scaled.subs(x, xi/2) for xi in Tuple(0, 1, 2)] == pts_out
     assert Curve((x + y, 3*x), (x, 0, 1)).subs(y, S.Half) == \
         Curve((x + S.Half, 3*x), (x, 0, 1))
     assert Curve((x, 3*x), (x, 0, 1)).translate(4, 5) == \
