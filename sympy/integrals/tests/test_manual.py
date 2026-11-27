@@ -295,8 +295,8 @@ def test_manualintegrate_bioche_phase_parametrization():
     f = ((sin(a)*sin(x) + 2*cos(a)*cos(x))
         /(sin(a)*cos(x) - cos(a)*sin(x)))
     ta, tx = tan(a), tan(x)
-    F1 = -1*((ta**2 + 2)*log(tx - ta)/(ta**2 + 1)
-        - ((ta**2 + 2)*log(tx**2 + 1)/2 + ta*atan(tx))/(ta**2 + 1))
+    F1 = ((ta**2 + 2)*log(tx**2 + 1)/2 + ta*atan(tx))/(ta**2 + 1) \
+        - (ta**2 + 2)*log(tx - ta)/(ta**2 + 1)
     F2 = -log(cos(x))
     F = Piecewise((F1, Ne(cos(a), 0)), (F2, True))
     assert manualintegrate(f, x) == F
@@ -1217,7 +1217,7 @@ def test_manualintegrate_sqrt_linear():
                           10*(3*x + 2)**(S(7)/2)/567 - 4*(3*x + 2)**(S(5)/2)/27 +
                           40*(3*x + 2)**(S(3)/2)/81 + 136*sqrt(3*x + 2)/81)
     assert manualintegrate(x/sqrt(a+b*x)**3, x) == \
-        Piecewise((2*(a/sqrt(a + b*x) + sqrt(a + b*x))/b**2, Ne(b, 0)), (x**2/(2*a**(S(3)/2)), True))
+        Piecewise((-2*(-a/sqrt(a + b*x) - sqrt(a + b*x))/b**2, Ne(b, 0)), (x**2/(2*a**(S(3)/2)), True))
     assert_is_integral_of((sqrt(3*x+3)+1)/((2*x+2)**(1/S(3))+1),
                           3*sqrt(6)*(2*x + 2)**(S(7)/6)/14 - 3*sqrt(6)*(2*x + 2)**(S(5)/6)/10 -
                           3*sqrt(6)*(2*x + 2)**(S.One/6)/2 + 3*(2*x + 2)**(S(2)/3)/4 - 3*(2*x + 2)**(S.One/3)/2 +

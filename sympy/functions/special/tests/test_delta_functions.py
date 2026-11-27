@@ -136,18 +136,18 @@ def test_rewrite():
     assert Heaviside(x).rewrite(sign) == \
         Heaviside(x, H0=Heaviside(0)).rewrite(sign) == \
         Piecewise(
-            (sign(x)/2 + S(1)/2, Eq(Heaviside(0), S(1)/2)),
+            ((sign(x) + 1)/2, Eq(Heaviside(0), S(1)/2)),
             (Piecewise(
-                (sign(x)/2 + S(1)/2, Ne(x, 0)), (Heaviside(0), True)), True)
+                ((sign(x) + 1)/2, Ne(x, 0)), (Heaviside(0), True)), True)
         )
 
     assert Heaviside(y).rewrite(sign) == Heaviside(y)
     assert Heaviside(x, S.Half).rewrite(sign) == (sign(x)+1)/2
     assert Heaviside(x, y).rewrite(sign) == \
         Piecewise(
-            (sign(x)/2 + S(1)/2, Eq(y, S(1)/2)),
+            ((sign(x) + 1)/2, Eq(y, S(1)/2)),
             (Piecewise(
-                (sign(x)/2 + S(1)/2, Ne(x, 0)), (y, True)), True)
+                ((sign(x) + 1)/2, Ne(x, 0)), (y, True)), True)
         )
 
     assert DiracDelta(y).rewrite(Piecewise) == Piecewise((DiracDelta(0), Eq(y, 0)), (0, True))

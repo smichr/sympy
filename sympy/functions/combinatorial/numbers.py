@@ -1489,7 +1489,7 @@ class genocchi(DefinedFunction):
         if n.is_integer and n.is_nonnegative:
             if n.is_odd:
                 return fuzzy_not((n-1).is_positive)
-            return (n/2).is_odd
+            return (n/2).ex.is_odd
 
     def _eval_is_positive(self):
         if len(self.args) > 1 and self.args[1] != 1:
@@ -1498,7 +1498,7 @@ class genocchi(DefinedFunction):
         if n.is_integer and n.is_nonnegative:
             if n.is_zero or n.is_odd:
                 return False
-            return (n/2).is_even
+            return (n/2).ex.is_even
 
     def _eval_is_even(self):
         if len(self.args) > 1 and self.args[1] != 1:

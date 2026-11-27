@@ -346,7 +346,7 @@ def test_harmonic_rewrite():
     assert harmonic(n).rewrite(trigamma) == polygamma(0, n + 1) + EulerGamma
     assert harmonic(n).rewrite(polygamma) == polygamma(0, n + 1) + EulerGamma
 
-    assert harmonic(n,3).rewrite(polygamma) == polygamma(2, n + 1)/2 - polygamma(2, 1)/2
+    assert harmonic(n,3).rewrite(polygamma).ex == polygamma(2, n + 1)/2 - polygamma(2, 1)/2
     assert isinstance(harmonic(n,m).rewrite(polygamma), Piecewise)
 
     assert expand_func(harmonic(n+4)) == harmonic(n) + 1/(n + 4) + 1/(n + 3) + 1/(n + 2) + 1/(n + 1)

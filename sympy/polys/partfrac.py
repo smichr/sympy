@@ -144,7 +144,10 @@ def apart(f, x=None, full=False, **options):
         else:
             terms += factor(term)
 
-    return common*(poly.as_expr() + terms)
+    expr = poly.as_expr() + terms
+    if expr.is_Add and common.is_Number and common is not S.One:
+        return Add(*(common*term for term in expr.args))
+    return common*expr
 
 
 def apart_undetermined_coeffs(P, Q):

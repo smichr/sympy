@@ -177,7 +177,7 @@ def roots_cubic(f, trig=False):
         b, c, d = a, b, c  # a, b, c, d = S.One, a, b, c
         D0 = b**2 - 3*c  # b**2 - 3*a*c
         D1 = 2*b**3 - 9*b*c + 27*d  # 2*b**3 - 9*a*b*c + 27*a**2*d
-        C = root((D1 + sqrt(D1**2 - 4*D0**3))/2, 3)
+        C = root(((D1 + sqrt(D1**2 - 4*D0**3))/2).ex, 3)
         return [-(b + uk*C + D0/C/uk)/3 for uk in [u1, u2, u3]]  # -(b + uk*C + D0/C/uk)/3/a
 
     u2 = u1*(Rational(-1, 2) + coeff)

@@ -28,8 +28,8 @@ def test_zeta_eval():
     assert zeta(x, nan) is nan
 
     assert zeta(0) == Rational(-1, 2)
-    assert zeta(0, x) == S.Half - x
-    assert zeta(0, b) == S.Half - b
+    assert zeta(0, x).ex == S.Half - x
+    assert zeta(0, b).ex == S.Half - b
 
     assert zeta(1) is zoo
     assert zeta(1, 2) is zoo

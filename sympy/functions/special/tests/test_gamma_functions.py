@@ -304,7 +304,7 @@ def test_polygamma():
     assert polygamma(3, 7*x).diff(x) == 7*polygamma(4, 7*x)
 
     assert polygamma(0, x).rewrite(harmonic) == harmonic(x - 1) - EulerGamma
-    assert polygamma(2, x).rewrite(harmonic) == 2*harmonic(x - 1, 3) - 2*zeta(3)
+    assert polygamma(2, x).rewrite(harmonic).ex == 2*harmonic(x - 1, 3) - 2*zeta(3)
     ni = Symbol("n", integer=True)
     assert polygamma(ni, x).rewrite(harmonic) == (-1)**(ni + 1)*(-harmonic(x - 1, ni + 1)
                                                                  + zeta(ni + 1))*factorial(ni)
@@ -348,7 +348,7 @@ def test_polygamma():
            (-im(polygamma(I, pi)), re(polygamma(I, pi)))
     assert (tanh(polygamma(I, 1))).rewrite(exp) == \
            (exp(polygamma(I, 1)) - exp(-polygamma(I, 1)))/(exp(polygamma(I, 1)) + exp(-polygamma(I, 1)))
-    assert (I / polygamma(I, 4)).rewrite(exp) == \
+    assert (I / polygamma(I, 4)).rewrite(exp).exx == \
            I*exp(-I*atan(im(polygamma(I, 4))/re(polygamma(I, 4))))/Abs(polygamma(I, 4))
 
     # issue 12569
@@ -540,7 +540,7 @@ def test_loggamma():
     n = Symbol("n", integer=True, positive=True)
     assert loggamma(n) == log(gamma(n))
     assert loggamma(-n) is oo
-    assert loggamma(n/2) == log(2**(-n + 1)*sqrt(pi)*gamma(n)/gamma(n/2 + S.Half))
+    assert loggamma(n/2) == log(2**(-n + 1)*sqrt(pi)*gamma(n)/gamma((n + 1)/2))
 
     assert loggamma(oo) is oo
     assert loggamma(-oo) is zoo
@@ -566,12 +566,12 @@ def test_loggamma():
 
     L = loggamma(Rational(19, 4) - 7)
     E = -log(9) - log(5) + loggamma(Rational(3, 4)) + 3*log(4) - 3*I*pi
-    assert expand_func(L).doit() == E
+    assert expand_func(L).doit().ec == E
     assert L.n() == E.n()
 
     L = loggamma(Rational(23, 7) - 6)
     E = -log(19) - log(12) - log(5) + loggamma(Rational(2, 7)) + 3*log(7) - 3*I*pi
-    assert expand_func(L).doit() == E
+    assert expand_func(L).doit().ec == E
     assert L.n() == E.n()
 
     assert loggamma(x).diff(x) == polygamma(0, x)
@@ -587,7 +587,7 @@ def test_loggamma():
     assert loggamma(x).rewrite('intractable') == log(gamma(x))
 
     s1 = loggamma(x).series(x).cancel()
-    assert s1 == -log(x) - EulerGamma*x + pi**2*x**2/12 + x**3*polygamma(2, 1)/6 + \
+    assert s1.ex == -log(x) - EulerGamma*x + pi**2*x**2/12 + x**3*polygamma(2, 1)/6 + \
         pi**4*x**4/360 + x**5*polygamma(4, 1)/120 + O(x**6)
     assert s1 == loggamma(x).rewrite('intractable').series(x).cancel()
 
@@ -716,10 +716,10 @@ def test_multigamma():
     assert multigamma(x - 1, 1).expand(func=True) == gamma(x)/(x - 1)
     assert multigamma(x + 2, 1).expand(func=True, mul=False) == x*(x + 1)*\
         gamma(x)
-    assert multigamma(x - 1, 2).expand(func=True) == sqrt(pi)*gamma(x)*\
-        gamma(x + S.Half)/(x**3 - 3*x**2 + x*Rational(11, 4) - Rational(3, 4))
-    assert multigamma(x - 1, 3).expand(func=True) == pi**Rational(3, 2)*gamma(x)**2*\
-        gamma(x + S.Half)/(x**5 - 6*x**4 + 55*x**3/4 - 15*x**2 + x*Rational(31, 4) - Rational(3, 2))
+    assert multigamma(x - 1, 2).expand(func=True) == 4*sqrt(pi)*gamma(x)*\
+        gamma(x + S.Half)/(4*x**3 - 12*x**2 + 11*x - 3)
+    assert multigamma(x - 1, 3).expand(func=True) == 4*pi**Rational(3, 2)*gamma(x)**2*\
+        gamma(x + S.Half)/(4*x**5 - 24*x**4 + 55*x**3 - 60*x**2 + 31*x - 6)
 
     assert multigamma(n, 1).rewrite(factorial) == factorial(n - 1)
     assert multigamma(n, 2).rewrite(factorial) == sqrt(pi)*\

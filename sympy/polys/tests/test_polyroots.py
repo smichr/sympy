@@ -60,8 +60,8 @@ def test_roots_quadratic():
 
     f = x**2 + (2*a*e + 2*c*e)/(a - c)*x + (d - b + a*e**2 - c*e**2)/(a - c)
     assert roots_quadratic(Poly(f, x)) == \
-        [-e*(a + c)/(a - c) - sqrt(a*b + c*d - a*d - b*c + 4*a*c*e**2)/(a - c),
-         -e*(a + c)/(a - c) + sqrt(a*b + c*d - a*d - b*c + 4*a*c*e**2)/(a - c)]
+        [e*(-a - c)/(a - c) - sqrt(a*b + c*d - a*d - b*c + 4*a*c*e**2)/(a - c),
+         e*(-a - c)/(a - c) + sqrt(a*b + c*d - a*d - b*c + 4*a*c*e**2)/(a - c)]
 
     # check for simplification
     f = Poly(y*x**2 - 2*x - 2*y, x)
@@ -99,8 +99,8 @@ def test_issue_8438():
     roots = roots_cubic(Poly(p, x), x)
     z = Rational(-3, 2) - I*7/2  # this will fail in code given in commit msg
     post = [r.subs(y, z) for r in roots]
-    assert set(post) == \
-    set(roots_cubic(Poly(p.subs(y, z), x)))
+    assert {r.exx for r in post} == \
+        {r.exx for r in roots_cubic(Poly(p.subs(y, z), x))}
     # /!\ if p is not made an expression, this is *very* slow
     assert all(p.subs({y: z, x: i}).n(2, chop=True) == 0 for i in post)
 
@@ -174,7 +174,7 @@ def test_roots_cubic():
         r*(-S.Half + sqrt(3)*I/2),
         r*(-S.Half - sqrt(3)*I/2)]
     # simpler form when y is negative
-    assert roots_cubic(Poly(x**3 - -1, x)) == \
+    assert [r.ex for r in roots_cubic(Poly(x**3 + 1, x))] == \
         [-1, S.Half - I*sqrt(3)/2, S.Half + I*sqrt(3)/2]
     assert roots_cubic(Poly(2*x**3 - 3*x**2 - 3*x - 1, x))[0] == \
          S.Half + 3**Rational(1, 3)/2 + 3**Rational(2, 3)/2
@@ -470,47 +470,44 @@ def test_roots0():
     r1_2, r1_3 = S.Half, Rational(1, 3)
 
     x0 = (3*sqrt(33) + 19)**r1_3
-    x1 = 4/x0/3
-    x2 = x0/3
+    x1 = 4/x0
+    x2 = x0
     x3 = sqrt(3)*I/2
     x4 = x3 - r1_2
     x5 = -x3 - r1_2
     assert roots(x**3 + x**2 - x + 1, x, cubics=True) == {
-        -x1 - x2 - r1_3: 1,
-        -x1/x4 - x2*x4 - r1_3: 1,
-        -x1/x5 - x2*x5 - r1_3: 1,
+        (-x1 - x2 - 1)/3: 1,
+        (-x1/x4 - x2*x4 - 1)/3: 1,
+        (-x1/x5 - x2*x5 - 1)/3: 1,
     }
 
     f = (x**2 + 2*x + 3).subs(x, 2*x**2 + 3*x).subs(x, 5*x - 4)
 
-    r13_20, r1_20 = [ Rational(*r)
-        for r in ((13, 20), (1, 20)) ]
-
     s2 = sqrt(2)
     assert roots(f, x) == {
-        r13_20 + r1_20*sqrt(1 - 8*I*s2): 1,
-        r13_20 - r1_20*sqrt(1 - 8*I*s2): 1,
-        r13_20 + r1_20*sqrt(1 + 8*I*s2): 1,
-        r13_20 - r1_20*sqrt(1 + 8*I*s2): 1,
+        (13 + sqrt(1 - 8*I*s2))/20: 1,
+        (13 - sqrt(1 - 8*I*s2))/20: 1,
+        (13 + sqrt(1 + 8*I*s2))/20: 1,
+        (13 - sqrt(1 + 8*I*s2))/20: 1,
     }
 
     f = x**4 + x**3 + x**2 + x + 1
 
-    r1_4, r1_8, r5_8 = [ Rational(*r) for r in ((1, 4), (1, 8), (5, 8)) ]
+    r1_4 = Rational(1, 4)
 
     assert roots(f, x) == {
-        -r1_4 + r1_4*5**r1_2 + I*(r5_8 + r1_8*5**r1_2)**r1_2: 1,
-        -r1_4 + r1_4*5**r1_2 - I*(r5_8 + r1_8*5**r1_2)**r1_2: 1,
-        -r1_4 - r1_4*5**r1_2 + I*(r5_8 - r1_8*5**r1_2)**r1_2: 1,
-        -r1_4 - r1_4*5**r1_2 - I*(r5_8 - r1_8*5**r1_2)**r1_2: 1,
+        -r1_4 + r1_4*5**r1_2 + I*sqrt(2)*sqrt(5 + sqrt(5))/4: 1,
+        -r1_4 + r1_4*5**r1_2 - I*sqrt(2)*sqrt(5 + sqrt(5))/4: 1,
+        -r1_4 - r1_4*5**r1_2 + I*sqrt(2)*sqrt(5 - sqrt(5))/4: 1,
+        -r1_4 - r1_4*5**r1_2 - I*sqrt(2)*sqrt(5 - sqrt(5))/4: 1,
     }
 
     f = z**3 + (-2 - y)*z**2 + (1 + 2*y - 2*x**2)*z - y + 2*x**2
 
     assert roots(f, z) == {
         S.One: 1,
-        S.Half + S.Half*y + S.Half*sqrt(1 - 2*y + y**2 + 8*x**2): 1,
-        S.Half + S.Half*y - S.Half*sqrt(1 - 2*y + y**2 + 8*x**2): 1,
+        (1 + y + sqrt(1 - 2*y + y**2 + 8*x**2))/2: 1,
+        (1 + y - sqrt(1 - 2*y + y**2 + 8*x**2))/2: 1,
     }
 
     assert roots(a*b*c*x**3 + 2*x**2 + 4*x + 8, x, cubics=False) == {}
@@ -559,16 +556,16 @@ def test_roots0():
     r = roots(x**3 + 40*x + 64)
     real_root = [rx for rx in r if rx.is_real][0]
     cr = 108 + 6*sqrt(1074)
-    assert real_root == -2*root(cr, 3)/3 + 20/root(cr, 3)
+    assert real_root.ex == -2*root(cr, 3)/3 + 20/root(cr, 3)
 
     eq = Poly((7 + 5*sqrt(2))*x**3 + (-6 - 4*sqrt(2))*x**2 + (-sqrt(2) - 1)*x + 2, x, domain='EX')
-    assert roots(eq) == {-1 + sqrt(2): 1, -2 + 2*sqrt(2): 1, -sqrt(2) + 1: 1}
+    assert {r.ex: m for r, m in roots(eq).items()} == {
+        -1 + sqrt(2): 1, -2 + 2*sqrt(2): 1, -sqrt(2) + 1: 1}
 
     eq = Poly(41*x**5 + 29*sqrt(2)*x**5 - 153*x**4 - 108*sqrt(2)*x**4 +
     175*x**3 + 125*sqrt(2)*x**3 - 45*x**2 - 30*sqrt(2)*x**2 - 26*sqrt(2)*x -
     26*x + 24, x, domain='EX')
-    assert roots(eq) == {-sqrt(2) + 1: 1, -2 + 2*sqrt(2): 1, -1 + sqrt(2): 1,
-                         -4 + 4*sqrt(2): 1, -3 + 3*sqrt(2): 1}
+    assert roots(eq) == {k/(sqrt(2) + 1): 1 for k in (-1, 1, 2, 3, 4)}
 
     eq = Poly(x**3 - 2*x**2 + 6*sqrt(2)*x**2 - 8*sqrt(2)*x + 23*x - 14 +
             14*sqrt(2), x, domain='EX')

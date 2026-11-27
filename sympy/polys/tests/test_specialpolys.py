@@ -121,7 +121,7 @@ def test_interpolating_poly():
         interpolating_poly(2, 3, (4, 5), (6, 7, 8)))
     assert interpolating_poly(0, x, (1, 2), (3, 4)) == 0
     assert interpolating_poly(1, x, (1, 2), (3, 4)) == 3
-    assert interpolating_poly(2, x, (1, 2), (3, 4)) == x + 2
+    assert interpolating_poly(2, x, (1, 2), (3, 4)).ec == x + 2
 
 
 def test_fateman_poly_F_1():
