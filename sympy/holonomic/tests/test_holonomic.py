@@ -322,9 +322,20 @@ def test_series():
     assert expr_to_holonomic((2*x - 3*x**2)**Rational(1, 3)).series() == ((2*x - 3*x**2)**Rational(1, 3)).series()
     assert  expr_to_holonomic(sqrt(x**2-x)).series() == (sqrt(x**2-x)).series()
     assert expr_to_holonomic(cos(x)**2/x**2, y0={-2: [1, 0, -1]}).series(n=10) == (cos(x)**2/x**2).series(n=10)
-    assert expr_to_holonomic(cos(x)**2/x**2, x0=1).series(n=10).together() == (cos(x)**2/x**2).series(n=10, x0=1).together()
+    p = expr_to_holonomic(cos(x)**2/x**2, x0=1).series(n=10)
+    q = (cos(x)**2/x**2).series(n=10, x0=1)
+    assert p.getO() == q.getO()
+    assert p.removeO().expand() == q.removeO().expand()
     assert expr_to_holonomic(cos(x-1)**2/(x-1)**2, x0=1, y0={-2: [1, 0, -1]}).series(n=10) \
         == (cos(x-1)**2/(x-1)**2).series(x0=1, n=10)
+
+def test_symbolic_series_coefficients():
+    a, b, x = symbols('a b x')
+    R, Dx = DifferentialOperators(QQ.old_poly_ring(x), 'Dx')
+    h = HolonomicFunction(Dx**2 - Dx - 1, x, 0, [a, b])
+    assert h.series(n=6, coefficient=True) == [
+        a, b, a/2 + b/2, a/6 + b/3, a/12 + b/8, a/40 + b/24]
+
 
 def test_evalf_euler():
     x = symbols('x')
@@ -528,11 +539,11 @@ def test_expr_to_holonomic():
     assert p == q
     p = expr_to_holonomic(log(x)/2 - Ci(2*x)/2 + Ci(2)/2)
     q = HolonomicFunction(4*Dx + 4*x*Dx**2 + 3*Dx**3 + x*Dx**4, x, 0, \
-        [-log(2)/2 - EulerGamma/2 + Ci(2)/2, 0, 1, 0])
+        [(-log(2) - EulerGamma + Ci(2))/2, 0, 1, 0])
     assert p == q
     p = p.to_expr()
     q = log(x)/2 - Ci(2*x)/2 + Ci(2)/2
-    assert p == q
+    assert p.ex == q
     p = expr_to_holonomic(x**S.Half, x0=1)
     q = HolonomicFunction(x*Dx - S.Half, x, 1, [1])
     assert p == q
@@ -570,7 +581,7 @@ def test_to_hyper():
     assert p == q
     p = hyperexpand(HolonomicFunction(2*x*Dx + Dx**2, x, 0, [1, -2/sqrt(pi)]).to_hyper())
     q = erfc(x)
-    assert p.rewrite(erfc) == q
+    assert p.rewrite(erfc).ec == q
     p =  hyperexpand(HolonomicFunction((x**2 - 1) + x*Dx + x**2*Dx**2,
         x, 0, [0, S.Half]).to_hyper())
     q = besselj(1, x)
@@ -597,7 +608,7 @@ def test_to_expr():
     assert p == q
     p = expr_to_holonomic(sin(x)**2/x).integrate((x, 0, x)).to_expr()
     q = (sin(x)**2/x).integrate((x, 0, x))
-    assert p == q
+    assert p.ex == q.ec
     C_0, C_1, C_2, C_3 = symbols('C_0, C_1, C_2, C_3')
     p = expr_to_holonomic(log(1+x**2)).to_expr()
     q = C_2*log(x**2 + 1)
@@ -664,8 +675,8 @@ def test_integrate():
     assert p.integrate((x, 0, 2)) == Si(2)
     p = expr_to_holonomic(sin(x)**2/x)
     q = p.to_expr()
-    assert p.integrate(x).to_expr() == q.integrate((x, 0, x))
-    assert p.integrate((x, 0, 1)) == q.integrate((x, 0, 1))
+    assert p.integrate(x).to_expr().ex == q.integrate((x, 0, x)).ec
+    assert p.integrate((x, 0, 1)).ex == q.integrate((x, 0, 1)).ec
     assert expr_to_holonomic(1/x, x0=1).integrate(x).to_expr() == log(x)
     p = expr_to_holonomic((x + 1)**3*exp(-x), x0=-1).integrate(x).to_expr()
     q = (-x**3 - 6*x**2 - 15*x + 6*exp(x + 1) - 16)*exp(-x)
@@ -675,7 +686,7 @@ def test_integrate():
     assert p == q
     p = expr_to_holonomic(sqrt(x**2+x)).integrate(x).to_expr()
     q = (x**Rational(3, 2)*(2*x**2 + 3*x + 1) - x*sqrt(x + 1)*asinh(sqrt(x)))/(4*x*sqrt(x + 1))
-    assert p == q
+    assert p.expand() == q.expand()
     p = expr_to_holonomic(sqrt(x**2+1)).integrate(x).to_expr()
     q = (sqrt(x**2+1)).integrate(x)
     assert (p-q).simplify() == 0

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from itertools import pairwise
-from sympy.core import S, sympify
+from sympy.core import Add, S, sympify
 from sympy.core.symbol import (Dummy, symbols)
 from sympy.functions import Piecewise, piecewise_fold
 from sympy.logic.boolalg import And
@@ -343,8 +343,7 @@ def interpolating_spline(d, x, X, Y):
     basis_dicts = [{c: e for (e, c) in b.args} for b in basis]
     spline = []
     for i in intervals:
-        piece = sum(
-            [c * d.get(i, S.Zero) for (c, d) in zip(coeff, basis_dicts)], S.Zero
-        )
+        piece = Add(*((c * d.get(i, S.Zero)).ex
+                      for c, d in zip(coeff, basis_dicts, strict=True)))
         spline.append((piece, i))
     return Piecewise(*spline)

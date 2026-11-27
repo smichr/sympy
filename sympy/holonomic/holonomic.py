@@ -1640,8 +1640,8 @@ class HolonomicFunction:
         if l + 1 < n:
             # use the initial conditions to find the next term
             for i in range(l + 1 - k, n - k):
-                coeff = sum((DMFsubs(sub[j], i) * sol[i + j]
-                            for j in range(k) if i + j >= 0), start=S.Zero)
+                coeff = Add(*((DMFsubs(sub[j], i) * sol[i + j]).ex
+                              for j in range(k) if i + j >= 0))
                 sol.append(coeff)
 
         if coefficient:

@@ -549,11 +549,11 @@ class Piecewise(DefinedFunction):
                 # allow simplification based on ordering of lo and hi
                 p = Dummy('', positive=True)
                 if lo.is_Symbol:
-                    pos = pos.xreplace({lo: hi - p}).xreplace({p: hi - lo})
-                    neg = neg.xreplace({lo: hi + p}).xreplace({p: lo - hi})
+                    pos = pos.xreplace({lo: hi - p}).xreplace({hi - p: lo, p: hi - lo})
+                    neg = neg.xreplace({lo: hi + p}).xreplace({hi + p: lo, p: lo - hi})
                 elif hi.is_Symbol:
-                    pos = pos.xreplace({hi: lo + p}).xreplace({p: hi - lo})
-                    neg = neg.xreplace({hi: lo - p}).xreplace({p: lo - hi})
+                    pos = pos.xreplace({hi: lo + p}).xreplace({lo + p: hi, p: hi - lo})
+                    neg = neg.xreplace({hi: lo - p}).xreplace({lo - p: hi, p: lo - hi})
                 # evaluate limits that may have unevaluate Min/Max
                 touch = lambda _: _.replace(
                     lambda x: isinstance(x, (Min, Max)),

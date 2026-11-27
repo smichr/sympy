@@ -129,7 +129,7 @@ def test_basic3():
 def test_basic4():
     assert limit(2*x + y*x, x, 0) == 0
     assert limit(2*x + y*x, x, 1) == 2 + y
-    assert limit(2*x**8 + y*x**(-3), x, -2) == 512 - y/8
+    assert limit(2*x**8 + y*x**(-3), x, -2).ex == 512 - y/8
     assert limit(sqrt(x + 1) - sqrt(x), x, oo) == 0
     assert integrate(1/(x**3 + 1), (x, 0, oo)) == 2*pi*sqrt(3)/9
 
@@ -360,7 +360,7 @@ def test_series_AccumBounds():
     t1 = Mul(AccumBounds(lo, hi), 1/(-1 + cos(1)), evaluate=False)
     assert limit(simplify(Sum(cos(n).rewrite(exp), (n, 0, k)).doit().rewrite(sin)), k, oo) == t1
 
-    t2 = Mul(AccumBounds(-1 + sin(1)/2, sin(1)/2 + 1), 1/(1 - cos(1)))
+    t2 = Mul(AccumBounds((sin(1) - 2)/2, (sin(1) + 2)/2), 1/(1 - cos(1)))
     assert limit(simplify(Sum(sin(n).rewrite(exp), (n, 0, k)).doit().rewrite(sin)), k, oo) == t2
 
     assert limit(((sin(x) + 1)/2)**x, x, oo) == AccumBounds(0, oo)  # wolfram says 0
@@ -408,7 +408,7 @@ def test_issue_2929():
 
 
 def test_issue_3792():
-    assert limit((1 - cos(x))/x**2, x, S.Half) == 4 - 4*cos(S.Half)
+    assert limit((1 - cos(x))/x**2, x, S.Half) == 4*(1 - cos(S.Half))
     assert limit(sin(sin(x + 1) + 1), x, 0) == sin(1 + sin(1))
     assert limit(abs(sin(x + 1) + 1), x, 0) == 1 + sin(1)
 
@@ -579,7 +579,7 @@ def test_factorial():
 def test_issue_6560():
     e = (5*x**3/4 - x*Rational(3, 4) + (y*(3*x**2/2 - S.Half) +
                              35*x**4/8 - 15*x**2/4 + Rational(3, 8))/(2*(y + 1)))
-    assert limit(e, y, oo) == 5*x**3/4 + 3*x**2/4 - 3*x/4 - Rational(1, 4)
+    assert limit(e, y, oo).ex == 5*x**3/4 + 3*x**2/4 - 3*x/4 - Rational(1, 4)
 
 @XFAIL
 def test_issue_5172():
@@ -653,7 +653,7 @@ def test_branch_cuts():
 def test_issue_6364():
     a = Symbol('a')
     e = z/(1 - sqrt(1 + z)*sin(a)**2 - sqrt(1 - z)*cos(a)**2)
-    assert limit(e, z, 0) == 1/(cos(a)**2 - S.Half)
+    assert limit(e, z, 0) == 2/cos(2*a)
 
 
 def test_issue_6682():
@@ -890,7 +890,7 @@ def test_issue_13416():
 
 
 def test_issue_13462():
-    assert limit(n**2*(2*n*(-(1 - 1/(2*n))**x + 1) - x - (-x**2/4 + x/4)/n), n, oo) == x**3/24 - x**2/8 + x/12
+    assert limit(n**2*(2*n*(-(1 - 1/(2*n))**x + 1) - x - (-x**2/4 + x/4)/n), n, oo).ex == x**3/24 - x**2/8 + x/12
 
 
 def test_issue_13750():
@@ -1253,7 +1253,7 @@ def test_issue_21550():
 
 def test_issue_21661():
     out = limit((x**(x + 1) * (log(x) + 1) + 1) / x, x, 11)
-    assert out == S(3138428376722)/11 + 285311670611*log(11)
+    assert out.ex == S(3138428376722)/11 + 285311670611*log(11)
 
 
 def test_issue_21701():
@@ -1306,8 +1306,8 @@ def test_issue_22220():
 def test_issue_22334():
     k, n  = symbols('k, n', positive=True)
     assert limit((n+1)**k/((n+1)**(k+1) - (n)**(k+1)), n, oo) == 1/(k + 1)
-    assert limit((n+1)**k/((n+1)**(k+1) - (n)**(k+1)).expand(), n, oo) == 1/(k + 1)
-    assert limit((n+1)**k/(n*(-n**k + (n + 1)**k) + (n + 1)**k), n, oo) == 1/(k + 1)
+    assert limit((n+1)**k/((n+1)**(k+1) - (n)**(k+1)).expand(), n, oo).cancel() == 1/(k + 1)
+    assert limit((n+1)**k/(n*(-n**k + (n + 1)**k) + (n + 1)**k), n, oo).cancel() == 1/(k + 1)
 
 
 def test_issue_22836_limit():
