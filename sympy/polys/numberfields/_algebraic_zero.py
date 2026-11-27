@@ -1,7 +1,6 @@
 """Experimental exact zero tests for expressions with rational radicals."""
 from __future__ import annotations
 
-from fractions import Fraction
 from functools import cache
 from itertools import product
 from math import ceil, floor, lcm
@@ -10,6 +9,10 @@ from sympy.core.add import Add
 from sympy.core.intfunc import integer_nthroot
 from sympy.core.numbers import I, Rational
 from sympy.core.singleton import S
+from sympy.polys.domains import GF, QQ
+from sympy.polys.matrices import DomainMatrix
+from sympy.polys.monomials import MonomialOps
+from sympy.polys.sparsetools import smp_add
 
 
 class _Unsupported(Exception):
@@ -26,6 +29,12 @@ _MAX_BITS = 4096
 
 def _bounded_rational(value):
     return max(abs(int(value.p)).bit_length(), int(value.q).bit_length()) <= _MAX_BITS
+
+
+def _check_coefficient(value):
+    if max(abs(int(value.numerator)).bit_length(),
+            int(value.denominator).bit_length()) > _MAX_BITS:
+        raise _Unsupported
 
 
 def _radical_denominators(expr):
@@ -140,8 +149,9 @@ class _RadicalTower:
 
     def __init__(self, n):
         self.n = n
+        self.monomial_mul = MonomialOps(n).mul()
         self.constant = (0,)*n
-        self.one = {self.constant: Fraction(1)}
+        self.one = {self.constant: QQ.one}
         self.degrees = []
         self.relations = []
         self.dimension = 1
@@ -155,20 +165,18 @@ class _RadicalTower:
 
     def term(self, dest, monomial, coeff):
         self.charge()
-        coeff += dest.get(monomial, 0)
-        if max(abs(coeff.numerator).bit_length(),
-                coeff.denominator.bit_length()) > _MAX_BITS:
-            raise _Unsupported
+        coeff += dest.get(monomial, QQ.zero)
+        _check_coefficient(coeff)
         if coeff:
             dest[monomial] = coeff
         else:
             dest.pop(monomial, None)
 
     def add(self, a, b):
-        out = a.copy()
-        self.charge(len(a))
-        for m, c in b.items():
-            self.term(out, m, c)
+        self.charge(len(a) + len(b))
+        out = smp_add(a, b, QQ, self.n)
+        for m in b:
+            _check_coefficient(out.get(m, QQ.zero))
         return out
 
     def root(self, a, q):
@@ -180,7 +188,7 @@ class _RadicalTower:
         self.relations.append(a)
         m = [0]*self.n
         m[i] = 1
-        return {tuple(m): Fraction(1)}
+        return {tuple(m): QQ.one}
 
     def reduce(self, m):
         self.charge()
@@ -193,12 +201,12 @@ class _RadicalTower:
                 v[i] -= q
                 out = {}
                 for k, c in self.relations[i].items():
-                    new = tuple(x + y for x, y in zip(v, k, strict=True))
+                    new = self.monomial_mul(v, k)
                     for j, d in self.reduce(new).items():
                         self.term(out, j, c*d)
                 self.reduced[m] = out
                 return out
-        return {m: Fraction(1)}
+        return {m: QQ.one}
 
     def mul(self, a, b):
         if a == self.one:
@@ -209,8 +217,7 @@ class _RadicalTower:
         for m, c in a.items():
             for n, d in b.items():
                 self.charge()
-                for k, e in self.reduce(tuple(x + y for x, y in
-                        zip(m, n, strict=True))).items():
+                for k, e in self.reduce(self.monomial_mul(m, n)).items():
                     self.term(out, k, c*d*e)
         return out
 
@@ -238,39 +245,41 @@ class _RadicalTower:
         basis = [m + (0,)*(self.n - len(m)) for m in
             product(*(range(q) for q in self.degrees))]
         index = {m: i for i, m in enumerate(basis)}
-        columns = [self.mul(a, {m: Fraction(1)}) for m in basis]
+        columns = [self.mul(a, {m: QQ.one}) for m in basis]
+        n = self.dimension
         for prime in (65521, 1000003):
-            pivots = {}
-            try:
-                for col in columns:
-                    vec = {}
-                    for m, c in col.items():
-                        self.charge()
-                        r = c.numerator*pow(c.denominator, -1, prime) % prime
-                        if r:
-                            vec[index[m]] = r
-                    while vec:
-                        self.charge(len(vec))
-                        i = min(vec)
-                        r = vec[i]
-                        if i not in pivots:
-                            inv = pow(r, -1, prime)
-                            self.charge(len(vec))
-                            pivots[i] = {j: v*inv % prime for j, v in vec.items()}
-                            break
-                        for j, v in pivots[i].items():
-                            self.charge()
-                            t = (vec.get(j, 0) - r*v) % prime
-                            if t:
-                                vec[j] = t
-                            else:
-                                vec.pop(j, None)
-                    if not vec:
-                        break
-            except ValueError:
-                # A rational denominator was not invertible modulo prime.
+            if any(c.denominator % prime == 0
+                    for col in columns for c in col.values()):
                 continue
-            if len(pivots) == self.dimension:
+            field = GF(prime)
+            rows = {}
+            for i, col in enumerate(columns):
+                row = {}
+                for m, c in col.items():
+                    self.charge()
+                    r = int(c.numerator)*pow(int(c.denominator), -1, prime) % prime
+                    if r:
+                        row[index[m]] = field(r)
+                if not row:
+                    break
+                rows[i] = row
+            if len(rows) != n:
+                continue
+            matrix = DomainMatrix(rows, (n, n), field)
+            # A block triangular matrix is invertible iff each diagonal
+            # block is invertible. Bound sparse Gauss-Jordan work: after
+            # k pivots, cancellation involves at most k rows of length
+            # n-k+1. Forward cancellation may also occur for singular
+            # rows, so use the worst case for every row in a block.
+            components = matrix.scc()
+            cost = sum(size**2 + size*((size + 1)**2//4)
+                + sum(k*(size - k + 1) for k in range(size))
+                for size in map(len, components))
+            if cost > self.remaining:
+                continue
+            self.charge(cost)
+            if all(len(matrix.extract(block, block).rref(method="GJ")[1])
+                    == len(block) for block in components):
                 return True
         return False
 
@@ -297,10 +306,10 @@ def _relation_zero(expr, *, only_zero=False):
     @cache
     def scan(node):
         if node.is_Rational:
-            return ({tower.constant: Fraction(int(node.p), int(node.q))}
+            return ({tower.constant: QQ.from_sympy(node)}
                 if node else {}), one
         if node is I:
-            return tower.root({tower.constant: Fraction(-1)}, 2), one
+            return tower.root({tower.constant: -QQ.one}, 2), one
         if node.is_Add:
             a, b = {}, one
             for arg in node.args:

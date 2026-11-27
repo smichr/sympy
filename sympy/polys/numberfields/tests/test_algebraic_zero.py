@@ -66,6 +66,10 @@ def test_algebraic_zero_close_rationals():
 def test_algebraic_zero_rank_and_budget():
     # The first prime cannot invert this rational denominator.
     assert _relation_zero(sqrt(2)/65521 + I) is False
+    assert _relation_zero(65521*sqrt(2)) is False
+    # A larger connected multiplication matrix still fits the work budget.
+    r = I + sum(sqrt(p) for p in (2, 3, 5, 7, 11))
+    assert _relation_zero(r) is False
     # A singular multiplication matrix cannot identify a principal branch.
     assert _relation_zero(Pow(-8, Rational(1, 3), evaluate=False) + 2) is None
     with patch.object(_algebraic_zero, '_MAX_WORK', 0):
