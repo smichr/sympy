@@ -109,7 +109,7 @@ def test_laplace_transform():
     assert (LT(exp(-a/t), t, s) ==
             (2*sqrt(a)*sqrt(1/s)*besselk(1, 2*sqrt(a)*sqrt(s)), 0, True))
     assert LT(sqrt(t)*exp(-a/t), t, s, simplify=True) == (
-        sqrt(pi)*(sqrt(a)*sqrt(s) + 1/S(2))*sqrt(s**(-3)) *
+        sqrt(pi)*(2*sqrt(a)*sqrt(s) + 1)*sqrt(s**(-3))/2 *
         exp(-2*sqrt(a)*sqrt(s)), 0, True)
     assert (LT(exp(-a/t)/sqrt(t), t, s) ==
             (sqrt(pi)*sqrt(1/s)*exp(-2*sqrt(a)*sqrt(s)), 0, True))
@@ -178,14 +178,14 @@ def test_laplace_transform():
     assert (LT(log(t+a), t, s, simplify=True) ==
             ((s*log(a) - exp(s/a)*Ei(-s/a))/s**2, 0, True))
     assert (LT(log(t)/sqrt(t), t, s, simplify=True) ==
-            (sqrt(pi)*(-log(s) - log(4) - EulerGamma)/sqrt(s), 0, True))
+            (-sqrt(pi)*(log(s) + log(4) + EulerGamma)/sqrt(s), 0, True))
     assert (LT(t**(S(5)/2)*log(t), t, s, simplify=True) ==
             (sqrt(pi)*(-15*log(s) - log(1073741824) - 15*EulerGamma + 46) /
              (8*s**(S(7)/2)), 0, True))
     assert (LT(t**3*log(t), t, s, noconds=True, simplify=True) -
             6*(-log(s) - S.EulerGamma + S(11)/6)/s**4).simplify() == S.Zero
     assert (LT(log(t)**2, t, s, simplify=True) ==
-            (((log(s) + EulerGamma)**2 + pi**2/6)/s, 0, True))
+            ((6*(log(s) + EulerGamma)**2 + pi**2)/(6*s), 0, True))
     assert (LT(exp(-a*t)*log(t), t, s, simplify=True) ==
             ((-log(a + s) - EulerGamma)/(a + s), -a, True))
     assert LT(sin(a*t), t, s) == (a/(a**2 + s**2), 0, True)
@@ -352,7 +352,7 @@ def test_laplace_transform():
     assert X1 == exp(-1)*exp(-s)/(s + 1) + 1/s - exp(-s)/s
     y1 = ILT(X1, s, t)
     assert y1 == (
-        exp(-1)*exp(1 - t)*Heaviside(t - 1) + Heaviside(t) - Heaviside(t - 1))
+        exp(-1)*exp(S.NegativeOne*(t - 1))*Heaviside(t - 1) + Heaviside(t) - Heaviside(t - 1))
     x1 = Piecewise((0, x <= 0), (1, x <= 1), (0, True))
     X1 = LT(x1, t, s)[0]
     assert X1 == Piecewise((0, x <= 0), (1, x <= 1), (0, True))/s
@@ -387,7 +387,7 @@ def test_laplace_transform():
              Subs(Derivative(f(x, t, w), t), t, 0), -oo, True))
     # Issue #23307
     assert (LT(10*diff(f(t), (t, 1)), t, s, noconds=True) ==
-            10*s*LaplaceTransform(f(t), t, s) - 10*f(0))
+            10*(s*LaplaceTransform(f(t), t, s) - f(0)))
     assert (LT(a*f(b*t)+g(c*t), t, s, noconds=True) ==
             a*LaplaceTransform(f(t), t, s/b)/b +
             LaplaceTransform(g(t), t, s/c)/c)
@@ -475,12 +475,12 @@ def test_laplace_transform():
         LT(Heaviside(-t-a)*g(t), t, s) == (0, -oo, True))
     # Fresnel functions
     assert (laplace_transform(fresnels(t), t, s, simplify=True) ==
-            ((-sin(s**2/(2*pi))*fresnels(s/pi) +
-              sqrt(2)*sin(s**2/(2*pi) + pi/4)/2 -
-              cos(s**2/(2*pi))*fresnelc(s/pi))/s, 0, True))
+            ((-2*sin(s**2/(2*pi))*fresnels(s/pi) +
+              sqrt(2)*sin(s**2/(2*pi) + pi/4) -
+              2*cos(s**2/(2*pi))*fresnelc(s/pi))/(2*s), 0, True))
     assert laplace_transform(fresnelc(t), t, s, simplify=True) ==(
-        (sqrt(2)*sin(pi/4 - s**2/(2*pi))/2 +
-        sin(s**2/(2*pi))*fresnelc(s/pi) - cos(s**2/(2*pi))*fresnels(s/pi))/s,
+        (sqrt(2)*cos((2*s**2/pi + pi)/4) +
+        2*sin(s**2/(2*pi))*fresnelc(s/pi) - 2*cos(s**2/(2*pi))*fresnels(s/pi))/(2*s),
         0, True)
     # Matrix tests
     Mt = Matrix([[exp(t), t*exp(-t)], [t*exp(-t), exp(t)]])
@@ -569,7 +569,7 @@ def test_inverse_laplace_transform():
     assert (ILTS(c/((s+a)*(s+b))) ==
             c*(exp(a*t) - exp(b*t))*exp(-t*(a + b))*Heaviside(t)/(a - b))
     assert (ILTS(c*s/((s+a)*(s+b))) ==
-            c*(a*exp(b*t) - b*exp(a*t))*exp(-t*(a + b))*Heaviside(t)/(a - b))
+            c*(a*exp(b*t) - b*exp(a*t))*exp(t*(-a - b))*Heaviside(t)/(a - b))
     assert ILTS(s/(a + s)**3) == t*(-a*t + 2)*exp(-a*t)*Heaviside(t)/2
     assert ILTS(1/(s*(a + s)**3)) == (
         -a**2*t**2 - 2*a*t + 2*exp(a*t) - 2)*exp(-a*t)*Heaviside(t)/(2*a**3)
@@ -673,9 +673,9 @@ def test_inverse_laplace_transform():
             x == 0)
     assert (  # (16)
             factor_terms(ILT(3/(sqrt(s)+a)**4)) ==
-            3*(-2*a**3*t**(S(5)/2)*(2*a**2*t + 5)/(3*sqrt(pi)) +
-               t*(4*a**4*t**2 + 12*a**2*t + 3)*exp(a**2*t) *
-               erfc(a*sqrt(t))/3)*Heaviside(t))
+            (-2*a**3*t**(S(5)/2)*(2*a**2*t + 5)/sqrt(pi) +
+             t*(4*a**4*t**2 + 12*a**2*t + 3)*exp(a**2*t) *
+             erfc(a*sqrt(t)))*Heaviside(t))
     assert (  # (17)
             ILT((sqrt(s)-a)/(s*(sqrt(s)+a))) ==
             (2*exp(a**2*t)*erfc(a*sqrt(t))-1)*Heaviside(t))
@@ -804,7 +804,7 @@ def test_expint():
             Heaviside(u)*Ci(u))
     assert (
         inverse_laplace_transform(log(s + 1)/s, s, x,
-                                  simplify=True).rewrite(expint) ==
+                                  simplify=True).rewrite(expint).expand() ==
         Heaviside(x)*E1(x))
     assert (
         inverse_laplace_transform(

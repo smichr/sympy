@@ -1417,20 +1417,26 @@ class expint(DefinedFunction):
         from sympy.functions.special.gamma_functions import uppergamma
         return z**(nu - 1)*uppergamma(1 - nu, z)
 
+    def _expand_integer(self, nu, z, e1):
+        # DLMF, 8.19.7
+        x = -unpolarify(z)
+        return (x**(nu - 1)/factorial(nu - 1)*e1 +
+                exp(x)/factorial(nu - 1) *
+                Add(*[factorial(nu - k - 2)*x**k for k in range(nu - 1)]))
+
     def _eval_rewrite_as_Ei(self, nu, z, **kwargs):
         if nu == 1:
             return -Ei(z*exp_polar(-I*pi)) - I*pi
         elif nu.is_Integer and nu > 1:
-            # DLMF, 8.19.7
-            x = -unpolarify(z)
-            return x**(nu - 1)/factorial(nu - 1)*E1(z).rewrite(Ei) + \
-                exp(x)/factorial(nu - 1) * \
-                Add(*[factorial(nu - k - 2)*x**k for k in range(nu - 1)])
+            return self._expand_integer(nu, z, E1(z).rewrite(Ei))
         else:
             return self
 
     def _eval_expand_func(self, **hints):
-        return self.rewrite(Ei).rewrite(expint, **hints)
+        nu, z = self.args
+        if nu.is_Integer and nu > 1:
+            return self._expand_integer(nu, z, E1(z))
+        return self
 
     def _eval_rewrite_as_Si(self, nu, z, **kwargs):
         if nu != 1:

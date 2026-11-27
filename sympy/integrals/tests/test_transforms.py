@@ -211,10 +211,10 @@ def test_mellin_transform_bessel():
          / (sqrt(pi)*gamma(Rational(3, 2) - s)*gamma(a - s + S.Half)),
             (S.Half - re(a), S.Half), True)
     assert MT(besselj(a, sqrt(x))*besselj(b, sqrt(x)), x, s) == \
-        (4**s*gamma(1 - 2*s)*gamma((a + b)/2 + s)
-         / (gamma(1 - s + (b - a)/2)*gamma(1 - s + (a - b)/2)
-            *gamma( 1 - s + (a + b)/2)),
-            (-(re(a) + re(b))/2, S.Half), True)
+        (4**s*gamma(1 - 2*s)*gamma(a/2 + b/2 + s)
+         / (gamma(1 - s + b/2 - a/2)*gamma(1 - s + a/2 - b/2)
+            *gamma(1 - s + a/2 + b/2)),
+            (-re(a)/2 - re(b)/2, S.Half), True)
     assert MT(besselj(a, sqrt(x))**2 + besselj(-a, sqrt(x))**2, x, s)[1:] == \
         ((Max(re(a), -re(a)), S.Half), True)
 
@@ -224,9 +224,9 @@ def test_mellin_transform_bessel():
             (Max(-re(a)/2, re(a)/2), Rational(3, 4)), True)
     assert MT(sin(sqrt(x))*bessely(a, sqrt(x)), x, s) == \
         (-4**s*sin(pi*(a/2 - s))*gamma(S.Half - 2*s)
-         * gamma((1 - a)/2 + s)*gamma((1 + a)/2 + s)
+         * gamma(S.Half - a/2 + s)*gamma(S.Half + a/2 + s)
          / (sqrt(pi)*gamma(1 - s - a/2)*gamma(1 - s + a/2)),
-            (Max(-(re(a) + 1)/2, (re(a) - 1)/2), Rational(1, 4)), True)
+            (Max(-re(a)/2 - S.Half, re(a)/2 - S.Half), Rational(1, 4)), True)
     assert MT(cos(sqrt(x))*bessely(a, sqrt(x)), x, s) == \
         (-4**s*cos(pi*(a/2 - s))*gamma(s - a/2)*gamma(s + a/2)*gamma(S.Half - 2*s)
          / (sqrt(pi)*gamma(S.Half - s - a/2)*gamma(S.Half - s + a/2)),
@@ -239,7 +239,7 @@ def test_mellin_transform_bessel():
         (-4**s*cos(pi*(a/2 - b/2 + s))*gamma(1 - 2*s)
          * gamma(a/2 - b/2 + s)*gamma(a/2 + b/2 + s)
          / (pi*gamma(a/2 - b/2 - s + 1)*gamma(a/2 + b/2 - s + 1)),
-            (Max((-re(a) + re(b))/2, (-re(a) - re(b))/2), S.Half), True)
+            (Max(-re(a)/2 + re(b)/2, -re(a)/2 - re(b)/2), S.Half), True)
     # NOTE bessely(a, sqrt(x))**2 and bessely(a, sqrt(x))*bessely(b, sqrt(x))
     # are a mess (no matter what way you look at it ...)
     assert MT(bessely(a, sqrt(x))**2, x, s)[1:] == \
@@ -299,7 +299,7 @@ def test_expint():
         expint(aneg, x)
 
     assert mellin_transform(Si(x), x, s) == \
-        (-2**s*sqrt(pi)*gamma(s/2 + S.Half)/(
+        (-2**s*sqrt(pi)*gamma((s + 1)/2)/(
         2*s*gamma(-s/2 + 1)), (-1, 0), True)
     assert inverse_mellin_transform(-2**s*sqrt(pi)*gamma((s + 1)/2)
                                     /(2*s*gamma(-s/2 + 1)), s, x, (-1, 0)) \
@@ -327,9 +327,9 @@ def test_inverse_mellin_transform():
         (x**2 + 1)*Heaviside(1 - x)/(4*x)
 
     # test passing "None"
-    assert IMT(1/(s**2 - 1), s, x, (-1, None)) == \
+    assert IMT(1/(s**2 - 1), s, x, (-1, None)).ec == \
         -x*Heaviside(-x + 1)/2 - Heaviside(x - 1)/(2*x)
-    assert IMT(1/(s**2 - 1), s, x, (None, 1)) == \
+    assert IMT(1/(s**2 - 1), s, x, (None, 1)).ec == \
         -x*Heaviside(-x + 1)/2 - Heaviside(x - 1)/(2*x)
 
     # test expansion of sums

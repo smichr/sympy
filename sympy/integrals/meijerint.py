@@ -1506,6 +1506,9 @@ def _rewrite_single(f, x, recursive=True):
             if subs:
                 subs_ = {}
                 for fro, to in subs.items():
+                    if (to.is_Mul and len(to.args) == 2
+                            and to.args[0] is S.NegativeOne and to.args[1].is_Add):
+                        to = to.ex
                     subs_[fro] = unpolarify(polarify(to, lift=True),
                                             exponents_only=True)
                 subs = subs_

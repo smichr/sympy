@@ -67,6 +67,13 @@ def test_rewrite_single():
                    ((), (Rational(-1, 2), 0)), 64*exp_polar(-4*I*pi)/x**4))], True)
 
 
+def test_beta_prime_normalization():
+    alpha, beta = symbols('alpha beta', positive=True)
+    density = x**(alpha - 1)*(1 + x)**(-alpha - beta)*gamma(alpha + beta)/(
+        gamma(alpha)*gamma(beta))
+    assert integrate(density, (x, 0, oo), meijerg=True) == 1
+
+
 def test_rewrite1():
     assert _rewrite1(x**3*meijerg([a], [b], [c], [d], x**2 + y*x**2)*5, x) == \
         (5, x**3, [(1, 0, meijerg([a], [b], [c], [d], x**2*(y + 1)))], True)
@@ -203,20 +210,21 @@ def test_meijerint():
     # (This is besselj*besselj in disguise, to stop the product from being
     #  recognised in the tables.)
     a, b, s = symbols('a b s')
-    assert meijerint_definite(meijerg([], [], [a/2], [-a/2], x/4)
+    value, cond = meijerint_definite(meijerg([], [], [a/2], [-a/2], x/4)
                   *meijerg([], [], [b/2], [-b/2], x/4)*x**(s - 1), x, 0, oo
-        ) == (
-        (4*(S(1)/4)**(1 - s)*gamma(1 - 2*s)*gamma(a/2 + b/2 + s)
-         /(gamma(-a/2 + b/2 - s + 1)*gamma(a/2 - b/2 - s + 1)
-           *gamma(a/2 + b/2 - s + 1)),
-            (re(s) < 1) & (re(s) < S(1)/2) & (re(a)/2 + re(b)/2 + re(s) > 0)))
+        )
+    assert value == (4*(S(1)/4)**(1 - s)*gamma(1 - 2*s)*gamma(a/2 + b/2 + s)
+        /(gamma(-a/2 + b/2 - s + 1)*gamma(a/2 - b/2 - s + 1)
+          *gamma(a/2 + b/2 - s + 1)))
+    expected = (re(s) < 1) & (re(s) < S(1)/2) & (re(a)/2 + re(b)/2 + re(s) > 0)
+    assert simplify(cond) == simplify(expected)
 
     # test a bug
     assert integrate(sin(x**a)*sin(x**b), (x, 0, oo), meijerg=True) == \
         Integral(sin(x**a)*sin(x**b), (x, 0, oo))
 
     # test better hyperexpand
-    assert integrate(exp(-x**2)*log(x), (x, 0, oo), meijerg=True) == \
+    assert integrate(exp(-x**2)*log(x), (x, 0, oo), meijerg=True).ec == \
         (sqrt(pi)*polygamma(0, S.Half)/4).expand()
 
     # Test hyperexpand bug.
@@ -234,7 +242,7 @@ def test_meijerint():
     # test a bug related to 3016
     a, s = symbols('a s', positive=True)
     assert simplify(integrate(x**s*exp(-a*x**2), (x, -oo, oo))) == \
-        a**(-s/2 - S.Half)*((-1)**s + 1)*gamma(s/2 + S.Half)/2
+        a**((-s - 1)/2)*((-1)**s + 1)*gamma((s + 1)/2)/2
 
 
 def test_bessel():
@@ -602,7 +610,7 @@ def test_expint():
         expint(1, z)
     assert integrate(exp(-z*x)/x**2, (x, 1, oo), meijerg=True,
                      conds='none').rewrite(expint).expand() == \
-        expint(2, z).rewrite(Ei).rewrite(expint)
+        expint(2, z).rewrite(Ei).rewrite(expint).expand()
     assert integrate(exp(-z*x)/x**3, (x, 1, oo), meijerg=True,
                      conds='none').rewrite(expint).expand() == \
         expint(3, z).rewrite(Ei).rewrite(expint).expand()

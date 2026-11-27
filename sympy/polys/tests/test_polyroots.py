@@ -221,16 +221,16 @@ def test_roots_quartic():
             d = a*(a*(a**2*Rational(3, 256) - b/S(16)) + c/S(4))
         eq = x**4 + a*x**3 + b*x**2 + c*x + d
         ans = roots_quartic(Poly(eq, x))
-        assert all(eq.subs(x, ai).n(chop=True) == 0 for ai in ans)
+        assert all(eq.subs(x, ai).exx.n(chop=True) == 0 for ai in ans)
 
     # not all symbolic quartics are unresolvable
     eq = Poly(q*x + q/4 + x**4 + x**3 + 2*x**2 - Rational(1, 3), x)
     sol = roots_quartic(eq)
-    assert all(verify_numerically(eq.subs(x, i), 0) for i in sol)
+    assert all(verify_numerically(eq.subs(x, i).as_expr().exx, 0) for i in sol)
     z = symbols('z', negative=True)
     eq = x**4 + 2*x**3 + 3*x**2 + x*(z + 11) + 5
     zans = roots_quartic(Poly(eq, x))
-    assert all(verify_numerically(eq.subs(((x, i), (z, -1))), 0) for i in zans)
+    assert all(verify_numerically(eq.subs(((x, i), (z, -1))).exx, 0) for i in zans)
     # but some are (see also issue 4989)
     # it's ok if the solution is not Piecewise, but the tests below should pass
     eq = Poly(y*x**4 + x**3 - x + z, x)

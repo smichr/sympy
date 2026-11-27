@@ -483,6 +483,10 @@ def test_expint():
     assert expint(2, x*exp_polar(2*I*pi)) == 2*I*pi*x + expint(2, x)
     assert expint(2, x*exp_polar(-2*I*pi)) == -2*I*pi*x + expint(2, x)
     assert expint(1, x).rewrite(Ei).rewrite(expint).ec == expint(1, x)
+    assert expand_func(expint(1, x)) == expint(1, x)
+    assert expand_func(expint(2, x)) == exp(-x) - x*expint(1, x)
+    assert expand_func(expint(3, x)) == x**2*expint(1, x)/2 + (1 - x)*exp(-x)/2
+    assert expand_func(expint(y, x)) == expint(y, x)
     assert expint(x, y).rewrite(Ei) == expint(x, y)
     assert expint(x, y).rewrite(Ci) == expint(x, y)
 
