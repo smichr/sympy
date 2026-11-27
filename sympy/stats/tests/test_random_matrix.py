@@ -41,7 +41,7 @@ def test_GaussianUnitaryEnsemble():
     l = IndexedBase('l')
     assert joint_eigen_distribution(G).dummy_eq(
             Lambda((l[1], l[2], l[3]),
-            27*sqrt(6)*exp(-3*(l[1]**2)/2 - 3*(l[2]**2)/2 - 3*(l[3]**2)/2)*
+            27*sqrt(6)*exp(-3*(l[1]**2 + l[2]**2 + l[3]**2)/2)*
             Product(Abs(l[i] - l[j])**2, (j, i + 1, 3), (i, 1, 2))/(16*pi**Rational(3, 2))))
     s = Dummy('s')
     assert level_spacing_distribution(G).dummy_eq(Lambda(s, 32*s**2*exp(-4*s**2/pi)/pi**2))
@@ -57,7 +57,7 @@ def test_GaussianOrthogonalEnsemble():
     l = IndexedBase('l')
     assert joint_eigen_distribution(G).dummy_eq(
             Lambda((l[1], l[2], l[3]),
-            9*sqrt(2)*exp(-3*l[1]**2/2 - 3*l[2]**2/2 - 3*l[3]**2/2)*
+            9*sqrt(2)*exp(-3*(l[1]**2 + l[2]**2 + l[3]**2)/2)*
             Product(Abs(l[i] - l[j]), (j, i + 1, 3), (i, 1, 2))/(32*pi)))
     s = Dummy('s')
     assert level_spacing_distribution(G).dummy_eq(Lambda(s, s*pi*exp(-s**2*pi/4)/2))
@@ -72,7 +72,7 @@ def test_GaussianSymplecticEnsemble():
     l = IndexedBase('l')
     assert joint_eigen_distribution(G).dummy_eq(
             Lambda((l[1], l[2], l[3]),
-            162*sqrt(3)*exp(-3*l[1]**2/2 - 3*l[2]**2/2 - 3*l[3]**2/2)*
+            162*sqrt(3)*exp(-3*(l[1]**2 + l[2]**2 + l[3]**2)/2)*
             Product(Abs(l[i] - l[j])**4, (j, i + 1, 3), (i, 1, 2))/(5*pi**Rational(3, 2))))
     s = Dummy('s')
     assert level_spacing_distribution(G).dummy_eq(Lambda(s, S(262144)*s**4*exp(-64*s**2/(9*pi))/(729*pi**3)))

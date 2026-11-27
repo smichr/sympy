@@ -50,7 +50,7 @@ def test_poisson_CompoundDist():
     k, t, y = symbols('k t y', positive=True, real=True)
     G = Gamma('G', k, t)
     D = Poisson('P', G)
-    assert density(D)(y).simplify() == t**y*(t + 1)**(-k - y)*gamma(k + y)/(gamma(k)*gamma(y + 1))
+    assert density(D)(y).simplify() == t**y*(t + 1)**((-1)*(k + y))*gamma(k + y)/(gamma(k)*gamma(y + 1))
     # https://en.wikipedia.org/wiki/Negative_binomial_distribution#Gamma%E2%80%93Poisson_mixture
     assert E(D).simplify() == k*t # mean of NegativeBinomialDistribution
 
@@ -81,8 +81,7 @@ def test_unevaluated_CompoundDist():
     R = Rayleigh('R', 4)
     X = Normal('X', 3, R)
     ans = '''
-        Piecewise(((sqrt(pi)*cosh(x/4 - 3/4) - sqrt(pi)*sinh(x/4 -
-        3/4))/(8*sqrt(pi)), Abs(arg(x - 3)) <= pi/4),
+        Piecewise(((sqrt(pi)*cosh((x - 3)/4) - sqrt(pi)*sinh((x - 3)/4))/(8*sqrt(pi)), Abs(arg(x - 3)) <= pi/4),
         (Integral(sqrt(2)*exp(-(x -
         3)**2/(2*R**2))*exp(-R**2/32)/(32*sqrt(pi)), (R, 0, oo)), True))'''
     assert streq(density(X)(x), ans)
@@ -115,7 +114,7 @@ def test_Compound_Distribution():
     C = CompoundDistribution(N)
     assert C.is_Continuous
     assert C.set == Interval(-oo, oo)
-    assert C.pdf(x, evaluate=True).simplify() == exp(-x**2/64 + x/16 - S(1)/16)/(8*sqrt(pi))
+    assert C.pdf(x, evaluate=True).simplify() == exp((-x**2 + 4*x - 4)/64)/(8*sqrt(pi))
 
     assert not isinstance(CompoundDistribution(NormalDistribution(2, 3)),
                             CompoundDistribution)
@@ -137,7 +136,7 @@ def test_Compound_Distribution():
     C = CompoundDistribution(X)
     assert C.is_Discrete
     assert C.set == S.Naturals0
-    assert C.pdf(z, evaluate=True).simplify() == t**z*(t + 1)**(-k - z)*gamma(k \
+    assert C.pdf(z, evaluate=True).simplify() == t**z*(t + 1)**((-1)*(k + z))*gamma(k \
                     + z)/(gamma(k)*gamma(z + 1))
 
 

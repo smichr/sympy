@@ -374,7 +374,7 @@ class sin(TrigonometricFunction):
                 # is_even-case handled above as then pi_coeff.is_integer,
                 # so check if known to be not even
                 if pi_coeff.is_even is False:
-                    return S.NegativeOne**(pi_coeff - S.Half)
+                    return S.NegativeOne**(pi_coeff - S.Half).ec
 
             if not pi_coeff.is_Rational:
                 narg = pi_coeff*pi
@@ -2119,7 +2119,7 @@ class sinc(DefinedFunction):
                 if fuzzy_not(arg.is_zero):
                     return S.Zero
             elif (2*pi_coeff).is_integer:
-                return S.NegativeOne**(pi_coeff - S.Half)/arg
+                return S.NegativeOne**(pi_coeff - S.Half).ec/arg
 
     def _eval_nseries(self, x, n, logx, cdir=0):
         arg = self.args[0]

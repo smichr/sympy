@@ -745,7 +745,7 @@ def test_J9():
 
 def test_J10():
     mu, nu = symbols('mu, nu', integer=True)
-    assert assoc_legendre(nu, mu, 0) == 2**mu*sqrt(pi)/gamma((nu - mu)/2 + 1)/gamma((-nu - mu + 1)/2)
+    assert assoc_legendre(nu, mu, 0) == 2**mu*sqrt(pi)/gamma(1 - (mu - nu)/2)/gamma((-nu - mu + 1)/2)
 
 
 def test_J11():
@@ -919,8 +919,8 @@ def test_M6():
 
 def test_M7():
     # TODO: Replace solve with solveset, as of now test fails for solveset
-    assert set(solve(x**8 - 8*x**7 + 34*x**6 - 92*x**5 + 175*x**4 - 236*x**3 +
-        226*x**2 - 140*x + 46, x)) == {
+    assert {i.ec for i in solve(x**8 - 8*x**7 + 34*x**6 - 92*x**5 + 175*x**4 - 236*x**3 +
+        226*x**2 - 140*x + 46, x)} == {
         -sqrt(2)*sqrt(-I*sqrt(4*sqrt(3) + 3) - 3)/2 + 1,
         sqrt(2)*sqrt(-I*sqrt(4*sqrt(3) + 3) - 3)/2 + 1,
         -sqrt(2)*sqrt(I*sqrt(4*sqrt(3) + 3) - 3)/2 + 1,
@@ -1198,10 +1198,10 @@ def test_M39():
     # solveset doesn't supports non-linear multivariate
     assert solve([x**2*y + 3*y*z - 4, -3*x**2*z + 2*y**2 + 1, 2*y*z**2 - z**2 - 1 ]) ==\
             [{y: 1, z: 1, x: -1}, {y: 1, z: 1, x: 1},\
-             {y: sqrt(2)*I, z: R(1,3) - sqrt(2)*I/3, x: -sqrt(-1 - sqrt(2)*I)},\
-             {y: sqrt(2)*I, z: R(1,3) - sqrt(2)*I/3, x: sqrt(-1 - sqrt(2)*I)},\
-             {y: -sqrt(2)*I, z: R(1,3) + sqrt(2)*I/3, x: -sqrt(-1 + sqrt(2)*I)},\
-             {y: -sqrt(2)*I, z: R(1,3) + sqrt(2)*I/3, x: sqrt(-1 + sqrt(2)*I)}]
+             {y: sqrt(2)*I, z: (1 - sqrt(2)*I)/3, x: -sqrt(-1 - sqrt(2)*I)},\
+             {y: sqrt(2)*I, z: (1 - sqrt(2)*I)/3, x: sqrt(-1 - sqrt(2)*I)},\
+             {y: -sqrt(2)*I, z: (1 + sqrt(2)*I)/3, x: -sqrt(-1 + sqrt(2)*I)},\
+             {y: -sqrt(2)*I, z: (1 + sqrt(2)*I)/3, x: sqrt(-1 + sqrt(2)*I)}]
 
 # N. Inequalities
 
@@ -1599,9 +1599,9 @@ def test_P24():
     assert M.eigenvals() == {
         S('0'): 1,
         S('10*sqrt(10405)'): 1,
-        S('100*sqrt(26) + 510'): 1,
+        S('10*(51 + 10*sqrt(26))'): 1,
         S('1000'): 2,
-        S('-100*sqrt(26) + 510'): 1,
+        S('10*(51 - 10*sqrt(26))'): 1,
         S('-10*sqrt(10405)'): 1,
         S('1020'): 1}
 
@@ -1656,10 +1656,10 @@ def test_P27():
             Matrix([0, 0, 0, 1, 0])
         ]),
         (1 - I, 1, [
-            Matrix([0, (1 + I)/2, 0, 0, 1])
+            Matrix([0, 1 - (1 - I)/2, 0, 0, 1])
         ]),
         (1 + I, 1, [
-            Matrix([0, (1 - I)/2, 0, 0, 1])
+            Matrix([0, 1 - (1 + I)/2, 0, 0, 1])
         ]),
     ]
 
@@ -1997,7 +1997,7 @@ def test_R18():
     k = symbols('k', integer=True, positive=True)
     Sm = Sum(1/(2**k*k**2), (k, 1, oo))
     T = Sm.doit()
-    assert T.simplify() == -log(2)**2/2 + pi**2/12
+    assert T.simplify() == (pi**2 - 6*log(2)**2)/12
 
 
 @slow
@@ -2363,7 +2363,7 @@ def test_V6():
 
 def test_V7():
     r1 = integrate(sinh(x)**4/cosh(x)**2)
-    assert r1.simplify() == x*R(-3, 2) + sinh(x)**3/(2*cosh(x)) + 3*tanh(x)/2
+    assert r1.simplify().ec == x*R(-3, 2) + sinh(x)**3/(2*cosh(x)) + 3*tanh(x)/2
 
 
 @XFAIL
@@ -2419,7 +2419,7 @@ def test_V15():
 
 
 def test_V16():
-    assert integrate(cos(5*x)*Ci(2*x), x) == Ci(2*x)*sin(5*x)/5 - (Si(3*x) + Si(7*x))/10
+    assert integrate(cos(5*x)*Ci(2*x), x).ec == (Ci(2*x)*sin(5*x)/5 - (Si(3*x) + Si(7*x))/10).ec
 
 @XFAIL
 def test_V17():
@@ -2480,7 +2480,7 @@ def test_W6():
 def test_W7():
     a = symbols('a', positive=True)
     r1 = integrate(cos(x)/(x**2 + a**2), (x, -oo, oo))
-    assert r1.simplify() == pi*exp(-a)/a
+    assert r1.rewrite(exp).simplify() == pi*exp(-a)/a
 
 
 @XFAIL
@@ -2943,7 +2943,7 @@ def test_Y5_Y6():
     D = (
         -F + s**2*Y(s) - s*y(0) + Y(s) - Subs(Derivative(y(t), t), t, 0) -
         4*exp(-s)/s + 4*exp(-2*s)/s)
-    assert D == 0
+    assert D.ec == 0
 # Now, solve for Y(s) and then take the inverse Laplace transform
 #   => Y(s) = s/(s^2 + 1) + 4 [1/s - s/(s^2 + 1)] [e^(-s) - e^(-2 s)]
 #   => y(t) = cos t + 4 {[1 - cos(t - 1)] H(t - 1) - [1 - cos(t - 2)] H(t - 2)}
@@ -2953,8 +2953,8 @@ def test_Y5_Y6():
     yf = inverse_laplace_transform(Yf, s, t)
     yf = yf.collect(Heaviside(t-1)).collect(Heaviside(t-2))
     assert yf == (
-        (4 - 4*cos(t - 1))*Heaviside(t - 1) +
-        (4*cos(t - 2) - 4)*Heaviside(t - 2) +
+        -4*(cos(t - 1) - 1)*Heaviside(t - 1) +
+        4*(cos(t - 2) - 1)*Heaviside(t - 2) +
         cos(t)*Heaviside(t))
 
 
@@ -3042,8 +3042,8 @@ def test_Z3():
     r = Function('r')
     # recurrence solution is correct, Wester expects it to be simplified to
     # fibonacci(n+1), but that is quite hard
-    expected = ((S(1)/2 - sqrt(5)/2)**n*(S(1)/2 - sqrt(5)/10)
-              + (S(1)/2 + sqrt(5)/2)**n*(sqrt(5)/10 + S(1)/2))
+    expected = (((1 - sqrt(5))/2)**n*(S(1)/2 - sqrt(5)/10)
+              + ((1 + sqrt(5))/2)**n*(sqrt(5)/10 + S(1)/2))
     sol = rsolve(r(n) - (r(n - 1) + r(n - 2)), r(n), {r(1): 1, r(2): 2})
     assert sol == expected
 

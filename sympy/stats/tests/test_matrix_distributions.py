@@ -41,9 +41,9 @@ def test_MatrixGamma():
     M2 = MatrixGamma('M2', a, b, SM)
     M3 = MatrixGamma('M3', 2, 3, [[2, 1], [1, 2]])
     k = Dummy('k')
-    exprd = pi**(-d*(d - 1)/4)*b**(-a*d)*exp(Trace((-1/b)*SM**(-1)*Y)
-        )*Determinant(SM)**(-a)*Determinant(Y)**(a - d/2 - S(1)/2)/Product(
-        gamma(-k/2 + a + S(1)/2), (k, 1, d))
+    exprd = pi**(d*(S(1)/4 - d/4))*b**(-a*d)*exp(Trace((-1/b)*SM**(-1)*Y)
+        )*Determinant(SM)**(-a)*Determinant(Y)**(a - (d + 1)/2)/Product(
+        gamma(a + (1 - k)/2), (k, 1, d))
     assert density(M2)(Y).dummy_eq(exprd)
     raises(NotImplementedError, lambda: density(M3 + M)(Z))
     raises(ValueError, lambda: density(M)(1))
@@ -65,9 +65,9 @@ def test_Wishart():
     SM = MatrixSymbol('SM', d, d)
     W = Wishart('W', n, SM)
     k = Dummy('k')
-    exprd = 2**(-d*n/2)*pi**(-d*(d - 1)/4)*exp(Trace(-(S(1)/2)*SM**(-1)*Y)
+    exprd = 2**(-d*n/2)*pi**(d*(S(1)/4 - d/4))*exp(Trace(-(S(1)/2)*SM**(-1)*Y)
     )*Determinant(SM)**(-n/2)*Determinant(Y)**(
-    -d/2 + n/2 - S(1)/2)/Product(gamma(-k/2 + n/2 + S(1)/2), (k, 1, d))
+    (-d + n - 1)/2)/Product(gamma(n/2 + (1 - k)/2), (k, 1, d))
     assert density(W)(Y).dummy_eq(exprd)
     raises(ValueError, lambda: density(W)(1))
     raises(ValueError, lambda: Wishart('W', -1, [[1, 0], [0, 1]]))
@@ -118,10 +118,10 @@ def test_MatrixStudentT():
     Y = MatrixSymbol('Y', n, p)
     M = MatrixStudentT('M', v, Location, Omega, Sigma)
 
-    exprd = gamma(v/2 + 1)*Determinant(Matrix([[1]]) + Sigma**(-1)*(-Location + Y)*Omega**(-1)*(-Location.T + Y.T))**(-v/2 - 1) / \
+    exprd = gamma(v/2 + 1)*Determinant(Matrix([[1]]) + Sigma**(-1)*(-Location + Y)*Omega**(-1)*(-Location.T + Y.T))**((-v - 2)/2) / \
             (pi*gamma(v/2)*sqrt(Determinant(Omega))*Determinant(Sigma))
 
-    assert density(M)(Y) == exprd
+    assert density(M)(Y).replace(gamma, lambda t: gamma(t.ec)) == exprd
     raises(ValueError, lambda: density(M)(1))
     raises(ValueError, lambda: MatrixStudentT('M', 1, [1, 2], [[1, 0], [0, 1]], [[1, 0], [2, 1]]))
     raises(ValueError, lambda: MatrixStudentT('M', 1, [1, 2], [[1, 0], [2, 1]], [[1, 0], [0, 1]]))

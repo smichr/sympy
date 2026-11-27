@@ -28,7 +28,7 @@ from sympy.simplify.simplify import simplify
 from sympy.utilities.lambdify import lambdify
 from sympy.functions.special.error_functions import erfinv
 from sympy.functions.special.hyper import meijerg
-from sympy.sets.sets import FiniteSet, Complement, Intersection
+from sympy.sets.sets import FiniteSet, Intersection
 from sympy.stats import (P, E, where, density, variance, covariance, skewness, kurtosis, median,
                          given, pspace, cdf, characteristic_function, moment_generating_function,
                          ContinuousRV, Arcsin, Benini, Beta, BetaNoncentral, BetaPrime,
@@ -69,9 +69,10 @@ def test_single_normal():
 
     assert P(X**2 < 1) == erf(2**S.Half/2)
     ans = quantile(Y)(x)
-    assert ans == Complement(Intersection(FiniteSet(
-        sqrt(2)*sigma*(sqrt(2)*mu/(2*sigma)+ erfinv(2*x - 1))),
-        Interval(-oo, oo)), FiniteSet(mu))
+    assert ans == Intersection(FiniteSet(
+        mu + sqrt(2)*sigma*erfinv(-2*(S.Half - x))),
+        Interval(-oo, oo))
+    assert ans.subs(x, S.Half) == FiniteSet(mu)
     assert E(X, Eq(X, mu)) == mu
 
     assert median(X) == FiniteSet(0)
@@ -156,7 +157,7 @@ def test_cdf():
     X = Normal('x', 0, 1)
 
     d = cdf(X)
-    assert P(X < 1) == d(1).rewrite(erfc)
+    assert (P(X < 1) - d(1).rewrite(erfc)).ec == 0
     assert d(0) == S.Half
 
     d = cdf(X, X > 0)  # given X>0
@@ -216,8 +217,8 @@ def test_moment_generating_function():
     assert mgf == hyper((a,), (a + b,), t)
 
     mgf = moment_generating_function(Chi('x', a))(t)
-    assert mgf == sqrt(2)*t*gamma(a/2 + S.Half)*\
-        hyper((a/2 + S.Half,), (Rational(3, 2),), t**2/2)/gamma(a/2) +\
+    assert mgf == sqrt(2)*t*gamma((a + 1)/2)*\
+        hyper(((a + 1)/2,), (Rational(3, 2),), t**2/2)/gamma(a/2) +\
         hyper((a/2,), (S.Half,), t**2/2)
 
     mgf = moment_generating_function(ChiSquared('x', a))(t)
@@ -254,7 +255,7 @@ def test_moment_generating_function():
     assert mgf == b*(-a*t)**b*uppergamma(-b, -a*t)
 
     mgf = moment_generating_function(QuadraticU('x', a, b))(t)
-    assert str(mgf) == ('(3*(t*((a + b)**2 - 4*b) + 4)*exp(b*t) - 3*(t*(a**2 + 2*a*(b - 2) + b**2) + 4)*exp(a*t))/(t**2*(a - b)**3)')
+    assert str(mgf) == ('-3*((t*(a**2 + 2*a*(b - 2) + b**2) + 4)*exp(a*t) - (t*((a + b)**2 - 4*b) + 4)*exp(b*t))/(t**2*(a - b)**3)')
 
     mgf = moment_generating_function(RaisedCosine('x', a, b))(t)
     assert mgf == pi**2*exp(a*t)*sinh(b*t)/(b*t*(b**2*t**2 + pi**2))
@@ -264,7 +265,7 @@ def test_moment_generating_function():
         *exp(a**2*t**2/2)/2 + 1
 
     mgf = moment_generating_function(Triangular('x', a, b, c))(t)
-    assert str(mgf) == ('(-2*(b - a)*exp(c*t) + 2*(c - a)*exp(b*t) + 2*(b - c)*exp(a*t))/(t**2*(b - a)*(c - a)*(b - c))')
+    assert str(mgf) == ('2*(-(b - a)*exp(c*t) + (c - a)*exp(b*t) + (b - c)*exp(a*t))/(t**2*(b - a)*(c - a)*(b - c))')
 
     mgf = moment_generating_function(Uniform('x', a, b))(t)
     assert mgf == (-exp(a*t) + exp(b*t))/(t*(-a + b))
@@ -320,7 +321,7 @@ def test_moment_generating_function():
     assert mgf.diff(t).subs(t, 0) == expint(1, 0)
 
     mgf = moment_generating_function(QuadraticU('x', 1, 2))(t)
-    assert mgf.diff(t).subs(t, 1) == -12*e - 3*exp(2)
+    assert mgf.diff(t).subs(t, 1).ec == -12*e - 3*exp(2)
 
     mgf = moment_generating_function(RaisedCosine('x', 1, 1))(t)
     assert mgf.diff(t).subs(t, 1) == -2*e*pi**2*sinh(1)/\
@@ -330,16 +331,16 @@ def test_moment_generating_function():
     assert mgf.diff(t).subs(t, 0) == sqrt(2)*sqrt(pi)/2
 
     mgf = moment_generating_function(Triangular('x', 1, 3, 2))(t)
-    assert mgf.diff(t).subs(t, 1) == -e + exp(3)
+    assert mgf.diff(t).subs(t, 1).ec == -e + exp(3)
 
     mgf = moment_generating_function(Uniform('x', 0, 1))(t)
-    assert mgf.diff(t).subs(t, 1) == 1
+    assert mgf.diff(t).subs(t, 1).ec == 1
 
     mgf = moment_generating_function(UniformSum('x', 1))(t)
-    assert mgf.diff(t).subs(t, 1) == 1
+    assert mgf.diff(t).subs(t, 1).ec == 1
 
     mgf = moment_generating_function(WignerSemicircle('x', 1))(t)
-    assert mgf.diff(t).subs(t, 1) == -2*besseli(1, 1) + besseli(2, 1) +\
+    assert mgf.diff(t).subs(t, 1).ec == -2*besseli(1, 1) + besseli(2, 1) +\
         besseli(0, 1)
 
 
@@ -519,11 +520,11 @@ def test_chi():
     assert density(X)(x) == 2**(-k/2 + 1)*x**(k - 1)*exp(-x**2/2)/gamma(k/2)
 
     # Tests the characteristic function
-    assert characteristic_function(X)(x) == sqrt(2)*I*x*gamma(k/2 + S(1)/2)*hyper((k/2 + S(1)/2,),
+    assert characteristic_function(X)(x) == sqrt(2)*I*x*gamma((k + 1)/2)*hyper(((k + 1)/2,),
                                             (S(3)/2,), -x**2/2)/gamma(k/2) + hyper((k/2,), (S(1)/2,), -x**2/2)
 
     # Tests the moment generating function
-    assert moment_generating_function(X)(x) == sqrt(2)*x*gamma(k/2 + S(1)/2)*hyper((k/2 + S(1)/2,),
+    assert moment_generating_function(X)(x) == sqrt(2)*x*gamma((k + 1)/2)*hyper(((k + 1)/2,),
                                                 (S(3)/2,), x**2/2)/gamma(k/2) + hyper((k/2,), (S(1)/2,), x**2/2)
 
     k = Symbol("k", integer=True, positive=False)
@@ -538,7 +539,7 @@ def test_chi_noncentral():
 
     X = ChiNoncentral("x", k, l)
     assert density(X)(x) == (x**k*l*(x*l)**(-k/2)*
-                          exp(-x**2/2 - l**2/2)*besseli(k/2 - 1, x*l))
+                          exp((-x**2 - l**2)/2)*besseli(k/2 - 1, x*l))
 
     k = Symbol("k", integer=True, positive=False)
     raises(ValueError, lambda: ChiNoncentral('x', k, l))
@@ -916,7 +917,7 @@ def test_logitnormal():
     x = Symbol('x')
 
     assert density(X)(x) == sqrt(2)*exp(-(-mu + log(x/(1 - x)))**2/(2*s**2))/(2*sqrt(pi)*s*x*(1 - x))
-    assert cdf(X)(x) == erf(sqrt(2)*(-mu + log(x/(1 - x)))/(2*s))/2 + S(1)/2
+    assert cdf(X)(x) == (erf(sqrt(2)*(-mu + log(x/(1 - x)))/(2*s)) + 1)/2
 
 def test_lognormal():
     mean = Symbol('mu', real=True)
@@ -1089,7 +1090,7 @@ def test_PowerFunction():
     raises (ValueError, lambda: PowerFunction('x', alpha, 5, 2))
 
     X = PowerFunction('X', 2, a, b)
-    assert density(X)(z) == (-2*a + 2*z)/(-a + b)**2
+    assert density(X)(z) == 2*(z - a)/(b - a)**2
     assert cdf(X)(z) == Piecewise((a**2/(a**2 - 2*a*b + b**2) -
         2*a*z/(a**2 - 2*a*b + b**2) + z**2/(a**2 - 2*a*b + b**2), a <= z), (0, True))
 
@@ -1185,8 +1186,8 @@ def test_studentt():
     nu = Symbol("nu", positive=True)
 
     X = StudentT('x', nu)
-    assert density(X)(x) == (1 + x**2/nu)**(-nu/2 - S.Half)/(sqrt(nu)*beta(S.Half, nu/2))
-    assert cdf(X)(x) == S.Half + x*gamma(nu/2 + S.Half)*hyper((S.Half, nu/2 + S.Half),
+    assert density(X)(x) == (1 + x**2/nu)**((-nu - 1)/2)/(sqrt(nu)*beta(S.Half, nu/2))
+    assert cdf(X)(x) == S.Half + x*gamma((nu + 1)/2)*hyper((S.Half, (nu + 1)/2),
                                 (Rational(3, 2),), -x**2/nu)/(sqrt(pi)*sqrt(nu)*gamma(nu/2))
     raises(NotImplementedError, lambda: moment_generating_function(X))
 
@@ -1197,9 +1198,9 @@ def test_trapezoidal():
     d = Symbol("d", real=True)
 
     X = Trapezoidal('x', a, b, c, d)
-    assert density(X)(x) == Piecewise(((-2*a + 2*x)/((-a + b)*(-a - b + c + d)), (a <= x) & (x < b)),
+    assert density(X)(x) == Piecewise((2*(x - a)/((-a + b)*(-a - b + c + d)), (a <= x) & (x < b)),
                                       (2/(-a - b + c + d), (b <= x) & (x < c)),
-                                      ((2*d - 2*x)/((-c + d)*(-a - b + c + d)), (c <= x) & (x <= d)),
+                                      (2*(d - x)/((-c + d)*(-a - b + c + d)), (c <= x) & (x <= d)),
                                       (0, True))
 
     X = Trapezoidal('x', 0, 1, 2, 3)
@@ -1215,13 +1216,13 @@ def test_triangular():
 
     X = Triangular('x', a, b, c)
     assert pspace(X).domain.set == Interval(a, b)
-    assert str(density(X)(x)) == ('Piecewise(((2*x - 2*a)/((b - a)*(c - a)), (a <= x) & (c > x)), (2/(b - a), Eq(c, x)), ((2*b - 2*x)/((b - a)*(b - c)), (b >= x) & (c < x)), (0, True))')
+    assert str(density(X)(x)) == ('Piecewise((2*(x - a)/((b - a)*(c - a)), (a <= x) & (c > x)), (2/(b - a), Eq(c, x)), (2*(b - x)/((b - a)*(b - c)), (b >= x) & (c < x)), (0, True))')
 
     #Tests moment_generating_function
     assert moment_generating_function(X)(x).expand() == \
     ((-2*(-a + b)*exp(c*x) + 2*(-a + c)*exp(b*x) + 2*(b - c)*exp(a*x))/(x**2*(-a + b)*(-a + c)*(b - c))).expand()
     assert str(characteristic_function(X)(x)) == \
-    '(2*(b - a)*exp(I*c*x) - 2*(c - a)*exp(I*b*x) - 2*(b - c)*exp(I*a*x))/(x**2*(b - a)*(c - a)*(b - c))'
+    '-2*(-(b - a)*exp(I*c*x) + (c - a)*exp(I*b*x) + (b - c)*exp(I*a*x))/(x**2*(b - a)*(c - a)*(b - c))'
 
 def test_quadratic_u():
     a = Symbol("a", real=True)
@@ -1232,11 +1233,11 @@ def test_quadratic_u():
 
     assert pspace(X).domain.set == Interval(a, b)
     # Tests _moment_generating_function
-    assert moment_generating_function(Y)(1)  == -15*exp(2) + 27*exp(1)
-    assert moment_generating_function(Y)(2) == -9*exp(4)/2 + 21*exp(2)/2
+    assert moment_generating_function(Y)(1)  == 3*(9*exp(1) - 5*exp(2))
+    assert moment_generating_function(Y)(2) == 3*(14*exp(2) - 6*exp(4))/4
 
     assert characteristic_function(Y)(1) == 3*I*(-1 + 4*I)*exp(I*exp(2*I))
-    assert density(X)(x) == (Piecewise((12*(x - a/2 - b/2)**2/(-a + b)**3,
+    assert density(X)(x) == (Piecewise((12*(x - (a + b)/2)**2/(-a + b)**3,
                           And(x <= b, a <= x)), (0, True)))
 
 
@@ -1319,9 +1320,9 @@ def test_weibull():
 
     assert E(X).expand() == a * gamma(1 + 1/b)
     assert variance(X).expand() == (a**2 * gamma(1 + 2/b) - E(X)**2).expand()
-    assert simplify(skewness(X)) == (2*gamma(1 + 1/b)**3 - 3*gamma(1 + 1/b)*gamma(1 + 2/b) + gamma(1 + 3/b))/(-gamma(1 + 1/b)**2 + gamma(1 + 2/b))**Rational(3, 2)
-    assert simplify(kurtosis(X)) == (-3*gamma(1 + 1/b)**4 +\
-        6*gamma(1 + 1/b)**2*gamma(1 + 2/b) - 4*gamma(1 + 1/b)*gamma(1 + 3/b) + gamma(1 + 4/b))/(gamma(1 + 1/b)**2 - gamma(1 + 2/b))**2
+    assert simplify(skewness(X)).equals((2*gamma(1 + 1/b)**3 - 3*gamma(1 + 1/b)*gamma(1 + 2/b) + gamma(1 + 3/b))/(-gamma(1 + 1/b)**2 + gamma(1 + 2/b))**Rational(3, 2))
+    assert simplify(kurtosis(X)) == (-1)*(3*gamma(1 + 1/b)**4 -\
+        6*gamma(1 + 1/b)**2*gamma(1 + 2/b) + 4*gamma(1 + 1/b)*gamma(1 + 3/b) - gamma(1 + 4/b))/(gamma(1 + 1/b)**2 - gamma(1 + 2/b))**2
 
 def test_weibull_numeric():
     # Test for integers and rationals
@@ -1423,7 +1424,7 @@ def test_random_parameters():
     assert isinstance(pspace(meas), CompoundPSpace)
     X = Normal('x', [1, 2], [[1, 0], [0, 1]])
     assert isinstance(pspace(X).distribution, MultivariateNormalDistribution)
-    assert density(meas)(z).simplify() == sqrt(5)*exp(-z**2/20 + z/5 - S(1)/5)/(10*sqrt(pi))
+    assert density(meas)(z).simplify() == sqrt(5)*exp((-z**2 + 4*z - 4)/20)/(10*sqrt(pi))
 
 
 def test_random_parameters_given():
@@ -1565,14 +1566,14 @@ def test_prob_neq():
 
 def test_union():
     N = Normal('N', 3, 2)
-    assert simplify(P(N**2 - N > 2)) == \
+    assert simplify(P(N**2 - N > 2)).ec == \
         -erf(sqrt(2))/2 - erfc(sqrt(2)/4)/2 + Rational(3, 2)
-    assert simplify(P(N**2 - 4 > 0)) == \
+    assert simplify(P(N**2 - 4 > 0)).ec == \
         -erf(5*sqrt(2)/4)/2 - erfc(sqrt(2)/4)/2 + Rational(3, 2)
 
 def test_Or():
     N = Normal('N', 0, 1)
-    assert simplify(P(Or(N > 2, N < 1))) == \
+    assert simplify(P(Or(N > 2, N < 1))).ec == \
         -erf(sqrt(2))/2 - erfc(sqrt(2)/2)/2 + Rational(3, 2)
     assert P(Or(N < 0, N < 1)) == P(N < 1)
     assert P(Or(N > 0, N < 0)) == 1

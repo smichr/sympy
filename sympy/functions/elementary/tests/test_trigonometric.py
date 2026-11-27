@@ -94,6 +94,7 @@ def test_sin():
     ne = symbols('ne', integer=True, even=False)
     e = symbols('e', even=True)
     assert sin(pi*ne/2) == (-1)**(ne/2 - S.Half)
+    assert sin((4*k - 1)*pi/2) == -1
     assert sin(pi*k/2).func == sin
     assert sin(pi*e/2) == 0
     assert sin(pi*k) == 0
@@ -868,6 +869,7 @@ def test_sinc():
     assert sinc(-pi/2) == 2 / pi
     assert sinc(pi*Rational(5, 2)) == 2 / (5*pi)
     assert sinc(pi*Rational(7, 2)) == -2 / (7*pi)
+    assert sinc((4*n - 1)*pi/2) == -2/(pi*(4*n - 1))
 
     assert sinc(-x) == sinc(x)
 

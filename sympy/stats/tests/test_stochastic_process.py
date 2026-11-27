@@ -417,13 +417,12 @@ def test_ContinuousMarkovChain():
         assert P(Eq(C2(1), 1), Eq(C2(0), 1), evaluate=False) == Probability(Eq(C2(1), 1), Eq(C2(0), 1))
     assert P(Eq(C2(1), 1), Eq(C2(0), 1)) == exp(-2)/2 + S.Half
     assert P(Eq(C2(1), 0) & Eq(C2(2), 1) & Eq(C2(3), 1),
-                Eq(P(Eq(C2(1), 0)), S.Half)) == (Rational(1, 4) - exp(-2)/4)*(exp(-2)/2 + S.Half)
+                Eq(P(Eq(C2(1), 0)), S.Half)) == ((S.Half - exp(-2)/2)/2)*(exp(-2)/2 + S.Half)
     assert P(Not(Eq(C2(1), 0) & Eq(C2(2), 1) & Eq(C2(3), 2)) |
                 (Eq(C2(1), 0) & Eq(C2(2), 1) & Eq(C2(3), 2)),
                 Eq(P(Eq(C2(1), 0)), Rational(1, 4)) & Eq(P(Eq(C2(1), 1)), Rational(1, 4))) is S.One
     assert E(C2(Rational(3, 2)), Eq(C2(0), 2)) == -exp(-3)/2 + 2*exp(Rational(-3, 2)) + S.Half
-    assert variance(C2(Rational(3, 2)), Eq(C2(0), 1)) == ((S.Half - exp(-3)/2)**2*(exp(-3)/2 + S.Half)
-                                                    + (Rational(-1, 2) - exp(-3)/2)**2*(S.Half - exp(-3)/2))
+    assert variance(C2(Rational(3, 2)), Eq(C2(0), 1)).expand() == S(1)/4 - exp(-6)/4
     raises(KeyError, lambda: P(Eq(C2(1), 0), Eq(P(Eq(C2(1), 1)), S.Half)))
     assert P(Eq(C2(1), 0), Eq(P(Eq(C2(5), 1)), S.Half)) == Probability(Eq(C2(1), 0))
     TS1 = MatrixSymbol('G', 3, 3)
@@ -477,7 +476,7 @@ def test_BernoulliProcess():
     X = BernoulliProcess("X", p=Rational(1,3), success='H', failure='T')
     assert X.state_space == FiniteSet('H', 'T')
     H, T = symbols("H,T")
-    assert E(X[1]+X[2]*X[3]) == H**2/9 + 4*H*T/9 + H/3 + 4*T**2/9 + 2*T/3
+    assert E(X[1]+X[2]*X[3]).ec == H**2/9 + 4*H*T/9 + H/3 + 4*T**2/9 + 2*T/3
 
     t, x = symbols('t, x', positive=True, integer=True)
     assert isinstance(B[t], RandomIndexedSymbol)
@@ -677,8 +676,8 @@ def test_WienerProcess():
     assert X.joint_distribution(4, 6) == JointDistributionHandmade(
         Lambda((X(4), X(6)), sqrt(6)*exp(-X(4)**2/8)*exp(-X(6)**2/12)/(24*pi)))
 
-    assert P(X(t) < 3).simplify() == erf(3*sqrt(2)/(2*sqrt(t)))/2 + S(1)/2
-    assert P(X(t) > 2, Contains(t, Interval.Lopen(3, 7))).simplify() == S(1)/2 -\
+    assert P(X(t) < 3).simplify().ec == erf(3*sqrt(2)/(2*sqrt(t)))/2 + S(1)/2
+    assert P(X(t) > 2, Contains(t, Interval.Lopen(3, 7))).simplify().ec == S(1)/2 -\
                 erf(sqrt(2)/2)/2
 
     # Equivalent to P(X(1)>1)**4

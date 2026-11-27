@@ -40,7 +40,7 @@ def test_discreteuniform():
     a, b, c, t = symbols('a b c t')
     X = DiscreteUniform('X', [a, b, c])
 
-    assert E(X) == (a + b + c)/3
+    assert E(X) == a/3 + b/3 + c/3
     assert simplify(variance(X)
                     - ((a**2 + b**2 + c**2)/3 - (a/3 + b/3 + c/3)**2)) == 0
     assert P(Eq(X, a)) == P(Eq(X, b)) == P(Eq(X, c)) == S('1/3')

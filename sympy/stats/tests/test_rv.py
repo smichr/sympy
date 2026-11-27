@@ -72,7 +72,7 @@ def test_characteristic_function():
     t = symbols('_t')
     P = Lambda(t, exp(-t**2/2))
     Q = Lambda(t, exp(7*t*I)/3 + exp(2*t*I)/3 + exp(t*I)/3)
-    R = Lambda(t, exp(2 * exp(t*I) - 2))
+    R = Lambda(t, exp(2*(exp(t*I) - 1)))
 
 
     assert characteristic_function(X).dummy_eq(P)
@@ -88,7 +88,7 @@ def test_moment_generating_function():
     t = symbols('_t')
     P = Lambda(t, exp(t**2/2))
     Q = Lambda(t, (exp(7*t)/3 + exp(2*t)/3 + exp(t)/3))
-    R = Lambda(t, exp(2 * exp(t) - 2))
+    R = Lambda(t, exp(2*(exp(t) - 1)))
 
 
     assert moment_generating_function(X).dummy_eq(P)

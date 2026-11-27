@@ -271,7 +271,7 @@ class SingleContinuousDistribution(ContinuousDistribution, NamedArgsMixin):
                 result = 0
                 for k in range(deg+1):
                     result += p.coeff_monomial(var ** k) * taylor.coeff_monomial(t ** k) * factorial(k)
-                return result
+                return result.ec
             except PolynomialError:
                 return integrate(expr * self.pdf(var), (var, self.set), **kwargs)
         else:

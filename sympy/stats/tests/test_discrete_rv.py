@@ -172,8 +172,7 @@ def test_zeta():
     s = S(5)
     x = Zeta('x', s)
     assert E(x) == zeta(s-1) / zeta(s)
-    assert simplify(variance(x)) == (
-        zeta(s) * zeta(s-2) - zeta(s-1)**2) / zeta(s)**2
+    assert simplify(variance(x)) == zeta(s-2)/zeta(s) - zeta(s-1)**2/zeta(s)**2
 
 
 def test_discrete_probability():
@@ -208,6 +207,10 @@ def test_DiscreteRV():
     assert P(D > 3) == S(1)/8
     assert D.pspace.domain.set == S.Naturals
     raises(ValueError, lambda: DiscreteRV(x, x, FiniteSet(*range(4)), check=True))
+
+    # The MGF need not have a Taylor series at zero.
+    D = DiscreteRV(x, 1/(zeta(2)*x**2), S.Naturals, check=True)
+    assert E(D) == oo
 
     # purposeful invalid pmf but it should not raise since check=False
     # see test_drv_types.test_ContinuousRV for explanation
