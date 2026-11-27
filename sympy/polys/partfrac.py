@@ -58,7 +58,7 @@ def apart(f, x=None, full=False, **options):
     Calling ``doit()`` yields a human-readable result:
 
     >>> apart(y/(x**2 + x + 1), x, full=True).doit()
-    (-2*y*(-1/2 - sqrt(3)*I/2)/3 - y/3)/(x + sqrt(3)*I/2 + 1/2) + (-2*y*(-1/2 + sqrt(3)*I/2)/3 - y/3)/(x - sqrt(3)*I/2 + 1/2)
+    (-2*y*(-1/2 + sqrt(3)*I/2)/3 - y/3)/(x - (-1/2 + sqrt(3)*I/2)) + (-2*y*(-1/2 - sqrt(3)*I/2)/3 - y/3)/(x - (-1/2 - sqrt(3)*I/2))
 
 
     See Also
@@ -271,7 +271,7 @@ def apart_list(f, x=None, dummies=None, **options):
     (-1, Poly(2/3, x, domain='QQ'), [(Poly(_w - 2, _w, domain='ZZ'), Lambda(_a, 2), Lambda(_a, x - _a), 1)])
 
     >>> assemble_partfrac_list(pfd)
-    -2/(x - 2) - 2/3
+    -(2/3 + 2/(x - 2))
 
     Another example, showing symbolic parameters:
 
@@ -438,7 +438,7 @@ def assemble_partfrac_list(partial_list):
     RootSum(w**2 - 2, Lambda(w, w/(x - w)))/2
 
     >>> pfda.doit()
-    sqrt(2)/(2*(x - sqrt(2))) - sqrt(2)/(2*(x + sqrt(2)))
+    (sqrt(2)/(x - sqrt(2)) - sqrt(2)/(x + sqrt(2)))/2
 
     >>> from sympy import Dummy, Poly, Lambda, sqrt
     >>> a = Dummy("a")

@@ -46,7 +46,7 @@ class SumApprox(Optimization):
     >>> optimize(expr, [sum_approx3])
     3*(x + y + exp(z))
     >>> optimize(expr, [sum_approx2])
-    3*y + 3*exp(z)
+    3*(y + exp(z))
     >>> optimize(expr, [sum_approx1])
     3*y
 
@@ -132,7 +132,7 @@ class SeriesApprox(Optimization):
     >>> series_approx8 = SeriesApprox(bounds, reltol=1e-8)
     >>> expr = sin(x)*sin(y)
     >>> optimize(expr, [series_approx2])
-    x*(-y + pi + (y - pi)**3/6)
+    x*((y - pi)**3/6 - (y - pi))
     >>> optimize(expr, [series_approx3])
     (x - x**3/6)*sin(y)
     >>> optimize(expr, [series_approx8])

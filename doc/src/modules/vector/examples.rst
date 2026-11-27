@@ -62,7 +62,7 @@ Now compute the vectors in the directions specified by PQ and SR.
 
 Compute cross product
 
-  >>> PQ.cross(SR)
+  >>> PQ.cross(SR).expand()
   0
 
 Since the cross product is a zero vector, the two vectors have to be

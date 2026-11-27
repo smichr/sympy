@@ -2585,7 +2585,7 @@ class Line3D(LinearEntity3D, Line):
         >>> p1, p2 = Point3D(1, 0, 0), Point3D(5, 3, 0)
         >>> l1 = Line3D(p1, p2)
         >>> eq = l1.equation(x, y, z); eq
-        (-3*x + 4*y + 3, z)
+        (4*y - 3*(x - 1), z)
         >>> solve(eq.subs(z, 0), (x, y, z))
         {x: 4*y/3 + 1}
         """

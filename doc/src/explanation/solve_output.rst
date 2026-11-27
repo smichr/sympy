@@ -98,7 +98,7 @@ List of Dictionaries
     >>> solve([exp(x) - 1, x*(x - 1)])
     [{x: 0}]
     >>> system = [x + y - z, x**2 - y + z, exp(z) + 1/x + 1/y - 2]
-    >>> sol = solve(system[:2]); sol
+    >>> sol = solve(system[:2], simplify=True); sol
     [{x: -1, y: z + 1}, {x: 0, y: z}]
 
     The dictionaries only contain values that are distinct from the keys.

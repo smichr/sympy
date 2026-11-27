@@ -383,13 +383,13 @@ def test_nsimplify():
     assert nsimplify(1) == 1
     assert nsimplify(1 + x) == 1 + x
     assert nsimplify(2.7) == Rational(27, 10)
-    assert nsimplify(1 - GoldenRatio) == (1 - sqrt(5))/2
+    assert nsimplify(1 - GoldenRatio).ec == S.Half - sqrt(5)/2
     assert nsimplify((1 + sqrt(5))/4, [GoldenRatio]) == GoldenRatio/2
     assert nsimplify(2/GoldenRatio, [GoldenRatio]) == 2*GoldenRatio - 2
     assert nsimplify(exp(pi*I*Rational(5, 3), evaluate=False)) == \
         sympify('1/2 - sqrt(3)*I/2')
-    assert nsimplify(sin(pi*Rational(3, 5), evaluate=False)) == \
-        sympify('sqrt(sqrt(5)/8 + 5/8)')
+    assert nsimplify(sin(pi*Rational(3, 5), evaluate=False)).equals(
+        sympify('sqrt(sqrt(5)/8 + 5/8)'))
     assert nsimplify(sqrt(atan('1', evaluate=False))*(2 + I), [pi]) == \
         sqrt(pi) + sqrt(pi)/2*I
     assert nsimplify(2 + exp(2*atan('1/4')*I)) == sympify('49/17 + 8*I/17')

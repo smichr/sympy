@@ -297,7 +297,11 @@ def continued_fraction_iterator(x):
         x -= i
         if not x:
             break
-        x = 1/x
+        p, q = x.as_numer_denom()
+        p = p.ec
+        if not p:
+            break
+        x = q.ec/p
 
 
 def continued_fraction_convergents(cf):

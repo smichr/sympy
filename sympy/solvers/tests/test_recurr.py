@@ -39,6 +39,7 @@ def test_rsolve_ratio():
 
 
 def test_rsolve_hyper():
+    assert rsolve_hyper([-2, 1], n - 2*(n + 1) + 2, n) == C0*2**n + n + 1
     assert rsolve_hyper([-1, -1, 1], 0, n) in [
         C0*((1 - sqrt(5))/2)**n + C1*((1 + sqrt(5))/2)**n,
         C1*((1 - sqrt(5))/2)**n + C0*((1 + sqrt(5))/2)**n,

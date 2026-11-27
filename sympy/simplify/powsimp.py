@@ -399,7 +399,8 @@ def powsimp(expr, deep=False, combine='all', force=False, measure=count_ops):
         # e.g., 2**(2*x) => 4**x
         for i in range(len(c_powers)):
             b, e = c_powers[i]
-            if not (all(x.is_nonnegative for x in b.as_numer_denom()) or e.is_integer or force or b.is_polar):
+            if not (force or e.is_integer or
+                    all(x.is_nonnegative for x in b.as_numer_denom()) or b.is_polar):
                 continue
             if e.is_Add and (b.is_positive or e.is_integer):
                 e = factor_terms(e)

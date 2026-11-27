@@ -99,7 +99,7 @@ def gosper_term(f, n):
     >>> from sympy.abc import n
 
     >>> gosper_term((4*n + 1)*factorial(n)/factorial(2*n + 1), n)
-    (-n - 1/2)/(n + 1/4)
+    -(n + 1/2)/(n + 1/4)
 
     """
     from sympy.simplify import hypersimp

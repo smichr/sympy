@@ -362,11 +362,11 @@ class ImplicitRegion(Basic):
 
         >>> I = ImplicitRegion((x, y), x**3 + x**2 - y**2)
         >>> I.rational_parametrization()
-        (t**2 - 1, t*(t**2 - 1))
+        (-(1 - t**2), -t*(1 - t**2))
 
         >>> cubic_curve = ImplicitRegion((x, y), x**3 + x**2 - y**2)
         >>> cubic_curve.rational_parametrization(parameters=(t))
-        (t**2 - 1, t*(t**2 - 1))
+        (-(1 - t**2), -t*(1 - t**2))
 
         >>> sphere = ImplicitRegion((x, y, z), x**2 + y**2 + z**2 - 4)
         >>> sphere.rational_parametrization(parameters=(t, s))

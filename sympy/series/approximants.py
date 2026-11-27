@@ -355,7 +355,7 @@ def pade_approximant(
     `[1/1]` Pade approximant of `log(x)` around `x0=1`
 
     >>> pade_approximant(sp.log(x), x, 1, 1)
-    4*(x - 1)/(2*x + 2)
+    4*(x - 1)/(2*(x - 1) + 4)
 
     The `[m/0]` pade approximant is the mth order taylor polynomial of `f`
 

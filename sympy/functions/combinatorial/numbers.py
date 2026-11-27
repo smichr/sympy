@@ -891,7 +891,7 @@ class harmonic(DefinedFunction):
     EulerGamma + polygamma(0, n + 1)
 
     >>> harmonic(n,3).rewrite(polygamma)
-    polygamma(2, n + 1)/2 + zeta(3)
+    -(-polygamma(2, n + 1) - 2*zeta(3))/2
 
     >>> simplify(harmonic(n,m).rewrite(polygamma))
     Piecewise((EulerGamma + polygamma(0, n + 1), Eq(m, 1)), (zeta(m) - (-1)**m*polygamma(m - 1, n + 1)/factorial(m - 1), True))

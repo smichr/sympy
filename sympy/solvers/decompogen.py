@@ -114,7 +114,7 @@ def compogen(g_s, symbol):
     >>> compogen([sin(x), sqrt(x), cos(x), x**2 + 1], x)
     sin(sqrt(cos(x**2 + 1)))
     >>> compogen([x**2 - x - 1, x**2 + x], x)
-    -x**2 - x + (x**2 + x)**2 - 1
+    (x**2 + x)**2 - (x**2 + x) - 1
     """
     if len(g_s) == 1:
         return g_s[0]

@@ -805,7 +805,7 @@ def TR11(rv, base=None):
     the 3*pi/7 base:
 
     >>> TR11(_, 3*pi/7)
-    -sin(3*pi/7)**2 + cos(3*pi/7)**2 + cos(3*pi/7)
+    cos(3*pi/7) - (sin(3*pi/7)**2 - cos(3*pi/7)**2)
 
     """
 

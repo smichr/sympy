@@ -685,8 +685,7 @@ class Beam:
         50*SingularityFunction(x, 0, 0) - 10*SingularityFunction(x, 0, 1)
         + 10*SingularityFunction(x, 5, 1) - 4250*SingularityFunction(x, 8, -2)/3
         >>> b.deflection()
-        -SingularityFunction(x, 0, 2)/16 + SingularityFunction(x, 0, 3)/240
-        - SingularityFunction(x, 5, 3)/240 + 85*SingularityFunction(x, 8, 0)/24
+        -(25*SingularityFunction(x, 0, 2) - 5*SingularityFunction(x, 0, 3)/3 + 5*SingularityFunction(x, 5, 3)/3 - 4250*SingularityFunction(x, 8, 0)/3)/400
         """
         loc = sympify(loc)
         E = self.elastic_modulus
@@ -4036,7 +4035,7 @@ class Beam3D(Beam):
             >>> b.solve_for_reaction_loads(R1, R2, R3, R4)
             >>> b.solve_slope_deflection()
             >>> b.max_deflection()
-            [(0, 0), (10, 495/14), (10*sqrt(10793)/43 - 10, 20*sqrt(10793)/301 + (10*sqrt(10793)/43 - 10)**4/6400 - (10*sqrt(10793)/43 - 10)**3/160 + 27*(10*sqrt(10793)/43 - 10)**2/560 - 20/7)]
+            [(0, 0), (10, 495/14), (10*(sqrt(10793) - 43)/43, 25*(sqrt(10793) - 43)**4/54700816 - 25*(sqrt(10793) - 43)**3/318028 + 135*(sqrt(10793) - 43)**2/51772 + 20*(sqrt(10793) - 43)/301)]
         """
 
         max_def = []

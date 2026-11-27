@@ -2070,7 +2070,7 @@ class marcumq(DefinedFunction):
     >>> marcumq(0, a, 0)
     1 - exp(-a**2/2)
     >>> marcumq(1, a, a)
-    exp(-a**2)*besseli(0, a**2)/2 + 1/2
+    (exp(-a**2)*besseli(0, a**2) + 1)/2
     >>> marcumq(2, a, a)
     exp(-a**2)*besseli(0, a**2)/2 + exp(-a**2)*besseli(1, a**2) + 1/2
 
@@ -2080,7 +2080,7 @@ class marcumq(DefinedFunction):
     >>> diff(marcumq(m, a, b), a)
     a*(marcumq(m + 1, a, b) - marcumq(m, a, b))
     >>> diff(marcumq(m, a, b), b)
-    -a**(1 - m)*b**m*exp(-a**2/2 - b**2/2)*besseli(m - 1, a*b)
+    -a**(1 - m)*b**m*exp((-a**2 - b**2)/2)*besseli(m - 1, a*b)
 
     References
     ==========

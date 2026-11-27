@@ -590,7 +590,7 @@ avoided.
 
   ```py
   >>> divides(2, (m**2 + m)/2)
-  divides(2, m**2/2 + m/2)
+  divides(2, (m**2 + m)/2)
   >>> _.subs(m, 2)
   0
   >>> n, m = symbols('n m') # Redefine n and m without the integer assumption

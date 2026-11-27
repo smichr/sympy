@@ -222,7 +222,7 @@ def MultivariateNormal(name, mu, sigma):
     >>> X = MultivariateNormal('X', [3, 4], [[2, 1], [1, 2]])
     >>> y, z = symbols('y z')
     >>> density(X)(y, z)
-    sqrt(3)*exp(-y**2/3 + y*z/3 + 2*y/3 - z**2/3 + 5*z/3 - 13/3)/(6*pi)
+    sqrt(3)*exp(-(y**2 - y*z - 2*y + z**2 - 5*z + 13)/3)/(6*pi)
     >>> density(X)(1, 2)
     sqrt(3)*exp(-4/3)/(6*pi)
     >>> marginal_distribution(X, X[1])(y)
@@ -316,7 +316,7 @@ def MultivariateLaplace(name, mu, sigma):
     >>> y, z = symbols('y z')
     >>> X = MultivariateLaplace('X', [2, 4], [[3, 1], [1, 3]])
     >>> density(X)(y, z)
-    sqrt(2)*exp(y/4 + 5*z/4)*besselk(0, sqrt(15*y*(3*y/8 - z/8)/2 + 15*z*(3*z/8 - y/8)/2))/(4*pi)
+    sqrt(2)*exp(4*(3*z/8 - y/8) + 2*(3*y/8 - z/8))*besselk(0, sqrt(30)*sqrt(y*(3*y/8 - z/8) + z*(3*z/8 - y/8))/2)/(4*pi)
     >>> density(X)(1, 2)
     sqrt(2)*exp(11/4)*besselk(0, sqrt(165)/4)/(4*pi)
 

@@ -132,7 +132,7 @@ def finite_diff_weights(order, x_list, x0=S.One):
     [x - h, x - sqrt(2)*h/2, x, sqrt(2)*h/2 + x, h + x]
     >>> mycoeffs = finite_diff_weights(1, x_list, 0)[1][4]
     >>> [simplify(c) for c in  mycoeffs] #doctest: +NORMALIZE_WHITESPACE
-    [(h**3/2 + h**2*x - 3*h*x**2 - 4*x**3)/h**4, (-sqrt(2)*h**3 - 4*h**2*x + 3*sqrt(2)*h*x**2 + 8*x**3)/h**4, (6*h**2*x - 8*x**3)/h**4, (sqrt(2)*h**3 - 4*h**2*x - 3*sqrt(2)*h*x**2 + 8*x**3)/h**4, (-h**3/2 + h**2*x + 3*h*x**2 - 4*x**3)/h**4]
+    [(h**3 + 2*h**2*x - 6*h*x**2 - 8*x**3)/(2*h**4), (-sqrt(2)*h**3 - 4*h**2*x + 3*sqrt(2)*h*x**2 + 8*x**3)/h**4, (6*h**2*x - 8*x**3)/h**4, (sqrt(2)*h**3 - 4*h**2*x - 3*sqrt(2)*h*x**2 + 8*x**3)/h**4, (-h**3 + 2*h**2*x + 6*h*x**2 - 8*x**3)/(2*h**4)]
 
     Notes
     =====
@@ -427,9 +427,9 @@ def differentiate_finite(expr, *symbols,
     with embedded derivatives:
 
     >>> differentiate_finite(f(x) + sin(x), x, 2)
-    -2*f(x) + f(x - 1) + f(x + 1) - 2*sin(x) + sin(x - 1) + sin(x + 1)
+    -2*(f(x) + sin(x)) + f(x - 1) + f(x + 1) + sin(x - 1) + sin(x + 1)
     >>> differentiate_finite(f(x, y), x, y)
-    f(x - 1/2, y - 1/2) - f(x - 1/2, y + 1/2) - f(x + 1/2, y - 1/2) + f(x + 1/2, y + 1/2)
+    -(f(x - 1/2, y + 1/2) - f(x - 1/2, y - 1/2)) - f(x + 1/2, y - 1/2) + f(x + 1/2, y + 1/2)
     >>> differentiate_finite(f(x)*g(x).diff(x), x)
     (g(x + 1) - g(x))*f(x + 1/2) - (g(x) - g(x - 1))*f(x - 1/2)
 

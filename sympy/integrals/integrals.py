@@ -1471,18 +1471,18 @@ class Integral(AddWithLimits):
         interval:
 
         >>> e.as_sum(2, 'left')
-        2*sin(3) + 2*sin(5)
+        2*(sin(3) + sin(5))
 
         The midpoint rule uses evaluations at the center of each interval:
 
         >>> e.as_sum(2, 'midpoint')
-        2*sin(4) + 2*sin(6)
+        2*(sin(4) + sin(6))
 
         The right-hand rule uses function evaluations at the right of each
         interval:
 
         >>> e.as_sum(2, 'right')
-        2*sin(5) + 2*sin(7)
+        2*(sin(5) + sin(7))
 
         The trapezoid rule uses function evaluations on both sides of the
         intervals. This is equivalent to taking the average of the left and
@@ -1490,8 +1490,8 @@ class Integral(AddWithLimits):
 
         >>> s = e.as_sum(2, 'trapezoid')
         >>> s
-        sin(3) + 2*sin(5) + sin(7)
-        >>> (e.as_sum(2, 'left') + e.as_sum(2, 'right'))/2 == s
+        2*((sin(3) + sin(7))/2 + sin(5))
+        >>> (((e.as_sum(2, 'left') + e.as_sum(2, 'right'))/2) - s).expand() == 0
         True
 
         Here, the discontinuity at x = 0 can be avoided by using the

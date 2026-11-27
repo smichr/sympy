@@ -855,7 +855,7 @@ def Chi(name, k):
     2**(1 - k/2)*z**(k - 1)*exp(-z**2/2)/gamma(k/2)
 
     >>> simplify(E(X))
-    sqrt(2)*gamma(k/2 + 1/2)/gamma(k/2)
+    sqrt(2)*gamma((k + 1)/2)/gamma(k/2)
 
     References
     ==========
@@ -928,7 +928,7 @@ def ChiNoncentral(name, k, l):
     >>> X = ChiNoncentral("x", k, l)
 
     >>> density(X)(z)
-    l*z**k*exp(-l**2/2 - z**2/2)*besseli(k/2 - 1, l*z)/(l*z)**(k/2)
+    l*z**k*exp((-l**2 - z**2)/2)*besseli(k/2 - 1, l*z)/(l*z)**(k/2)
 
     References
     ==========
@@ -2434,10 +2434,10 @@ def Levy(name, mu, c):
     >>> X = Levy("x", mu, c)
 
     >>> density(X)(z)
-    sqrt(2)*sqrt(c)*exp(-c/(2*z - 2*mu))/(2*sqrt(pi)*(z - mu)**(3/2))
+    sqrt(2)*sqrt(c)*exp(-c/(2*(z - mu)))/(2*sqrt(pi)*(z - mu)**(3/2))
 
     >>> cdf(X)(z)
-    erfc(sqrt(c)*sqrt(1/(2*z - 2*mu)))
+    erfc(sqrt(2)*sqrt(c)*sqrt(1/(z - mu))/2)
 
     References
     ==========
@@ -2513,7 +2513,7 @@ def LogCauchy(name, mu, sigma):
     1/(5*pi*z*((log(z) - 2)**2 + 1/25))
 
     >>> cdf(X)(z)
-    1/2 + atan(5*log(z) - 10)/pi
+    1/2 + atan(5*(log(z) - 2))/pi
 
     References
     ==========
@@ -2774,7 +2774,7 @@ def LogitNormal(name, mu, s):
     sqrt(2)*exp(-(log(z/(1 - z)) - mu)**2/(2*s**2))/(2*sqrt(pi)*s*z*(1 - z))
 
     >>> cdf(X)(z)
-    erf(sqrt(2)*(log(z/(1 - z)) - mu)/(2*s))/2 + 1/2
+    (erf(sqrt(2)*(log(z/(1 - z)) - mu)/(2*s)) + 1)/2
 
 
     References
@@ -3094,7 +3094,7 @@ def Moyal(name, mu, sigma):
     >>> z = Symbol("z")
     >>> X = Moyal("x", mu, sigma)
     >>> density(X)(z)
-    sqrt(2)*exp(-exp((mu - z)/sigma)/2 - (z - mu)/(2*sigma))/(2*sqrt(pi)*sigma)
+    sqrt(2)*exp((-exp((mu - z)/sigma) - (z - mu)/sigma)/2)/(2*sqrt(pi)*sigma)
     >>> simplify(cdf(X)(z))
     1 - erf(sqrt(2)*exp((mu - z)/(2*sigma))/2)
 
@@ -3279,10 +3279,10 @@ def Normal(name, mean, std):
     >>> pprint(C, use_unicode=False)
        /  ___         \
        |\/ 2 *(z - mu)|
-    erf|--------------|
-       \   2*sigma    /   1
-    ------------------- + -
-             2            2
+    erf|--------------| + 1
+       \   2*sigma    /
+    -----------------------
+               2
 
     >>> quantile(X)(p)
     mu + sqrt(2)*sigma*erfinv(2*p - 1)
@@ -3302,13 +3302,13 @@ def Normal(name, mean, std):
 
     >>> m = Normal('X', [1, 2], [[2, 1], [1, 2]])
     >>> pprint(density(m)(y, z), use_unicode=False)
-              2          2
-             y    y*z   z
-           - -- + --- - -- + z - 1
-      ___    3     3    3
+            / 2          2          \
+           -\y  - y*z + z  - 3*z + 3/
+           ---------------------------
+      ___               3
     \/ 3 *e
-    ------------------------------
-                 6*pi
+    ----------------------------------
+                   6*pi
 
     >>> marginal_distribution(m, m[0])(1)
      1/(2*sqrt(pi))
@@ -3587,7 +3587,7 @@ def PowerFunction(name, alpha, a, b):
     >>> X = PowerFunction("X", 2, a, b)
 
     >>> density(X)(z)
-    (2*z - 2*a)/(b - a)**2
+    2*(z - a)/(b - a)**2
 
     >>> cdf(X)(z)
     Piecewise((a**2/(a**2 - 2*a*b + b**2) - 2*a*z/(a**2 - 2*a*b + b**2) +
@@ -3685,15 +3685,15 @@ def QuadraticU(name, a, b):
 
     >>> D = density(X)(z)
     >>> pprint(D, use_unicode=False)
-    /                2
-    |   /  a   b    \
-    |12*|- - - - + z|
-    |   \  2   2    /
-    <-----------------  for And(b >= z, a <= z)
-    |           3
-    |    (b - a)
+    /              2
+    |   /    a + b\
+    |12*|z - -----|
+    |   \      2  /
+    <---------------  for And(b >= z, a <= z)
+    |          3
+    |   (b - a)
     |
-    \        0                 otherwise
+    \       0                otherwise
 
     References
     ==========
@@ -4148,20 +4148,20 @@ def StudentT(name, nu):
 
     >>> D = density(X)(z)
     >>> pprint(D, use_unicode=False)
-              nu   1
-            - -- - -
-              2    2
-    /     2\
-    |    z |
-    |1 + --|
-    \    nu/
+             -nu - 1
+             -------
+                2
+     /     2\
+     |    z |
+     |1 + --|
+     \    nu/
     -----------------
       ____  /     nu\
     \/ nu *B|1/2, --|
             \     2 /
 
     >>> cdf(X)(z)
-    z*gamma(nu/2 + 1/2)*hyper((1/2, nu/2 + 1/2), (3/2,), -z**2/nu)/(sqrt(pi)*sqrt(nu)*gamma(nu/2)) + 1/2
+    z*gamma((nu + 1)/2)*hyper((1/2, (nu + 1)/2), (3/2,), -z**2/nu)/(sqrt(pi)*sqrt(nu)*gamma(nu/2)) + 1/2
 
 
     References
@@ -4248,7 +4248,7 @@ def Trapezoidal(name, a, b, c, d):
     >>> X = Trapezoidal("x", a,b,c,d)
 
     >>> pprint(density(X)(z), use_unicode=False)
-    /       2*z - 2*a
+    /       2*(z - a)
     |------------------------  for And(a <= z, b > z)
     |(b - a)*(-a - b + c + d)
     |
@@ -4256,7 +4256,7 @@ def Trapezoidal(name, a, b, c, d):
     |     --------------       for And(b <= z, c > z)
     <     -a - b + c + d
     |
-    |       2*d - 2*z
+    |       2*(d - z)
     |------------------------  for And(d >= z, c <= z)
     |(d - c)*(-a - b + c + d)
     |
@@ -4349,7 +4349,7 @@ def Triangular(name, a, b, c):
     >>> X = Triangular("x", a,b,c)
 
     >>> pprint(density(X)(z), use_unicode=False)
-    /   2*z - 2*a
+    /   2*(z - a)
     |---------------  for And(a <= z, c > z)
     |(b - a)*(c - a)
     |
@@ -4357,7 +4357,7 @@ def Triangular(name, a, b, c):
     |     -----             for c = z
     <     b - a
     |
-    |   2*b - 2*z
+    |   2*(b - z)
     |---------------  for And(b >= z, c < z)
     |(b - a)*(b - c)
     |
@@ -4471,7 +4471,7 @@ def Uniform(name, left, right):
     a/2 + b/2
 
     >>> simplify(variance(X))
-    a**2/12 - a*b/6 + b**2/12
+    (a**2 - 2*a*b + b**2)/12
 
     References
     ==========
@@ -4729,7 +4729,7 @@ def Weibull(name, alpha, beta):
     lambda*gamma(1 + 1/k)
 
     >>> simplify(variance(X))
-    lambda**2*(gamma(1 + 2/k) - gamma(1 + 1/k)**2)
+    -lambda**2*(gamma(1 + 1/k)**2 - gamma(1 + 2/k))
 
     References
     ==========

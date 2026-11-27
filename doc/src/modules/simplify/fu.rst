@@ -159,7 +159,7 @@ is taken since it leads to a dead end:
 
     >>> TR9(-cos(x)**2*cos(y + z) + 3*cos(y - z)/2 +
     ...     cos(y + z)/2 + cos(-2*x + y + z)/4 - cos(2*x + y + z)/4)
-    sin(2*x)*sin(y + z)/2 - cos(x)**2*cos(y + z) + 3*cos(y - z)/2 + cos(y + z)/2
+    sin(2*x)*sin((2*y + 2*z)/2)/2 - cos(x)**2*cos(y + z) + 3*cos(y - z)/2 + cos(y + z)/2
 
 Here is a smaller expression that exhibits the same behavior:
 

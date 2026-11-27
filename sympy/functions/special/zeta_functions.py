@@ -88,7 +88,7 @@ class lerchphi(DefinedFunction):
     reduces to a sum of Hurwitz zeta functions:
 
     >>> expand_func(lerchphi(-1, s, a))
-    zeta(s, a/2)/2**s - zeta(s, a/2 + 1/2)/2**s
+    zeta(s, a/2)/2**s - zeta(s, (a + 1)/2)/2**s
 
     If $a=1$, the Lerch transcendent reduces to the polylogarithm:
 

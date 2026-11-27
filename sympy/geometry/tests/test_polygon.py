@@ -158,7 +158,7 @@ def test_polygon():
     assert p1.circumradius == p1.radius == 10
     assert p2.circumcircle == Circle(Point(0, 0), 5)
     assert p2.incircle == Circle(Point(0, 0), p2.apothem)
-    assert p2.inradius == p2.apothem == (5 * (1 + sqrt(5)) / 4)
+    assert p2.inradius == p2.apothem == 5*(S.One/4 + sqrt(5)/4)
     p2.spin(pi / 10)
     dict1 = p2.angles
     assert dict1[Point(0, 5)] == 3 * pi / 5
@@ -184,8 +184,8 @@ def test_polygon():
     assert p1.rotate(pi/3) == RegularPolygon(Point(0, 0), 10, 5, pi*Rational(2, 3))
     assert p1 == p1_old
 
-    assert p1.area == (-250*sqrt(5) + 1250)/(4*tan(pi/5))
-    assert p1.length == 20*sqrt(-sqrt(5)/8 + Rational(5, 8))
+    assert p1.area.ex == ((-250*sqrt(5) + 1250)/(4*tan(pi/5))).ex
+    assert p1.length.equals(20*sqrt(-sqrt(5)/8 + Rational(5, 8)))
     assert p1.scale(2, 2) == \
         RegularPolygon(p1.center, p1.radius*2, p1._n, p1.rotation)
     assert RegularPolygon((0, 0), 1, 4).scale(2, 3) == \
@@ -273,10 +273,10 @@ def test_polygon():
     p4 = Point(0, x1)
     assert t3.bisectors()[p4] == Segment(p4, Point(x1*(sqrt(2) - 1), 0))
     ic = (250 - 125*sqrt(2))/50
-    assert t1.incenter == Point(ic, ic)
+    assert t1.incenter.equals(Point(ic, ic))
 
     # Inradius
-    assert t1.inradius == t1.incircle.radius == 5 - 5*sqrt(2)/2
+    assert t1.inradius == t1.incircle.radius == (10 - 5*sqrt(2))/2
     assert t2.inradius == t2.incircle.radius == 5*sqrt(3)/6
     assert t3.inradius == t3.incircle.radius == x1**2/((2 + sqrt(2))*Abs(x1))
 
@@ -454,8 +454,8 @@ def test_bisectors():
         Ray2D(Point2D(-1, 5), Point2D(-1 + sqrt(29)*(5*sin(acos(9*sqrt(145)/145)/2) + \
         2*cos(acos(9*sqrt(145)/145)/2))/29, sqrt(29)*(-5*cos(acos(9*sqrt(145)/145)/2) + \
         2*sin(acos(9*sqrt(145)/145)/2))/29 + 5))
-    assert poly.bisectors()[Point2D(-1, 1)] == Ray2D(Point2D(-1, 1), \
-        Point2D(-1 + sin(acos(sqrt(26)/26)/2 + pi/4), 1 - sin(-acos(sqrt(26)/26)/2 + pi/4)))
+    assert poly.bisectors()[Point2D(-1, 1)].equals(Ray2D(Point2D(-1, 1),
+        Point2D(-1 + sin(acos(sqrt(26)/26)/2 + pi/4), 1 - sin(-acos(sqrt(26)/26)/2 + pi/4))))
 
 def test_incenter():
     assert Triangle(Point(0, 0), Point(1, 0), Point(0, 1)).incenter.equals(

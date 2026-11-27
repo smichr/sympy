@@ -372,10 +372,10 @@ class Plane(GeometryEntity):
         >>> from sympy import Point3D, Plane
         >>> a = Plane(Point3D(1, 1, 2), Point3D(2, 4, 7), Point3D(3, 5, 1))
         >>> a.equation()
-        -23*x + 11*y - 2*z + 16
+        -23*(x - 1) + 11*(y - 1) - 2*(z - 2)
         >>> a = Plane(Point3D(1, 4, 2), normal_vector=(6, 6, 6))
         >>> a.equation()
-        6*x + 6*y + 6*z - 42
+        6*(x - 1) + 6*(y - 4) + 6*(z - 2)
 
         """
         coords = {x, y, z} - {None}

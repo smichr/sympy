@@ -274,9 +274,9 @@ To simplify expressions using trigonometric identities, use
     >>> trigsimp(sin(x)**2 + cos(x)**2)
     1
     >>> trigsimp(sin(x)**4 - 2*cos(x)**2*sin(x)**2 + cos(x)**4)
-    cos(4⋅x)   1
-    ──────── + ─
-       2       2
+    cos(4⋅x) + 1
+    ────────────
+         2
     >>> trigsimp(sin(x)*tan(x)/sec(x))
        2
     sin (x)

@@ -504,7 +504,7 @@ def rsolve_hyper(coeffs, f, n, **hints):
     >>> from sympy.abc import x
 
     >>> rsolve_hyper([-1, -1, 1], 0, x)
-    C0*(1/2 - sqrt(5)/2)**x + C1*(sqrt(5)/2 + 1/2)**x
+    C0*((1 - sqrt(5))/2)**x + C1*((sqrt(5) + 1)/2)**x
 
     >>> rsolve_hyper([-1, 1], 1 + x, x)
     C0 + x*(x + 1)/2
@@ -521,6 +521,8 @@ def rsolve_hyper(coeffs, f, n, **hints):
     coeffs = list(map(sympify, coeffs))
 
     f = sympify(f)
+    if f.is_Add:
+        f = f.expand()
 
     r, kernel, symbols = len(coeffs) - 1, [], set()
 
@@ -528,7 +530,7 @@ def rsolve_hyper(coeffs, f, n, **hints):
         if f.is_Add:
             similar = {}
 
-            for g in f.expand().args:
+            for g in f.args:
                 if not g.is_hypergeometric(n):
                     return None
 

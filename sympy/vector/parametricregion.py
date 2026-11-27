@@ -120,13 +120,13 @@ def parametric_region_list(reg):
 
     >>> s = Segment(Point(1, 3), Point(2, 6))
     >>> parametric_region_list(s)
-    [ParametricRegion((t + 1, 3*t + 3), (t, 0, 1))]
+    [ParametricRegion((t + 1, 3*(t + 1)), (t, 0, 1))]
 
     >>> p1, p2, p3, p4 = [(0, 1), (2, -3), (5, 3), (-2, 3)]
     >>> poly = Polygon(p1, p2, p3, p4)
     >>> parametric_region_list(poly)
     [ParametricRegion((2*t, 1 - 4*t), (t, 0, 1)), ParametricRegion((3*t + 2, 6*t - 3), (t, 0, 1)),\
-     ParametricRegion((5 - 7*t, 3), (t, 0, 1)), ParametricRegion((2*t - 2, 3 - 2*t),  (t, 0, 1))]
+     ParametricRegion((5 - 7*t, 3), (t, 0, 1)), ParametricRegion((2*(t - 1), 3 - 2*t),  (t, 0, 1))]
 
     """
     raise ValueError("SymPy cannot determine parametric representation of the region.")

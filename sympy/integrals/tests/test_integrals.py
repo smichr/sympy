@@ -85,11 +85,11 @@ def test_principal_value():
 
     s = x ** 2 / (x ** 2 - 1)
     assert Integral(s, (x, -oo, oo)).principal_value() is oo
-    assert Integral(s, (x, -2, 2)).principal_value() == -log(3) + 4
+    assert Integral(s, (x, -2, 2)).principal_value().ec == -log(3) + 4
 
     f = 1 / ((x ** 2 - 1) * (1 + x ** 2))
     assert Integral(f, (x, -oo, oo)).principal_value() == -pi / 2
-    assert Integral(f, (x, -2, 2)).principal_value() == -atan(2) - log(3) / 2
+    assert Integral(f, (x, -2, 2)).principal_value().ec == -atan(2) - log(3) / 2
 
 
 def diff_test(i):
@@ -1445,9 +1445,9 @@ def test_heurisch_option():
     # an integral that heurisch currently cannot handle
     assert integrate(exp(x)/x, x, heurisch=True) == Integral(exp(x)/x, x)
     # an integral where heurisch currently hangs, issue 15471
-    assert integrate(log(x)*cos(log(x))/x**Rational(3, 4), x, heurisch=False) == (
+    assert integrate(log(x)*cos(log(x))/x**Rational(3, 4), x, heurisch=False).expand() == (
         -128*x**Rational(1, 4)*sin(log(x))/289 + 240*x**Rational(1, 4)*cos(log(x))/289 +
-        (16*x**Rational(1, 4)*sin(log(x))/17 + 4*x**Rational(1, 4)*cos(log(x))/17)*log(x))
+        (16*x**Rational(1, 4)*sin(log(x))/17 + 4*x**Rational(1, 4)*cos(log(x))/17)*log(x)).expand()
 
 
 def test_issue_6828():
@@ -1537,7 +1537,7 @@ def test_issue_8901():
 def test_issue_8945():
     assert integrate(sin(x)**3/x, (x, 0, 1)) == -Si(3)/4 + 3*Si(1)/4
     assert integrate(sin(x)**3/x, (x, 0, oo)) == pi/4
-    assert integrate(cos(x)**2/x**2, x) == -Si(2*x) - cos(2*x)/(2*x) - 1/(2*x)
+    assert integrate(cos(x)**2/x**2, x).ec == -Si(2*x) - cos(2*x)/(2*x) - 1/(2*x)
 
 
 def test_issue_7130():
@@ -1819,7 +1819,7 @@ def test_issue_15494():
     assert abs(solution.subs(s, 1) - (-3.67440080236188)) <= 1e-8
 
     integrand = (exp(s/2) - 2*exp(S(8)/5*s) + exp(s))*exp(s)
-    assert integrate(integrand, s) == -10*exp(13*s/5)/13 + 2*exp(3*s/2)/3 + exp(2*s)/2
+    assert integrate(integrand, s).ec == -10*exp(13*s/5)/13 + 2*exp(3*s/2)/3 + exp(2*s)/2
 
 
 def test_li_integral():

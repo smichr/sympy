@@ -65,9 +65,9 @@ class jacobi(OrthogonalPolynomial):
     >>> jacobi(0, a, b, x)
     1
     >>> jacobi(1, a, b, x)
-    a/2 - b/2 + x*(a/2 + b/2 + 1)
+    x*(a + b + 2)/2 + (a - b)/2
     >>> jacobi(2, a, b, x)
-    a**2/8 - a*b/4 - a/8 + b**2/8 - b/8 + x**2*(a**2/8 + a*b/4 + 7*a/8 + b**2/8 + 7*b/8 + 3/2) + x*(a**2/4 + 3*a/4 - b**2/4 - 3*b/4) - 1/2
+    x**2*(a**2 + 2*a*b + 7*a + b**2 + 7*b + 12)/8 + x*(a**2 + 3*a - b**2 - 3*b)/4 + (a**2 - 2*a*b - a + b**2 - b - 4)/8
 
     >>> jacobi(n, a, b, x)
     jacobi(n, a, b, x)
@@ -97,7 +97,7 @@ class jacobi(OrthogonalPolynomial):
     jacobi(n, conjugate(a), conjugate(b), conjugate(x))
 
     >>> diff(jacobi(n,a,b,x), x)
-    (a/2 + b/2 + n/2 + 1/2)*jacobi(n - 1, a + 1, b + 1, x)
+    (a + b + n + 1)*jacobi(n - 1, a + 1, b + 1, x)/2
 
     See Also
     ========
@@ -313,7 +313,7 @@ class gegenbauer(OrthogonalPolynomial):
     >>> gegenbauer(2, a, x)
     x**2*(2*a**2 + 2*a) - a
     >>> gegenbauer(3, a, x)
-    x**3*(4*a**3/3 + 4*a**2 + 8*a/3) + x*(-2*a**2 - 2*a)
+    x**3*(4*a**3 + 12*a**2 + 8*a)/3 + x*(-2*a**2 - 2*a)
 
     >>> gegenbauer(n, a, x)
     gegenbauer(n, a, x)
@@ -321,7 +321,7 @@ class gegenbauer(OrthogonalPolynomial):
     (-1)**n*gegenbauer(n, a, x)
 
     >>> gegenbauer(n, a, 0)
-    2**n*sqrt(pi)*gamma(a + n/2)/(gamma(a)*gamma(1/2 - n/2)*gamma(n + 1))
+    2**n*sqrt(pi)*gamma(a + n/2)/(gamma(a)*gamma((1 - n)/2)*gamma(n + 1))
     >>> gegenbauer(n, a, 1)
     gamma(2*a + n)/(gamma(2*a)*gamma(n + 1))
 
@@ -1332,10 +1332,9 @@ class assoc_laguerre(OrthogonalPolynomial):
     >>> assoc_laguerre(1, a, x)
     a - x + 1
     >>> assoc_laguerre(2, a, x)
-    a**2/2 + 3*a/2 + x**2/2 + x*(-a - 2) + 1
+    x**2/2 + x*(-a - 2) + (a**2 + 3*a + 2)/2
     >>> assoc_laguerre(3, a, x)
-    a**3/6 + a**2 + 11*a/6 - x**3/6 + x**2*(a/2 + 3/2) +
-        x*(-a**2/2 - 5*a/2 - 3) + 1
+    -x**3/6 + x**2*(a + 3)/2 + x*(-a**2 - 5*a - 6)/2 + (a**3 + 6*a**2 + 11*a + 6)/6
 
     >>> assoc_laguerre(n, a, 0)
     binomial(a + n, a)

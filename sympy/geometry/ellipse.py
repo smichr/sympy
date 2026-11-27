@@ -209,7 +209,7 @@ class Ellipse(GeometrySet):
         >>> p1 = Point(0, 0)
         >>> e1 = Ellipse(p1, 3, 1)
         >>> e1.apoapsis
-        2*sqrt(2) + 3
+        3*(2*sqrt(2)/3 + 1)
 
         """
         return self.major * (1 + self.eccentricity)
@@ -442,7 +442,7 @@ class Ellipse(GeometrySet):
         >>> from sympy.abc import x, y
         >>> e1 = Ellipse(Point(1, 0), 3, 2)
         >>> eq1 = e1.equation(x, y); eq1
-        y**2/4 + (x/3 - 1/3)**2 - 1
+        y**2/4 + (x - 1)**2/9 - 1
         >>> eq2 = e1.equation(x, y, _slope=1); eq2
         (-x + y + 1)**2/8 + (x + y - 1)**2/18 - 1
 
@@ -456,7 +456,7 @@ class Ellipse(GeometrySet):
         equation, too:
 
         >>> r1 = p1.rotate(pi/4, e1.center)
-        >>> assert eq2.subs(x, r1.x).subs(y, r1.y) == 0
+        >>> assert eq2.subs(x, r1.x).subs(y, r1.y).expand() == 0
 
         References
         ==========
@@ -507,7 +507,7 @@ class Ellipse(GeometrySet):
         >>> from sympy import Point, Ellipse
         >>> e1 = Ellipse(Point(1, 0), 3, 2)
         >>> e1.evolute()
-        2**(2/3)*Abs(y)**(2/3) - 5**(2/3) + Abs(3*x - 3)**(2/3)
+        2**(2/3)*Abs(y)**(2/3) + 3**(2/3)*Abs(x - 1)**(2/3) - 5**(2/3)
         """
         if len(self.args) != 3:
             raise NotImplementedError('Evolute of arbitrary Ellipse is not supported.')
@@ -963,7 +963,7 @@ class Ellipse(GeometrySet):
         >>> p1 = Point(0, 0)
         >>> e1 = Ellipse(p1, 3, 1)
         >>> e1.periapsis
-        3 - 2*sqrt(2)
+        3*(1 - 2*sqrt(2)/3)
 
         """
         return self.major * (1 - self.eccentricity)

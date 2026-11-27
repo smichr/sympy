@@ -605,19 +605,19 @@ class Heaviside(DefinedFunction):
         >>> y = Symbol('y')
 
         >>> Heaviside(x).rewrite(sign)
-        sign(x)/2 + 1/2
+        (sign(x) + 1)/2
 
         >>> Heaviside(x, 0).rewrite(sign)
-        Piecewise((sign(x)/2 + 1/2, Ne(x, 0)), (0, True))
+        Piecewise(((sign(x) + 1)/2, Ne(x, 0)), (0, True))
 
         >>> Heaviside(x, nan).rewrite(sign)
-        Piecewise((sign(x)/2 + 1/2, Ne(x, 0)), (nan, True))
+        Piecewise(((sign(x) + 1)/2, Ne(x, 0)), (nan, True))
 
         >>> Heaviside(x - 2).rewrite(sign)
-        sign(x - 2)/2 + 1/2
+        (sign(x - 2) + 1)/2
 
         >>> Heaviside(x**2 - 2*x + 1).rewrite(sign)
-        sign(x**2 - 2*x + 1)/2 + 1/2
+        (sign(x**2 - 2*x + 1) + 1)/2
 
         >>> Heaviside(y).rewrite(sign)
         Heaviside(y)
@@ -651,6 +651,9 @@ class Heaviside(DefinedFunction):
         if self == Heaviside(0):
             return SingularityFunction(0, 0, 0)
         free = self.free_symbols
+        if len(free) != 1:
+            args = args.ec
+            free = args.free_symbols | H0.free_symbols
         if len(free) == 1:
             x = (free.pop())
             return SingularityFunction(x, solve(args, x)[0], 0)

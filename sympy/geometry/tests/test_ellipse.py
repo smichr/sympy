@@ -296,11 +296,15 @@ def test_ellipse_geom():
     a = Rational(53, 17)
     c = 2*sqrt(3991)/17
     ans = [Point(a - c/8, a/2 + c), Point(a + c/8, a/2 - c)]
-    assert e1.intersection(e2) == ans
+    pts = e1.intersection(e2)
+    assert len(pts) == len(ans)
+    assert {tuple(i.expand() for i in p.args) for p in pts} == {tuple(i.expand() for i in p.args) for p in ans}
     e2 = Ellipse(Point(x, y), 4, 8)
     c = sqrt(3991)
     ans = [Point(-c/68 + a, c*Rational(2, 17) + a/2), Point(c/68 + a, c*Rational(-2, 17) + a/2)]
-    assert [p.subs({x: 2, y:1}) for p in e1.intersection(e2)] == ans
+    pts = [p.subs({x: 2, y:1}) for p in e1.intersection(e2)]
+    assert len(pts) == len(ans)
+    assert {tuple(i.expand() for i in p.args) for p in pts} == {tuple(i.expand() for i in p.args) for p in ans}
 
     # Combinations of above
     assert e3.is_tangent(e3.tangent_lines(p1 + Point(y1, 0))[0])
@@ -340,7 +344,7 @@ def test_ellipse_geom():
     assert cir.rotate(pi/2) == Circle(Point(0, 1), 1)
     assert cir.rotate(pi/3) == Circle(Point(S.Half, sqrt(3)/2), 1)
     assert cir.rotate(pi/3, Point(1, 0)) == Circle(Point(1, 0), 1)
-    assert cir.rotate(pi/3, Point(0, 1)) == Circle(Point(S.Half + sqrt(3)/2, S.Half + sqrt(3)/2), 1)
+    assert cir.rotate(pi/3, Point(0, 1)) == Circle(Point((1 + sqrt(3))/2, (1 + sqrt(3))/2), 1)
 
 
 def test_construction():

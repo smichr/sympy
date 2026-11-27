@@ -392,7 +392,7 @@ def Wishart(symbol, n, scale_matrix):
     >>> density(W)(X).doit()
     exp(Trace(Matrix([
     [-1/3,  1/6],
-    [ 1/6, -1/3]])*X))*Determinant(X)**(n/2 - 3/2)/(2**n*3**(n/2)*sqrt(pi)*gamma(n/2)*gamma(n/2 - 1/2))
+    [ 1/6, -1/3]])*X))*Determinant(X)**((n - 3)/2)/(2**n*3**(n/2)*sqrt(pi)*gamma(n/2)*gamma(n/2 - 1/2))
     >>> density(W)([[1, 0], [0, 1]]).doit()
     exp(-2/3)/(2**n*3**(n/2)*sqrt(pi)*gamma(n/2)*gamma(n/2 - 1/2))
 
@@ -589,9 +589,9 @@ def MatrixStudentT(symbol, nu, location_matrix, scale_matrix_1, scale_matrix_2):
     >>> M = MatrixStudentT('M', v, [[1, 2]], [[1, 0], [0, 1]], [1])
     >>> X = MatrixSymbol('X', 1, 2)
     >>> density(M)(X)
-    gamma(v/2 + 1)*Determinant((Matrix([[-1, -2]]) + X)*(Matrix([
+    gamma((v + 2)/2)*gamma((v + 2)/2 - 1/2)*Determinant((Matrix([[-1, -2]]) + X)*(Matrix([
     [-1],
-    [-2]]) + X.T) + Matrix([[1]]))**(-v/2 - 1)/(pi**1.0*gamma(v/2)*Determinant(Matrix([[1]]))**1.0*Determinant(Matrix([
+    [-2]]) + X.T) + Matrix([[1]]))**((-v - 2)/2)/(pi**1.0*gamma((v + 1)/2)*gamma((v + 1)/2 - 1/2)*Determinant(Matrix([[1]]))**1.0*Determinant(Matrix([
     [1, 0],
     [0, 1]]))**0.5)
 

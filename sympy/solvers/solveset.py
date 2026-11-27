@@ -1186,7 +1186,7 @@ def solve_decomposition(f, symbol, domain):
                2
     >>> f3 = sin(x + 2)
     >>> pprint(sd(f3, x, S.Reals), use_unicode=False)
-    {2*n*pi - 2 | n in Integers} U {2*n*pi + pi - 2 | n in Integers}
+    {2*(n*pi - 1) | n in Integers} U {2*n*pi + pi - 2 | n in Integers}
 
     """
     from sympy.solvers.decompogen import decompogen
@@ -3279,7 +3279,7 @@ def substitution(system, symbols, result=[{}], known_symbols=[],
 
     >>> eqs = [z**2 + exp(2*x) - sin(y), -3 + exp(-y)]
     >>> substitution(eqs, [y, z])
-    {(-log(3), -sqrt(-exp(2*x) - sin(log(3)))), (-log(3), sqrt(-exp(2*x) - sin(log(3)))), (ImageSet(Lambda(_n, -log(3) + 2*_n*I*pi), Integers), ImageSet(Lambda(_n, -sqrt(sin(-log(3) + 2*_n*I*pi) - exp(2*x))), Integers)), (ImageSet(Lambda(_n, -log(3) + 2*_n*I*pi), Integers), ImageSet(Lambda(_n, sqrt(sin(-log(3) + 2*_n*I*pi) - exp(2*x))), Integers))}
+    {(-log(3), -sqrt(-exp(2*x) - sin(log(3)))), (-log(3), sqrt(-exp(2*x) - sin(log(3)))), (ImageSet(Lambda(_n, -log(3) - 2*_n*I*pi), Integers), ImageSet(Lambda(_n, -sqrt(-exp(2*x) - sin(log(3) + 2*_n*I*pi))), Integers)), (ImageSet(Lambda(_n, -log(3) - 2*_n*I*pi), Integers), ImageSet(Lambda(_n, sqrt(-exp(2*x) - sin(log(3) + 2*_n*I*pi))), Integers))}
 
     """
 

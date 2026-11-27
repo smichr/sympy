@@ -1104,7 +1104,7 @@ def fraction(expr: Expr | complex, exact: bool = False) -> tuple[Expr, Expr]:
 
        >>> u = Mul(2, x + 1, evaluate=False)
        >>> fraction(u)
-       (2*x + 2, 1)
+       (2*(x + 1), 1)
        >>> fraction(u, exact=True)
        (2*(x  + 1), 1)
     """

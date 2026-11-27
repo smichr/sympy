@@ -266,7 +266,7 @@ def test_sin_cos():
     assert refine(cos(n*pi), Q.integer(n)) == (-1)**n
     assert refine(sin(n*pi/2), Q.even(n)) == 0
     assert refine(cos(n*pi/2), Q.even(n)) == (-1)**(n/2)
-    assert refine(sin(n*pi/2), Q.odd(n)) == (-1)**((n + 3)/2)
+    assert refine(sin(n*pi/2), Q.odd(n)) == (-1)**((n - 1)/2)
     assert refine(cos(n*pi/2), Q.odd(n)) == 0
     assert refine(sin(x + n*pi), Q.integer(n)) == ((-1)**n) * sin(x)
     assert refine(cos(x + n*pi), Q.integer(n)) == ((-1)**n) * cos(x)
@@ -278,9 +278,9 @@ def test_sin_cos():
     assert refine(cos(x - n*pi), Q.even(n)) == cos(x)
     assert refine(sin(x + n*pi/2), Q.even(n)) == ((-1)**(n/2)) * sin(x)
     assert refine(cos(x + n*pi/2), Q.even(n)) == ((-1)**(n/2)) * cos(x)
-    assert refine(sin(x + n*pi/2), Q.odd(n)) == ((-1)**((n + 3)/2)) * cos(x)
+    assert refine(sin(x + n*pi/2), Q.odd(n)) == ((-1)**((n - 1)/2)) * cos(x)
     assert refine(cos(x + n*pi/2), Q.odd(n)) == ((-1)**((n + 1)/2)) * sin(x)
-    assert refine(sin(x - n*pi/2), Q.odd(n)) == ((-1)**((n + 3)/2)) * -cos(x)
+    assert refine(sin(x - n*pi/2), Q.odd(n)) == ((-1)**((n - 1)/2)) * -cos(x)
     assert refine(cos(x - n*pi / 2), Q.even(n)) == ((-1)**(n/2)) * cos(x)
     assert refine(sin(x + y + 2*n*pi), Q.integer(n)) == sin(x + y)
     assert refine(cos(x + y + 2*n*pi), Q.integer(n)) == cos(x + y)
@@ -290,9 +290,9 @@ def test_sin_cos():
     assert refine(cos(x + y + n*pi/2), Q.integer(n)) == cos(x + y + n*pi/2)
     m = Symbol('m')
     assert refine(cos(x + n*pi + m*pi / 2), Q.integer(n) & Q.even(m)) == \
-        (-1)**(n + m / 2) * cos(x)
+        (-1)**((m + 2*n)/2) * cos(x)
     assert refine(cos(x + n*pi + m*pi / 2), Q.integer(n) & Q.odd(m)) == \
-        (-1)**(n + (m + 1)/2) * sin(x)
+        (-1)**((m + 2*n + 1)/2) * sin(x)
     assert refine(cos(x + n*pi + m*pi / 2), Q.integer(n) & Q.integer(m)) == \
         (-1)**(n) * cos(x + m*pi / 2)
     assert refine(cos(x + (2*n + 1)*pi + m*pi / 2), \
@@ -304,10 +304,10 @@ def test_sin_cos():
     k = Symbol('k')
     assert refine(cos(x + n*pi + k*pi/2 + m*pi/2), \
                   Q.integer(n) & Q.odd(k) & Q.integer(m)) == \
-        (-1)**(n + (k + 1)/2) * sin(x + m*pi/2)
+        (-1)**((k + 2*n + 1)/2) * sin(x + m*pi/2)
     assert refine(sin(x + n*pi + k*pi/2 + m*pi/2), \
                   Q.integer(n) & Q.odd(k) & Q.integer(m)) == \
-        (-1)**(n + (k + 3)/2) * cos(x + m*pi/2)
+        (-1)**((k + 2*n - 1)/2) * cos(x + m*pi/2)
     assert refine(cos(x + n*pi/2 + k*pi/2 + m*pi/2), \
                   Q.odd(n) & Q.odd(k) & Q.integer(m)) == \
         (-1)**((n + k)/2) * cos(x + m*pi/2)

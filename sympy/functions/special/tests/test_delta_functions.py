@@ -161,6 +161,7 @@ def test_rewrite():
     assert DiracDelta(0, 1).rewrite(SingularityFunction) == SingularityFunction(0, 0, -2)
 
     assert Heaviside(x).rewrite(SingularityFunction) == SingularityFunction(x, 0, 0)
+    assert Heaviside(y + (-1)*(y - x) - 4).rewrite(SingularityFunction) == SingularityFunction(x, 4, 0)
     assert 5*x*y*Heaviside(y + 1).rewrite(SingularityFunction) == 5*x*y*SingularityFunction(y, -1, 0)
     assert ((x - 3)**3*Heaviside(x - 3)).rewrite(SingularityFunction) == (x - 3)**3*SingularityFunction(x, 3, 0)
     assert Heaviside(0).rewrite(SingularityFunction) == S.Half

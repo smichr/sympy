@@ -1574,13 +1574,13 @@ class li(DefinedFunction):
 
     >>> from sympy import Si, Ci, Shi, Chi
     >>> li(z).rewrite(Si)
-    -log(I*log(z)) - log(1/log(z))/2 + log(log(z))/2 + Ci(I*log(z)) + Shi(log(z))
+    -(log(1/log(z)) - log(log(z)))/2 - log(I*log(z)) + Ci(I*log(z)) + Shi(log(z))
     >>> li(z).rewrite(Ci)
-    -log(I*log(z)) - log(1/log(z))/2 + log(log(z))/2 + Ci(I*log(z)) + Shi(log(z))
+    -(log(1/log(z)) - log(log(z)))/2 - log(I*log(z)) + Ci(I*log(z)) + Shi(log(z))
     >>> li(z).rewrite(Shi)
-    -log(1/log(z))/2 - log(log(z))/2 + Chi(log(z)) + Shi(log(z))
+    -(log(1/log(z)) + log(log(z)))/2 + Chi(log(z)) + Shi(log(z))
     >>> li(z).rewrite(Chi)
-    -log(1/log(z))/2 - log(log(z))/2 + Chi(log(z)) + Shi(log(z))
+    -(log(1/log(z)) + log(log(z)))/2 + Chi(log(z)) + Shi(log(z))
 
     See Also
     ========
@@ -1873,7 +1873,7 @@ class Si(TrigonometricIntegral):
 
     >>> from sympy import expint
     >>> Si(z).rewrite(expint)
-    pi/2 - I*(expint(1, z*exp_polar(I*pi/2))/2 - expint(1, z*exp_polar(-I*pi/2))/2)
+    pi/2 - I*(expint(1, z*exp_polar(I*pi/2)) - expint(1, z*exp_polar(-I*pi/2)))/2
 
     It can be rewritten in the form of sinc function (by definition):
 
@@ -2025,7 +2025,7 @@ class Ci(TrigonometricIntegral):
 
     >>> from sympy import expint
     >>> Ci(z).rewrite(expint)
-    -expint(1, z*exp_polar(-I*pi/2))/2 - expint(1, z*exp_polar(I*pi/2))/2
+    (-expint(1, z*exp_polar(-I*pi/2)) - expint(1, z*exp_polar(I*pi/2)))/2
 
     See Also
     ========
@@ -2149,7 +2149,7 @@ class Shi(TrigonometricIntegral):
 
     >>> from sympy import expint
     >>> Shi(z).rewrite(expint)
-    -I*pi/2 + expint(1, z)/2 - expint(1, z*exp_polar(I*pi))/2
+    (expint(1, z) - expint(1, z*exp_polar(I*pi)))/2 - I*pi/2
 
     See Also
     ========
@@ -2266,7 +2266,7 @@ class Chi(TrigonometricIntegral):
 
     >>> from sympy import expint
     >>> Chi(z).rewrite(expint)
-    -I*pi/2 - expint(1, z)/2 - expint(1, z*exp_polar(I*pi))/2
+    -(expint(1, z) + expint(1, z*exp_polar(I*pi)))/2 - I*pi/2
 
     See Also
     ========

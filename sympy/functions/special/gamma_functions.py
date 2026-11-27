@@ -640,7 +640,7 @@ class polygamma(DefinedFunction):
     >>> polygamma(0, x).rewrite(harmonic)
     harmonic(x - 1) - EulerGamma
     >>> polygamma(2, x).rewrite(harmonic)
-    2*harmonic(x - 1, 3) - 2*zeta(3)
+    -2*(zeta(3) - harmonic(x - 1, 3))
     >>> ni = Symbol("n", integer=True)
     >>> polygamma(ni, x).rewrite(harmonic)
     (-1)**(n + 1)*(zeta(n + 1) - harmonic(x - 1, n + 1))*factorial(n)
@@ -903,7 +903,7 @@ class loggamma(DefinedFunction):
     >>> loggamma(S(5)/2)
     log(3*sqrt(pi)/4)
     >>> loggamma(n/2)
-    log(2**(1 - n)*sqrt(pi)*gamma(n)/gamma(n/2 + 1/2))
+    log(2**(1 - n)*sqrt(pi)*gamma(n)/gamma((n + 1)/2))
 
     And general rational arguments:
 
@@ -943,7 +943,7 @@ class loggamma(DefinedFunction):
     Series expansion is also supported:
 
     >>> from sympy import series
-    >>> series(loggamma(x), x, 0, 4).cancel()
+    >>> series(loggamma(x), x, 0, 4).cancel().expand()
     -log(x) - EulerGamma*x + pi**2*x**2/12 - x**3*zeta(3)/3 + O(x**4)
 
     We can numerically evaluate the ``loggamma`` function
@@ -1273,7 +1273,7 @@ class multigamma(DefinedFunction):
     >>> p = Symbol('p', positive=True, integer=True)
 
     >>> multigamma(x, p)
-    pi**(p*(p - 1)/4)*Product(gamma(-_k/2 + x + 1/2), (_k, 1, p))
+    pi**(p*(p - 1)/4)*Product(gamma(x + (1 - _k)/2), (_k, 1, p))
 
     Several special values are known:
 

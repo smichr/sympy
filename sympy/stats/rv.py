@@ -1012,7 +1012,7 @@ def characteristic_function(expr, condition=None, evaluate=True, **kwargs):
 
     >>> Z = Poisson('Z', 2)
     >>> characteristic_function(Z)
-    Lambda(_t, exp(2*exp(_t*I) - 2))
+    Lambda(_t, exp(2*(exp(_t*I) - 1)))
     """
     if condition is not None:
         return characteristic_function(given(expr, condition, **kwargs), **kwargs)

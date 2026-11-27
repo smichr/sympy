@@ -461,7 +461,7 @@ def refine_sin_cos(expr, assumptions):
     >>> refine_sin_cos(sin(n*pi/2), Q.odd(n) & Q.odd((n-1)/2))
     -1
     >>> refine_sin_cos(sin(x + n*pi/2), Q.odd(n))
-    (-1)**(n/2 + 3/2)*cos(x)
+    (-1)**((n - 1)/2)*cos(x)
     >>> refine_sin_cos(cos(x + n*pi/2), Q.even(n))
     (-1)**(n/2)*cos(x)
     >>> refine_sin_cos(cos(x + y + 2*n*pi), Q.integer(n))

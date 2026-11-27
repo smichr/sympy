@@ -621,12 +621,10 @@ class Column:
         >>> c.apply_support(10)
         >>> c.apply_load(10, 5, -1)
         >>> c.extension()
-        C_N*x + C_u - R_0*SingularityFunction(x, 0, 1)/210000
-        - R_10*SingularityFunction(x, 10, 1)/210000 - SingularityFunction(x, 5, 1)/21000
+        C_N*x + C_u + (-R_0*SingularityFunction(x, 0, 1) - R_10*SingularityFunction(x, 10, 1) - 10*SingularityFunction(x, 5, 1))/210000
         >>> c.solve_for_reaction_loads()
         >>> c.extension()
-        SingularityFunction(x, 0, 1)/42000 - SingularityFunction(x, 5, 1)/21000
-        + SingularityFunction(x, 10, 1)/42000
+        (5*SingularityFunction(x, 0, 1) - 10*SingularityFunction(x, 5, 1) + 5*SingularityFunction(x, 10, 1))/210000
         """
         load_equation = self._solved_load()
         x = self.variable

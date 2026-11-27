@@ -66,11 +66,11 @@ polarization:
 >>> transmitted_power = jones_2_stokes(transmitted_port)[0]
 >>> reflected_power = jones_2_stokes(reflected_port)[0]
 >>> print(transmitted_power)
-cos(-2*alpha + chi + psi)**2/2 + cos(2*alpha + chi - psi)**2/2
+(cos(-2*alpha + chi + psi)**2 + cos(2*alpha + chi - psi)**2)/2
 
 
 >>> print(reflected_power)
-sin(-2*alpha + chi + psi)**2/2 + sin(2*alpha + chi - psi)**2/2
+(sin(-2*alpha + chi + psi)**2 + sin(2*alpha + chi - psi)**2)/2
 
 Please see the description of the individual functions for further
 details and examples.
@@ -623,13 +623,13 @@ def mueller_matrix(J):
     ⎢  1/2       ────────      ────────    0⎥
     ⎢               2             2         ⎥
     ⎢                                       ⎥
-    ⎢cos(2⋅θ)  cos(4⋅θ)   1    sin(4⋅θ)     ⎥
-    ⎢────────  ──────── + ─    ────────    0⎥
-    ⎢   2         4       4       4         ⎥
+    ⎢cos(2⋅θ)  cos(4⋅θ) + 1    sin(4⋅θ)     ⎥
+    ⎢────────  ────────────    ────────    0⎥
+    ⎢   2           4             4         ⎥
     ⎢                                       ⎥
-    ⎢sin(2⋅θ)    sin(4⋅θ)    1   cos(4⋅θ)   ⎥
-    ⎢────────    ────────    ─ - ────────  0⎥
-    ⎢   2           4        4      4       ⎥
+    ⎢sin(2⋅θ)    sin(4⋅θ)    1 - cos(4⋅θ)   ⎥
+    ⎢────────    ────────    ────────────  0⎥
+    ⎢   2           4             4         ⎥
     ⎢                                       ⎥
     ⎣   0           0             0        0⎦
 
@@ -651,13 +651,13 @@ def mueller_matrix(J):
     >>> pprint(mueller_matrix(quarter_wave_retarder(theta)), use_unicode=True)
     ⎡1       0             0            0    ⎤
     ⎢                                        ⎥
-    ⎢   cos(4⋅θ)   1    sin(4⋅θ)             ⎥
-    ⎢0  ──────── + ─    ────────    -sin(2⋅θ)⎥
-    ⎢      2       2       2                 ⎥
+    ⎢   cos(4⋅θ) + 1    sin(4⋅θ)             ⎥
+    ⎢0  ────────────    ────────    -sin(2⋅θ)⎥
+    ⎢        2             2                 ⎥
     ⎢                                        ⎥
-    ⎢     sin(4⋅θ)    1   cos(4⋅θ)           ⎥
-    ⎢0    ────────    ─ - ────────  cos(2⋅θ) ⎥
-    ⎢        2        2      2               ⎥
+    ⎢     sin(4⋅θ)    1 - cos(4⋅θ)           ⎥
+    ⎢0    ────────    ────────────  cos(2⋅θ) ⎥
+    ⎢        2             2                 ⎥
     ⎢                                        ⎥
     ⎣0    sin(2⋅θ)     -cos(2⋅θ)        0    ⎦
 

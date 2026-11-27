@@ -6907,7 +6907,8 @@ def to_rational_coeffs(f):
     >>> g
     Poly(x**3 + x**2 - 1/4*x - 1/4, x, domain='QQ')
     >>> r1 = simplify(1/r)
-    >>> Poly(lc*r**3*(g.as_expr()).subs({x:x*r1}), x, domain='EX') == p
+    >>> q = Poly(lc*r**3*(g.as_expr()).subs({x:x*r1}), x, domain='EX')
+    >>> all(simplify(c) == 0 for c in (p - q).all_coeffs())
     True
 
     """
@@ -7755,7 +7756,7 @@ def nth_power_roots_poly(f, n, *gens, **args):
     >>> R_f = [ (r**2).expand() for r in roots(f) ]
     >>> R_g = roots(g).keys()
 
-    >>> set(R_f) == set(R_g)
+    >>> set(R_f) == {r.expand() for r in R_g}
     True
 
     """
@@ -7800,7 +7801,7 @@ def cancel(f, *gens, _signsimp=True, **args):
     will appear as a sum. To recover a rational form use `together` on the result:
 
     >>> cancel(x/2 + 1)
-    x/2 + 1
+    (x + 2)/2
     >>> together(_)
     (x + 2)/2
     """

@@ -53,13 +53,13 @@ class ExprWithIntLimits(ExprWithLimits):
         >>> Sn = S.change_index(x, x + 1, y)
         >>> Sn
         Sum(y - 1, (y, a + 1, b + 1))
-        >>> Sn.doit()
+        >>> Sn.doit().expand()
         -a**2/2 + a/2 + b**2/2 + b/2
 
         >>> Sn = S.change_index(x, -x, y)
         >>> Sn
         Sum(-y, (y, -b, -a))
-        >>> Sn.doit()
+        >>> Sn.doit().expand()
         -a**2/2 + a/2 + b**2/2 + b/2
 
         >>> Sn = S.change_index(x, x+u)
@@ -68,15 +68,15 @@ class ExprWithIntLimits(ExprWithLimits):
         >>> Sn.doit()
         -a**2/2 - a*u + a/2 + b**2/2 + b*u + b/2 - u*(-a + b + 1) + u
         >>> simplify(Sn.doit())
-        -a**2/2 + a/2 + b**2/2 + b/2
+        (-a**2 + a + b**2 + b)/2
 
         >>> Sn = S.change_index(x, -x - u, y)
         >>> Sn
-        Sum(-u - y, (y, -b - u, -a - u))
+        Sum(-(u + y), (y, -b - u, -a - u))
         >>> Sn.doit()
-        -a**2/2 - a*u + a/2 + b**2/2 + b*u + b/2 - u*(-a + b + 1) + u
+        -u*(-a + b + 1) - (a**2/2 + a*u - a/2 - b**2/2 - b*u - b/2 - u)
         >>> simplify(Sn.doit())
-        -a**2/2 + a/2 + b**2/2 + b/2
+        (-a**2 + a + b**2 + b)/2
 
         >>> P = Product(i*j**2, (i, a, b), (j, c, d))
         >>> P
@@ -97,7 +97,7 @@ class ExprWithIntLimits(ExprWithLimits):
         >>> Sn.doit()
         (a**2*u**2/2 + a*u*v + a*u/2 - b**2*u**2/2 - b*u*v + b*u/2 + v)/u - v*(a*u - b*u + 1)/u
         >>> simplify(Sn.doit())
-        a**2*u/2 + a/2 - b**2*u/2 + b/2
+        (a**2*u + a - b**2*u + b)/2
 
         However, the last result can be inconsistent with usual
         summation where the index increment is always 1. This is

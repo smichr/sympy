@@ -34,7 +34,7 @@ Examples
 >>> variance(X+Y) # Variance of the sum of two dice
 35/6
 >>> simplify(P(Z>1)) # Probability of Z being greater than 1
-1/2 - erf(sqrt(2)/2)/2
+(1 - erf(sqrt(2)/2))/2
 
 
 One could also create custom distribution and define custom random variables

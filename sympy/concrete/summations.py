@@ -774,15 +774,15 @@ class Sum(AddWithLimits, ExprWithIntLimits):
 
             >>> s, e = Sum(1/k, (k, a, b)).euler_maclaurin()
             >>> s
-            -log(a) + log(b) + 1/(2*b) + 1/(2*a)
+            (1/b + 1/a)/2 - log(a) + log(b)
             >>> e
-            Abs(1/(12*b**2) - 1/(12*a**2))
+            Abs(b**(-2) - 1/a**2)/12
 
         If the function is a polynomial of degree at most 2n+1, the
         Euler-Maclaurin formula becomes exact (and e = 0 is returned):
 
             >>> Sum(k, (k, 2, b)).euler_maclaurin()
-            (b**2/2 + b/2 - 1, 0)
+            (b**2/2 + (b + 2)/2 - 2, 0)
             >>> Sum(k, (k, 2, b)).doit()
             b**2/2 + b/2 - 1
 
@@ -976,13 +976,13 @@ def summation(f, *symbols, **kwargs):
     >>> from sympy import summation, oo, symbols, log
     >>> i, n, m = symbols('i n m', integer=True)
 
-    >>> summation(2*i - 1, (i, 1, n))
+    >>> summation(2*i - 1, (i, 1, n)).expand()
     n**2
     >>> summation(1/2**i, (i, 0, oo))
     2
     >>> summation(1/log(n)**n, (n, 2, oo))
     Sum(log(n)**(-n), (n, 2, oo))
-    >>> summation(i, (i, 0, n), (n, 0, m))
+    >>> summation(i, (i, 0, n), (n, 0, m)).expand()
     m**3/6 + m**2/2 + m/3
 
     A condition attached to a closed form is not necessarily a complete
@@ -1488,24 +1488,24 @@ def eval_sum_residue(f, i_a_b):
     Infinite series of even rational functions.
 
     >>> Sum(1 / (x**2 + 1), (x, 0, oo)).doit()
-    pi/(2*tanh(pi)) + 1/2
+    (pi/tanh(pi) + 1)/2
 
     Infinite series of alternating even rational functions.
 
     >>> Sum((-1)**x / (x**2 + 1), (x, 0, oo)).doit()
-    pi/(2*sinh(pi)) + 1/2
+    (pi/sinh(pi) + 1)/2
 
     This also have heuristics to transform arbitrarily shifted summand or
     arbitrarily shifted summation range to the canonical problem the
     formula can handle.
 
     >>> Sum(1 / (x**2 + 2*x + 2), (x, -1, oo)).doit()
-    pi/(2*tanh(pi)) + 1/2
+    (pi/tanh(pi) + 1)/2
     >>> Sum(1 / (x**2 + 4*x + 5), (x, -2, oo)).doit()
-    pi/(2*tanh(pi)) + 1/2
-    >>> Sum(1 / (x**2 + 1), (x, 1, oo)).doit()
+    (pi/tanh(pi) + 1)/2
+    >>> Sum(1 / (x**2 + 1), (x, 1, oo)).doit().expand()
     pi/(2*tanh(pi)) - 1/2
-    >>> Sum(1 / (x**2 + 1), (x, 2, oo)).doit()
+    >>> Sum(1 / (x**2 + 1), (x, 2, oo)).doit().expand()
     pi/(2*tanh(pi)) - 1
 
     References

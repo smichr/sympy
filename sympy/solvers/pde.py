@@ -159,7 +159,7 @@ def pdsolve(eq, func=None, hint='default', dict=False, solvefun=None, **kwargs):
     >>> uy = u.diff(y)
     >>> eq = Eq(1 + (2*(ux/u)) + (3*(uy/u)), 0)
     >>> pdsolve(eq)
-    Eq(f(x, y), F(3*x - 2*y)*exp(-2*x/13 - 3*y/13))
+    Eq(f(x, y), F(3*x - 2*y)*exp(-(2*x + 3*y)/13))
 
     """
 
@@ -402,7 +402,7 @@ def checkpdesol(pde, sol, func=None, solve_for_func=True):
     >>> assert checkpdesol(eq, sol)[0]
     >>> eq = x*f(x,y) + f(x,y).diff(x)
     >>> checkpdesol(eq, sol)
-    (False, (x*F(4*x - 3*y) - 6*F(4*x - 3*y)/25 + 4*Subs(Derivative(F(_xi_1), _xi_1), _xi_1, 4*x - 3*y))*exp(-6*x/25 - 8*y/25))
+    (False, (25*x*F(4*x - 3*y) - 6*F(4*x - 3*y) + 100*Subs(Derivative(F(_xi_1), _xi_1), _xi_1, 4*x - 3*y))*exp(-2*(3*x + 4*y)/25)/25)
     """
 
     # Converting the pde into an equation
@@ -505,11 +505,11 @@ def pde_1st_linear_constant_coeff_homogeneous(eq, func, order, match, solvefun):
     >>> from sympy.abc import x,y
     >>> f = Function('f')
     >>> pdsolve(f(x,y) + f(x,y).diff(x) + f(x,y).diff(y))
-    Eq(f(x, y), F(x - y)*exp(-x/2 - y/2))
+    Eq(f(x, y), F(x - y)*exp(-(x + y)/2))
     >>> pprint(pdsolve(f(x,y) + f(x,y).diff(x) + f(x,y).diff(y)))
-                          x   y
-                        - - - -
-                          2   2
+                        -(x + y)
+                        ---------
+                            2
     f(x, y) = F(x - y)*e
 
     References

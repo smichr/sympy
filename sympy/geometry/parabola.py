@@ -205,11 +205,11 @@ class Parabola(GeometrySet):
         >>> from sympy import Parabola, Point, Line
         >>> p1 = Parabola(Point(0, 0), Line(Point(5, 8), Point(7, 8)))
         >>> p1.equation()
-        -x**2 - 16*y + 64
+        -x**2 - 16*(y - 4)
         >>> p1.equation('f')
-        -f**2 - 16*y + 64
+        -f**2 - 16*(y - 4)
         >>> p1.equation(y='z')
-        -x**2 - 16*z + 64
+        -x**2 - 16*(z - 4)
 
         """
         x = _symbol(x, real=True)

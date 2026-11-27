@@ -148,7 +148,7 @@ class CompoundDistribution(Distribution, NamedArgsMixin):
     >>> C.set
     Interval(-oo, oo)
     >>> C.pdf(x, evaluate=True).simplify()
-    exp(-x**2/64 + x/16 - 1/16)/(8*sqrt(pi))
+    exp((-x**2 + 4*x - 4)/64)/(8*sqrt(pi))
 
     References
     ==========

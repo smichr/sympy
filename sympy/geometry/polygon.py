@@ -2565,7 +2565,7 @@ class Triangle(Polygon):
         >>> p1, p2, p3 = Point(0, 0), Point(1, 0), Point(0, 1)
         >>> t = Triangle(p1, p2, p3)
         >>> t.incenter
-        Point2D(1 - sqrt(2)/2, 1 - sqrt(2)/2)
+        Point2D((2 - sqrt(2))/2, (2 - sqrt(2))/2)
 
         """
         s = self.sides
@@ -2626,7 +2626,7 @@ class Triangle(Polygon):
         >>> p1, p2, p3 = Point(0, 0), Point(2, 0), Point(0, 2)
         >>> t = Triangle(p1, p2, p3)
         >>> t.incircle
-        Circle(Point2D(2 - sqrt(2), 2 - sqrt(2)), 2 - sqrt(2))
+        Circle(Point2D((4 - 2*sqrt(2))/2, (4 - 2*sqrt(2))/2), (4 - 2*sqrt(2))/2)
 
         """
         return Circle(self.incenter, self.inradius)
@@ -2659,7 +2659,7 @@ class Triangle(Polygon):
         >>> p1, p2, p3 = Point(0, 0), Point(6, 0), Point(0, 2)
         >>> t = Triangle(p1, p2, p3)
         >>> t.exradii[t.sides[2]]
-        sqrt(10) - 2
+        (6*sqrt(10) - 12)/6
 
         References
         ==========
@@ -2705,7 +2705,7 @@ class Triangle(Polygon):
         >>> p1, p2, p3 = Point(0, 0), Point(6, 0), Point(0, 2)
         >>> t = Triangle(p1, p2, p3)
         >>> t.excenters[t.sides[0]]
-        Point2D(sqrt(10) + 4, sqrt(10) + 4)
+        Point2D((6*sqrt(10) + 24)/6, (6*sqrt(10) + 24)/6)
 
         See Also
         ========

@@ -914,9 +914,9 @@ def inverse_mellin_transform(F, s, x, strip, **hints):
     >>> inverse_mellin_transform(f, s, x, (-oo, -1))
     x*(1 - 1/x**2)*Heaviside(x - 1)/2
     >>> inverse_mellin_transform(f, s, x, (-1, 1))
-    -x*Heaviside(1 - x)/2 - Heaviside(x - 1)/(2*x)
+    -(x*Heaviside(1 - x)/2 + Heaviside(x - 1)/(2*x))
     >>> inverse_mellin_transform(f, s, x, (1, oo))
-    (1/2 - x**2/2)*Heaviside(1 - x)/x
+    (1 - x**2)*Heaviside(1 - x)/(2*x)
 
     See Also
     ========
@@ -1208,7 +1208,7 @@ def sine_transform(f, x, k, **hints):
     >>> sine_transform(x*exp(-a*x**2), x, k)
     sqrt(2)*k*exp(-k**2/(4*a))/(4*a**(3/2))
     >>> sine_transform(x**(-a), x, k)
-    2**(1/2 - a)*k**(a - 1)*gamma(1 - a/2)/gamma(a/2 + 1/2)
+    2**(1/2 - a)*k**(a - 1)*gamma(1 - a/2)/gamma((a + 1)/2)
 
     See Also
     ========

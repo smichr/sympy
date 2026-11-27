@@ -1056,8 +1056,7 @@ class SecondNonlinearAutonomousConserved(SinglePatternODESolver):
     >>> from sympy import exp, log
     >>> eq = f(x).diff(x, 2) - exp(f(x)) + log(f(x))
     >>> dsolve(eq, simplify=False)
-    [Eq(Integral(1/sqrt(-2*_u*log(_u) + 2*_u + C1 + 2*exp(_u)), (_u, f(x))), C2 + x),
-    Eq(Integral(1/sqrt(-2*_u*log(_u) + 2*_u + C1 + 2*exp(_u)), (_u, f(x))), C2 - x)]
+    [Eq(Integral(1/sqrt(C1 - 2*(_u*log(_u) - _u - exp(_u))), (_u, f(x))), C2 + x), Eq(Integral(1/sqrt(C1 - 2*(_u*log(_u) - _u - exp(_u))), (_u, f(x))), C2 - x)]
 
     References
     ==========
@@ -1943,7 +1942,7 @@ class NthOrderReducible(SingleODESolver):
     >>> eq = Eq(x*f(x).diff(x)**2 + f(x).diff(x, 2), 0)
     >>> dsolve(eq, f(x), hint='nth_order_reducible')
     ... # doctest: +NORMALIZE_WHITESPACE
-    Eq(f(x), C1 - sqrt(-1/C2)*log(x - C2*sqrt(-1/C2)) + sqrt(-1/C2)*log(C2*sqrt(-1/C2) + x))
+    Eq(f(x), C1 + sqrt(-1/C2)*(log(C2*sqrt(-1/C2) + x) - log(x - C2*sqrt(-1/C2))))
 
     """
     hint = "nth_order_reducible"
@@ -2969,10 +2968,11 @@ class LieGroup(SingleODESolver):
     >>> f = Function('f')
     >>> pprint(dsolve(f(x).diff(x) + 2*x*f(x) - x*exp(-x**2), f(x),
     ... hint='lie_group'))
-           /      2\    2
-           |     x |  -x
-    f(x) = |C1 + --|*e
-           \     2 /
+                        2
+           /      2\  -x
+           \C1 + x /*e
+    f(x) = --------------
+                 2
 
 
     References
