@@ -110,7 +110,9 @@ def test_solve_biquadratic():
     s = sqrt(2*r**2 - 1)
     a = (3 - s)/2
     b = (3 + s)/2
-    assert solve_poly_system([f_1, f_2], x, y) == [(a, b), (b, a)]
+    sol = solve_poly_system([f_1, f_2], x, y)
+    assert len(sol) == 2
+    assert {tuple(i.exx for i in pair) for pair in sol} == {(a.ex, b.ex), (b.ex, a.ex)}
 
     f_1 = (x - 1)**2 + (y - 2)**2 - r**2
     f_2 = (x - 1)**2 + (y - 1)**2 - r**2

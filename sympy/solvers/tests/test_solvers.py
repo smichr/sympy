@@ -292,9 +292,8 @@ def test_solve_polynomial_cv_2():
     Test for solving on equations that can be converted to a polynomial equation
     multiplying both sides of the equation by x**m
     """
-    assert solve(x + 1/x - 1, x) in \
-        [[ S.Half + I*sqrt(3)/2, S.Half - I*sqrt(3)/2],
-         [ S.Half - I*sqrt(3)/2, S.Half + I*sqrt(3)/2]]
+    p, q = (1 + I*sqrt(3))/2, (1 - I*sqrt(3))/2
+    assert solve(x + 1/x - 1, x) in [[p, q], [q, p]]
 
 
 def test_quintics_1():
@@ -905,7 +904,7 @@ def test_PR1964():
     # issue 4497
     assert solve(1/root(5 + x, 5) - 9, x) == [Rational(-295244, 59049)]
 
-    assert solve(sqrt(x) + sqrt(sqrt(x)) - 4) == [(Rational(-1, 2) + sqrt(17)/2)**4]
+    assert solve(sqrt(x) + sqrt(sqrt(x)) - 4) == [(sqrt(17) - 1)**4/16]
     assert set(solve(Poly(sqrt(exp(x)) + sqrt(exp(-x)) - 4))) in \
         [
             {log((-sqrt(3) + 2)**2), log((sqrt(3) + 2)**2)},
@@ -915,7 +914,7 @@ def test_PR1964():
     assert set(solve(Poly(exp(x) + exp(-x) - 4))) == \
         {log(-sqrt(3) + 2), log(sqrt(3) + 2)}
     assert set(solve(x**y + x**(2*y) - 1, x)) == \
-        {(Rational(-1, 2) + sqrt(5)/2)**(1/y), (Rational(-1, 2) - sqrt(5)/2)**(1/y)}
+        {((sqrt(5) - 1)/2)**(1/y), ((-1)*(sqrt(5) + 1)/2)**(1/y)}
 
     assert solve(exp(x/y)*exp(-z/y) - 2, y) == [(x - z)/log(2)]
     assert solve(
@@ -1005,7 +1004,7 @@ def test_issue_5132():
     eqs = [exp(x)**2 - sin(y) + z**2, 1/exp(y) - 3]
     assert solve(eqs, set=True) == \
         ([y, z], {
-        (-log(3), sqrt(-exp(2*x) - sin(log(3)))),
+        (-log(3), sqrt((-1)*(exp(2*x) + sin(log(3))))),
         (-log(3), -sqrt(-exp(2*x) - sin(log(3))))})
     assert solve(eqs, x, z, set=True) == (
         [x, z],
@@ -1013,11 +1012,11 @@ def test_issue_5132():
     assert set(solve(eqs, x, y)) == \
         {
             (log(-sqrt(-z**2 - sin(log(3)))), -log(3)),
-        (log(-z**2 - sin(log(3)))/2, -log(3))}
+        (log((-1)*(z**2 + sin(log(3))))/2, -log(3))}
     assert set(solve(eqs, y, z)) == \
         {
             (-log(3), -sqrt(-exp(2*x) - sin(log(3)))),
-        (-log(3), sqrt(-exp(2*x) - sin(log(3))))}
+        (-log(3), sqrt((-1)*(exp(2*x) + sin(log(3)))))}
     eqs = [exp(x)**2 - sin(y) + z, 1/exp(y) - 3]
     assert solve(eqs, set=True) == ([y, z], {
         (-log(3), -exp(2*x) - sin(log(3)))})
@@ -1025,7 +1024,7 @@ def test_issue_5132():
         [x, z], {(x, -exp(2*x) + sin(y))})
     assert set(solve(eqs, x, y)) == {
             (log(-sqrt(-z - sin(log(3)))), -log(3)),
-            (log(-z - sin(log(3)))/2, -log(3))}
+            (log((-1)*(z + sin(log(3))))/2, -log(3))}
     assert solve(eqs, z, y) == \
         [(-exp(2*x) - sin(log(3)), -log(3))]
     assert solve((sqrt(x**2 + y**2) - sqrt(10), x + y - 4), set=True) == (
@@ -1108,7 +1107,7 @@ def test_issue_24609_xfail():
 
 
 def test_polysys():
-    assert set(solve([x**2 + 2/y - 2, x + y - 3], [x, y])) == \
+    assert {tuple(i.exx for i in t) for t in solve([x**2 + 2/y - 2, x + y - 3], [x, y])} == \
         {(S.One, S(2)), (1 + sqrt(5), 2 - sqrt(5)),
         (1 - sqrt(5), 2 + sqrt(5))}
     assert solve([x**2 + y - 2, x**2 + y]) == []
@@ -1529,7 +1528,7 @@ def test_issue_5849():
     dI1: -4*I2 - 8*I3 - 4*I5 - 6*I6 + 24,
     I4: I3 - I5,
     dQ4: I3 - I5,
-    Q4: -I3/2 + 3*I5/2 - dI4/2,
+    Q4: (-I3 + 3*I5 - dI4)/2,
     dQ2: I2,
     Q2: 2*I3 + 2*I5 + 3*I6}]
 
@@ -1543,7 +1542,7 @@ def test_issue_5849():
     # the matrix solver (tested below) doesn't like this because it produces
     # a zero row in the matrix. Is this related to issue 4551?
     assert [ei.subs(
-        ans[0]) for ei in e] == [0, 0, I3 - I6, -I3 + I6, 0, 0, 0, 0, 0]
+        ans[0]).ec for ei in e] == [0, 0, I3 - I6, -I3 + I6, 0, 0, 0, 0, 0]
 
 
 def test_issue_5849_matrix():
@@ -1669,7 +1668,7 @@ def test_issue_5901():
 
 def test_issue_5912():
     assert set(solve(x**2 - x - 0.1, rational=True)) == \
-        {S.Half + sqrt(35)/10, -sqrt(35)/10 + S.Half}
+        {(5 + sqrt(35))/10, (5 - sqrt(35))/10}
     ans = solve(x**2 - x - 0.1, rational=False)
     assert len(ans) == 2 and all(a.is_Number for a in ans)
     ans = solve(x**2 - x - 0.1)
@@ -1745,12 +1744,12 @@ def test_exclude():
     # TODO: Investigate why currently solution [0] is preferred over [1].
     assert solve(eqs, exclude=[Vplus, s, C]) in [[{
         Vminus: Vplus,
-        V1: Vout/2 + Vplus/2 + sqrt((Vout - 5*Vplus)*(Vout - Vplus))/2,
+        V1: (Vout + Vplus + sqrt((Vout - 5*Vplus)*(Vout - Vplus)))/2,
         R: (Vout - 3*Vplus - sqrt(Vout**2 - 6*Vout*Vplus + 5*Vplus**2))/(2*C*Vplus*s),
         Rf: Ri*(Vout - Vplus)/Vplus,
     }, {
         Vminus: Vplus,
-        V1: Vout/2 + Vplus/2 - sqrt((Vout - 5*Vplus)*(Vout - Vplus))/2,
+        V1: (Vout + Vplus - sqrt((Vout - 5*Vplus)*(Vout - Vplus)))/2,
         R: (Vout - 3*Vplus + sqrt(Vout**2 - 6*Vout*Vplus + 5*Vplus**2))/(2*C*Vplus*s),
         Rf: Ri*(Vout - Vplus)/Vplus,
     }], [{
@@ -1881,7 +1880,7 @@ def test_issues_6819_6820_6821_6248_8692_25777_25779():
 
     # issue 8692
     assert solve(Eq(Abs(x + 1) + Abs(x**2 - 7), 9), x) == [
-        sqrt(61)/2 - S(1)/2, S(1)/2 - sqrt(69)/2]
+        (sqrt(61) - 1)/2, (1 - sqrt(69))/2]
     # issue 7145
     assert solve(2*abs(x) - abs(x - 1)) == [-1, Rational(1, 3)]
 
@@ -2086,7 +2085,7 @@ def test_lambert_bivariate():
 
 def test_rewrite_trig():
     assert solve(sin(x) + tan(x)) == [0, -pi, pi, 2*pi]
-    assert set(solve(sin(x) + sec(x))) == {
+    assert {i.exx for i in solve(sin(x) + sec(x))} == {
         -2*atan(Rational(-1, 2) + sqrt(2)*sqrt(1 - sqrt(3)*I)/2 + sqrt(3)*I/2),
         2*atan(S.Half - sqrt(2)*sqrt(1 + sqrt(3)*I)/2 + sqrt(3)*I/2), 2*atan(S.Half
         + sqrt(2)*sqrt(1 + sqrt(3)*I)/2 + sqrt(3)*I/2), 2*atan(S.Half -
@@ -2111,7 +2110,7 @@ def test_rewrite_trigh():
 def test_uselogcombine():
     eq = z - log(x) + log(y/(x*(-1 + y**2/x**2)))
     assert solve(eq, x, force=True) == [-sqrt(y*(y - exp(z))), sqrt(y*(y - exp(z)))]
-    assert set(solve(log(x + 3) + log(1 + 3/x) - 3)) in [
+    assert {i.exx for i in solve(log(x + 3) + log(1 + 3/x) - 3)} in [
         {-3 + sqrt(-12 + exp(3))*exp(Rational(3, 2))/2 + exp(3)/2,
         -sqrt(-12 + exp(3))*exp(Rational(3, 2))/2 - 3 + exp(3)/2},
         {-3 + sqrt(-36 + (-exp(3) + 6)**2)/2 + exp(3)/2,
@@ -2520,7 +2519,7 @@ def test_issue_12024():
 def test_issue_17452():
     assert solve((7**x)**x + pi, x) == [-sqrt(log(pi) + I*pi)/sqrt(log(7)),
                                         sqrt(log(pi) + I*pi)/sqrt(log(7))]
-    assert solve(x**(x/11) + pi/11, x) == [exp(LambertW(-11*log(11) + 11*log(pi) + 11*I*pi))]
+    assert solve(x**(x/11) + pi/11, x) == [exp(LambertW(11*(log(pi/11) + I*pi)))]
 
 
 def test_issue_17799():
@@ -2570,12 +2569,13 @@ def test_issue_19113_19102():
     h = S.Half
     got = solve(cos(x)**2 + sin(x))
     expect = [
-        2*atan(-h + sqrt(5)/2 + sqrt(2)*sqrt(1 - sqrt(5))/2),
+        2*atan(-h + sqrt(5)/2 + sqrt(2)*I*sqrt(sqrt(5) - 1)/2),
         -2*atan(-sqrt(2)*sqrt(1 + sqrt(5))/2 + h + sqrt(5)/2),
         -2*atan(h + sqrt(5)/2 + sqrt(2)*sqrt(1 + sqrt(5))/2),
-        -2*atan(-sqrt(5)/2 + h + sqrt(2)*sqrt(1 - sqrt(5))/2),
+        -2*atan(-sqrt(5)/2 + h + sqrt(2)*I*sqrt(sqrt(5) - 1)/2),
         ]
-    assert all(i.equals(j) for i, j in zip(got, expect))
+    assert len(got) == len(expect)
+    assert {i.exx for i in got} == {i.exx for i in expect}
     assert solve(3*cos(x) - sin(x)) == [atan(3)]
 
 
@@ -2685,7 +2685,8 @@ def test_issue_22717():
 def test_issue_25176():
     eq = (x - 5)**-8 - 3
     sol = solve(eq)
-    assert not any(eq.subs(x, i) for i in sol)
+    assert len(sol) == 8
+    assert not any(eq.subs(x, i).exx for i in sol)
 
 
 def test_issue_10169():

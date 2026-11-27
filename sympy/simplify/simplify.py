@@ -334,12 +334,11 @@ def hypersimp(f, k):
     g = expand_func(g)
     g = powsimp(g, deep=True, combine='exp')
     if not g.is_rational_function(k):
-        # Normalize gamma arguments so their shifts are recognizable.
-        g = g.replace(
-            lambda h: h.func is gamma,
-            lambda h: gamma(expand_mul(h.args[0])))
-        g = expand_func(g)
-        g = powsimp(g, deep=True, combine='exp')
+        if g.has(gamma):
+            # Normalize gamma arguments so their shifts are recognizable.
+            g = g.replace(gamma, lambda t: gamma(expand_mul(t)))
+            g = expand_func(g)
+            g = powsimp(g, deep=True, combine='exp')
 
         if not g.is_rational_function(k):
             # Normalize exponents of powers that depend on k.

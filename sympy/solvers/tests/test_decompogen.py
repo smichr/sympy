@@ -57,4 +57,4 @@ def test_compogen():
         Abs(3*cos(x) + cos(y)**2 - 4)
     assert compogen([x**2 + 2*x + 1, x**2], x) == x**4 + 2*x**2 + 1
     # the result is in unsimplified form
-    assert compogen([x**2 - x - 1, x**2 + x], x) == -x**2 - x + (x**2 + x)**2 - 1
+    assert compogen([x**2 - x - 1, x**2 + x], x) == (x**2 + x)**2 + (-1)*(x**2 + x) - 1

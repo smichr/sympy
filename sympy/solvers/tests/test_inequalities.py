@@ -289,8 +289,8 @@ def test_solve_univariate_inequality():
         Or(Eq(x, 0), Eq(x, 3))
     # issue 2785:
     assert isolve(x**3 - 2*x - 1 > 0, x, relational=False) == \
-        Union(Interval(-1, -sqrt(5)/2 + S.Half, True, True),
-              Interval(S.Half + sqrt(5)/2, oo, True, True))
+        Union(Interval(-1, (1 - sqrt(5))/2, True, True),
+              Interval((1 + sqrt(5))/2, oo, True, True))
     # issue 2794:
     assert isolve(x**3 - x**2 + x - 1 > 0, x, relational=False) == \
         Interval(1, oo, True)

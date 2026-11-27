@@ -988,8 +988,10 @@ def solve(f, *symbols, **flags):
 
         # rewrite hyperbolics in terms of exp if they have symbols of
         # interest
-        f[i] = f[i].replace(lambda w: isinstance(w, HyperbolicFunction) and \
+        rewritten = f[i].replace(lambda w: isinstance(w, HyperbolicFunction) and \
             w.has_free(*symbols), lambda w: w.rewrite(exp))
+        if rewritten != f[i]:
+            f[i] = rewritten.ec
 
         # if we have a Matrix, we need to iterate over its elements again
         if f[i].is_Matrix:
@@ -2609,9 +2611,13 @@ def det_minor(M):
     if n == 2:
         return M[0, 0]*M[1, 1] - M[1, 0]*M[0, 1]
     else:
-        return sum((1, -1)[i % 2]*Add(*[M[0, i]*d for d in
-            Add.make_args(det_minor(M.minor_submatrix(0, i)))])
-            if M[0, i] else S.Zero for i in range(n))
+        terms = []
+        for i in range(n):
+            if M[0, i]:
+                term = Add(*(M[0, i]*d for d in
+                    Add.make_args(det_minor(M.minor_submatrix(0, i)))))
+                terms.append(-term if i % 2 else term)
+        return Add(*terms)
 
 
 def det_quick(M, method=None):

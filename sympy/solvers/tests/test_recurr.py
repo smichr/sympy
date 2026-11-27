@@ -24,7 +24,7 @@ def test_rsolve_poly():
     assert rsolve_poly([-1, -1, 1], 1, n) == -1
 
     assert rsolve_poly([-1, n + 1], n, n) == 1
-    assert rsolve_poly([-1, 1], n, n) == C0 + (n**2 - n)/2
+    assert rsolve_poly([-1, 1], n, n) == C0 + n**2/2 - n/2
     assert rsolve_poly([-n - 1, n], 1, n) == C0*n - 1
     assert rsolve_poly([-4*n - 2, 1], 4*n + 1, n) == -1
 
@@ -40,8 +40,8 @@ def test_rsolve_ratio():
 
 def test_rsolve_hyper():
     assert rsolve_hyper([-1, -1, 1], 0, n) in [
-        C0*(S.Half - S.Half*sqrt(5))**n + C1*(S.Half + S.Half*sqrt(5))**n,
-        C1*(S.Half - S.Half*sqrt(5))**n + C0*(S.Half + S.Half*sqrt(5))**n,
+        C0*((1 - sqrt(5))/2)**n + C1*((1 + sqrt(5))/2)**n,
+        C1*((1 - sqrt(5))/2)**n + C0*((1 + sqrt(5))/2)**n,
     ]
 
     assert rsolve_hyper([n**2 - 2, -2*n - 1, 1], 0, n) in [
@@ -72,8 +72,9 @@ def test_rsolve_hyper():
 
     assert rsolve_hyper([-a, 0, 1], 0, n).expand() == (-1)**n*C1*a**(n/2) + C0*a**(n/2)
 
-    assert rsolve_hyper([1, 1, 1], 0, n).expand() == \
-        C0*(Rational(-1, 2) - sqrt(3)*I/2)**n + C1*(Rational(-1, 2) + sqrt(3)*I/2)**n
+    assert rsolve_hyper([1, 1, 1], 0, n).expand() in [
+        S.Half**n*C0*(-1 - sqrt(3)*I)**n + S.Half**n*C1*(-1 + sqrt(3)*I)**n,
+        S.Half**n*C1*(-1 - sqrt(3)*I)**n + S.Half**n*C0*(-1 + sqrt(3)*I)**n]
 
     assert rsolve_hyper([1, -2*n/a - 2/a, 1], 0, n) == 0
 
@@ -84,7 +85,10 @@ def test_rsolve_hyper():
     assert rsolve_hyper([-1, 1], 1/k, k) is None
 
     assert rsolve_hyper([-2, 1], 2**(n**3 + 1), n) is None
-    assert rsolve_hyper([-2, 1], 2**(a*n + 1), n) is None
+    sol = rsolve_hyper([-2, 1], 2**(a*n + 1), n)
+    assert sol == C0*2**n + 2**(a*n + 1)/(2**a - 2)
+    assert (sol.subs(n, n + 1) - 2*sol - 2**(a*n + 1)).expand().simplify() == 0
+    assert rsolve_hyper([-2, 1], 2**(n + 1), n) == C0*2**n + n*2**n
 
     assert rsolve_hyper([-1, 1], fibonacci(n), n) is None
     assert rsolve_hyper([-1, 1], euler(n), n) is None
@@ -129,12 +133,12 @@ def test_rsolve_0_sol_homogeneous():
 
 def test_rsolve():
     f = y(n + 2) - y(n + 1) - y(n)
-    h = sqrt(5)*(S.Half + S.Half*sqrt(5))**n \
-        - sqrt(5)*(S.Half - S.Half*sqrt(5))**n
+    h = sqrt(5)*((1 + sqrt(5))/2)**n \
+        - sqrt(5)*((1 - sqrt(5))/2)**n
 
     assert rsolve(f, y(n)) in [
-        C0*(S.Half - S.Half*sqrt(5))**n + C1*(S.Half + S.Half*sqrt(5))**n,
-        C1*(S.Half - S.Half*sqrt(5))**n + C0*(S.Half + S.Half*sqrt(5))**n,
+        C0*((1 - sqrt(5))/2)**n + C1*((1 + sqrt(5))/2)**n,
+        C1*((1 - sqrt(5))/2)**n + C0*((1 + sqrt(5))/2)**n,
     ]
 
     assert rsolve(f, y(n), [0, 5]) == h
@@ -272,7 +276,7 @@ def test_issue_17990():
     _r5 = Rational(43, 69)
     _r6 = Rational(86, 69)
     x0 = 9165**_r4
-    x1 = (3036*x0 + 290412)**_r3
+    x1 = 12**_r3*(253*x0 + 24201)**_r3
     x2 = 18**_r3
     x3 = (253*x0 + 24201)**_r3
     x4 = 1/x3
@@ -285,7 +289,12 @@ def test_issue_17990():
         C0*(x4*(x6*x8*(x1*x6 - 12) - x7)/x6)**n +
         C1*(x4*(x7 + x8*x9*(x1*(-x5 - 1) - 12))/x9)**n +
         C2*(_r1*x1 - _r2 - _r5*x2*x4)**n)
-    assert sol == expected
+    assert sol.free_symbols == expected.free_symbols
+    assert sol == sum(c*sol.coeff(c) for c in (C0, C1, C2))
+    for c in (C0, C1, C2):
+        actual, target = sol.coeff(c), expected.coeff(c)
+        assert actual.exp == target.exp == n
+        assert (actual.base - target.base).expand() == 0
     e = sol.subs({C0: 1, C1: 1, C2: 1, n: 1}).evalf()
     assert abs(e + 0.130434782608696) < 1e-13
 
@@ -310,7 +319,7 @@ def test_issue_8697():
                   a(n), {a(0): 1, a(1): 3, a(2): 8}) == 3*2**n - n - 2
 
     # From issue thread (but fixed by https://github.com/diofant/diofant/commit/da9789c6cd7d0c2ceeea19fbf59645987125b289):
-    assert rsolve(a(n) - 2*a(n - 1) - n, a(n), {a(0): 1}) == 3*2**n - n - 2
+    assert rsolve(a(n) - 2*a(n - 1) - n, a(n), {a(0): 1}).ec == 3*2**n - n - 2
 
 
 def test_diofantissue_294():
@@ -325,9 +334,9 @@ def test_diofantissue_294():
 
 def test_issue_15553():
     f = Function("f")
-    assert rsolve(Eq(f(n), 2*f(n - 1) + n), f(n)) == 2**n*C0 - n - 2
+    assert rsolve(Eq(f(n), 2*f(n - 1) + n), f(n)).ec == 2**n*C0 - n - 2
     assert rsolve(Eq(f(n + 1), 2*f(n) + n**2 + 1), f(n)) == 2**n*C0 - n**2 - 2*n - 4
     assert rsolve(Eq(f(n + 1), 2*f(n) + n**2 + 1), f(n), {f(1): 0}) == 7*2**n/2 - n**2 - 2*n - 4
-    assert rsolve(Eq(f(n), 2*f(n - 1) + 3*n**2), f(n)) == 2**n*C0 - 3*n**2 - 12*n - 18
-    assert rsolve(Eq(f(n), 2*f(n - 1) + n**2), f(n)) == 2**n*C0 - n**2 - 4*n - 6
-    assert rsolve(Eq(f(n), 2*f(n - 1) + n), f(n), {f(0): 1}) == 3*2**n - n - 2
+    assert rsolve(Eq(f(n), 2*f(n - 1) + 3*n**2), f(n)) == 2**n*C0 - 3*(n**2 + 4*n + 6)
+    assert rsolve(Eq(f(n), 2*f(n - 1) + n**2), f(n)).ec == 2**n*C0 - n**2 - 4*n - 6
+    assert rsolve(Eq(f(n), 2*f(n - 1) + n), f(n), {f(0): 1}).ec == 3*2**n - n - 2
