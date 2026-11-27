@@ -41,7 +41,7 @@ def test_maxima_functions():
     assert parse_maxima('sum(k, k, 1, n)', name_dict={
         "n": Symbol('n', integer=True),
         "k": Symbol('k', integer=True)
-    }) == (n**2 + n)/2
+    }) == n**2/2 + n/2
     assert parse_maxima('product(k, k, 1, n)', name_dict={
         "n": Symbol('n', integer=True),
         "k": Symbol('k', integer=True)

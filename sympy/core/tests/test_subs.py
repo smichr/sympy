@@ -719,8 +719,10 @@ def test_issue_6559():
     x0, x1 = symbols('x0 x1')
     e = -log(-12*sqrt(2) + 17)/24 - log(-2*sqrt(2) + 3)/12 + sqrt(2)/3
     # XXX modify cse so x1 is eliminated and x0 = -sqrt(2)?
-    assert cse(e) == (
-        [(x0, sqrt(2))], [x0/3 - log(-12*x0 + 17)/24 - log(-2*x0 + 3)/12])
+    replacements, reduced = cse(e)
+    assert replacements == [(x0, sqrt(2))]
+    assert [r.exx for r in reduced] == [
+        x0/3 - log(-12*x0 + 17)/24 - log(-2*x0 + 3)/12]
 
 
 def test_issue_5261():
@@ -766,7 +768,7 @@ def test_issue_2877():
     def r(a, b, c):
         return factor(a*x**2 + b*x + c)
     e = r(5.0/6, 10, 5)
-    assert nsimplify(e) == 5*x**2/6 + 10*x + 5
+    assert nsimplify(e).ex == 5*x**2/6 + 10*x + 5
 
 
 def test_issue_5910():

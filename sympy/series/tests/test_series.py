@@ -54,7 +54,7 @@ def test_issue_5223():
     e = cos(x).series(x, 1, n=None, dir='-')
     assert [next(e) for i in range(2)] == [cos(1), (1 - x)*sin(1)]
     # the following test is exact so no need for x -> x - 1 replacement
-    assert abs(x).series(x, 1, dir='-') == x
+    assert abs(x).series(x, 1, dir='-').ec == x
     assert exp(x).series(x, 1, dir='-', n=3).removeO() == \
         E - E*(-x + 1) + E*(-x + 1)**2/2
 
@@ -220,9 +220,9 @@ def test_issue_9173():
 
     series = Q.series(y,n=3)
 
-    assert series == y*(b0*p2/p3+b0*(-p2/p3+b1/b0))+y**2*(b0*p1/p3+b0*p2*\
-            (-p2/p3+b1/b0)/p3+b0*(-p1/p3+(p2/p3-b1/b0)**2+b1*p2/(b0*p3)+\
-            b2/b0-b1**2/b0**2))+b0+O(y**3)
+    assert series.exx == (y*(b0*p2/p3+b0*(-p2/p3+b1/b0))+y**2*(b0*p1/p3+b0*p2*
+            (-p2/p3+b1/b0)/p3+b0*(-p1/p3+(p2/p3-b1/b0)**2+b1*p2/(b0*p3)+
+            b2/b0-b1**2/b0**2))+b0+O(y**3)).exx
     assert series.simplify() == b2*y**2 + b1*y + b0 + O(y**3)
 
 

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from sympy.core import S, Rational
+from sympy.core import S
 from sympy.combinatorics.schur_number import schur_partition, SchurNumber
 from sympy.core.random import _randint
 from sympy.testing.pytest import raises
@@ -52,5 +52,5 @@ def test_schur_number():
     raises(ValueError, lambda: SchurNumber(0.5))
 
     n = symbols("n")
-    assert SchurNumber(n).lower_bound() == 3**n/2 - Rational(1, 2)
+    assert SchurNumber(n).lower_bound() == (3**n - 1)/2
     assert SchurNumber(8).lower_bound() == 5039

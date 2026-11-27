@@ -63,6 +63,8 @@ def test_Functions():
     assert rust_code(abs(x)) == "x.abs()"
     assert rust_code(ceiling(x)) == "x.ceil()"
     assert rust_code(floor(x)) == "x.floor()"
+    assert rust_code(floor(x) + 1) == "x.floor() + 1.0"
+    assert rust_code(2*ceiling(x)) == "2.0*x.ceil()"
 
     # Automatic rewrite
     assert rust_code(Mod(x, 3)) == 'x - 3.0*((1_f64/3.0)*x).floor()'
@@ -366,7 +368,7 @@ def test_sparse_matrix():
 def test_parenthesize_typecast():
     modulus = Symbol("modulus")
     exp = (2 ** (2.0 * ceiling(-y + log(x) / log(2.0) + 4)) + 0.5) / (3 * modulus**2)
-    assert(rust_code(exp) == '(1_f64/3.0)*(0.5 + (2.0*(-y + 1.44269504088896*x.ln()).ceil() + 8.0).exp2())*modulus.powi(-2)')
+    assert(rust_code(exp) == '(1_f64/3.0)*(0.5 + (2.0*((-y + 1.44269504088896*x.ln()).ceil() + 4.0)).exp2())*modulus.powi(-2)')
 
 
 def test_Max_Min():

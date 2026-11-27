@@ -114,7 +114,7 @@ def test_functional_diffgeom_ch4():
     assert R2.dr(circ).rcall(p_r) == 0
     assert simplify(R2.dtheta(circ).rcall(p_r)) == 1
 
-    assert (circ - R2.e_theta).rcall(s_field_r).rcall(p_r) == 0
+    assert (circ - R2.e_theta).rcall(s_field_r).rcall(p_r).ec == 0
 
 
 def test_functional_diffgeom_ch6():

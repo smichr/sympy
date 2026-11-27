@@ -68,7 +68,7 @@ def test_coordsys_transform():
     e, f = C3.symbols
     assert C2.transform(C1) == Matrix([c/2, (d - 1)/3])
     assert C1.transform(C3) == Matrix([-2*a - 2, (3*b + 1)/2])
-    assert C3.transform(C1) == Matrix([-e/2 - 1, (2*f - 1)/3])
+    assert C3.transform(C1) == Matrix([(-e - 2)/2, (2*f - 1)/3])
     assert C3.transform(C2) == Matrix([-e - 2, 2*f])
 
     # old signature uses Lambda
@@ -83,7 +83,7 @@ def test_coordsys_transform():
     e, f = C3.symbols
     assert C2.transform(C1) == Matrix([c/2, (d - 1)/3])
     assert C1.transform(C3) == Matrix([-2*a - 2, (3*b + 1)/2])
-    assert C3.transform(C1) == Matrix([-e/2 - 1, (2*f - 1)/3])
+    assert C3.transform(C1) == Matrix([(-e - 2)/2, (2*f - 1)/3])
     assert C3.transform(C2) == Matrix([-e - 2, 2*f])
 
 

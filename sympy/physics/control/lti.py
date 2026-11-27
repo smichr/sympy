@@ -5162,8 +5162,10 @@ class TransferFunctionMatrix(MIMOLinearTimeInvariant):
         return self._expr_mat.shape
 
     def __neg__(self):
-        neg = -self._expr_mat
-        return _to_TFM(neg, self.var, self.sampling_time)
+        # Negate the transfer functions, rather than multiplying their
+        # expression matrix by -1 (which retains a factored numerator).
+        return self.func([[-self[i, j] for j in range(self.shape[1])]
+                          for i in range(self.shape[0])])
 
     @_check_other_MIMO
     def __add__(self, other):

@@ -44,8 +44,8 @@ def test_rational_algorithm():
     f = x / (1 - x - x**2)
     assert rational_algorithm(f, x, k) is None
     assert rational_algorithm(f, x, k, full=True) == (
-        (5 - sqrt(5))*(sqrt(5)/2 - S.Half)**(-k - 1)/10
-        + (5 + sqrt(5))*(-sqrt(5)/2 - S.Half)**(-k - 1)/10,
+        (S.Half - sqrt(5)/10)*(sqrt(5)/2 - S.Half)**(-k - 1)
+        + (S.Half + sqrt(5)/10)*(-sqrt(5)/2 - S.Half)**(-k - 1),
         0, 0)
 
     f = 1 / (x**2 + 2*x + 2)

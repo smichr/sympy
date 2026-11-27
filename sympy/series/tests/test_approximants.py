@@ -4,7 +4,7 @@ from sympy.series.approximants import pade_approximants_gcdex, pade_approximant,
 from sympy.core.symbol import symbols
 from sympy.functions.combinatorial.factorials import binomial
 from sympy.functions.combinatorial.numbers import (fibonacci, lucas)
-from sympy import exp, sin, log, Poly
+from sympy import exp, sin, log, Poly, Rational
 from sympy.testing.pytest import raises
 
 
@@ -72,17 +72,17 @@ def test_pade_approximant_gcdex():
 
     numerator, denominator = pade_approximant_gcdex(poly_1, 2)
     assert numerator is not None and denominator is not None
-    assert numerator/numerator.LC() == x**2 + 6*x + 12
+    assert (numerator/numerator.LC()).ex == x**2 + 6*x + 12
     assert (numerator/denominator).equals((x**2/4 + 3*x/2 + 3)/(x**2/4 - 3*x/2 + 3))
 
     numerator, denominator = pade_approximant_gcdex(poly_2, 3, 4)
     assert numerator is not None and denominator is not None
-    assert numerator/numerator.LC() == x**3 + 2
+    assert (numerator/numerator.LC()).ex == x**3 + 2
     assert (numerator/denominator).equals((x**3/2 + 1)/(1 - x**3/2))
 
     numerator, denominator = pade_approximant_gcdex(poly_4, 3)
     assert numerator is not None and denominator is not None
-    assert numerator/numerator.LC() - (x**3 + 330*x**2/17 + 1500*x/17 + 1875/17) == 0
+    assert (numerator/numerator.LC()).ex == x**3 + 330*x**2/17 + 1500*x/17 + Rational(1875, 17)
     assert (numerator/denominator - (2 + 8*x/5 + 44*x**2/125 + 34*x**3/1875)\
                                     /(1 + 3*x/5 + 12*x**2/125 + 2*x**3/625)).simplify() == 0
 

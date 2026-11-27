@@ -6,7 +6,6 @@ from __future__ import annotations
 from itertools import combinations_with_replacement
 from sympy.core.function import (Derivative, Function, diff)
 from sympy.core.relational import Eq
-from sympy.core.singleton import S
 from sympy.core.symbol import Symbol
 from sympy.core.sympify import sympify
 from sympy.utilities.iterables import iterable
@@ -101,7 +100,8 @@ def euler_equations(L, funcs=(), vars=()):
         eq = diff(L, f)
         for i in range(1, order + 1):
             for p in combinations_with_replacement(vars, i):
-                eq = eq + S.NegativeOne**i*diff(L, diff(f, *p), *p)
+                term = diff(L, diff(f, *p), *p)
+                eq = eq - term if i % 2 else eq + term
         new_eq = Eq(eq, 0)
         if isinstance(new_eq, Eq):
             eqns.append(new_eq)

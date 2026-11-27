@@ -75,4 +75,4 @@ def test_continued_fraction():
     assert (cf_r([0, 1, 1, 7, [24, 8]]) - (sqrt(3) + 2)/7).expand() == 0
     assert cf_r([1, 5, 9]) == Rational(55, 46)
     assert (cf_r([[1]]) - (sqrt(5) + 1)/2).expand() == 0
-    assert cf_r([-3, 1, 1, [2]]) == -1 - sqrt(2)
+    assert cf_r([-3, 1, 1, [2]]).ex == -1 - sqrt(2)

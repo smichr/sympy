@@ -75,7 +75,7 @@ def test_molien():
     assert G.molien(t) == 1
 
     C3 = CyclicGroup(3)
-    assert C3.molien() == 2*(1 - t**3)**(-1)/3 + (1 - t)**(-3)/3
+    assert C3.molien() == (2*(1 - t**3)**(-1) + (1 - t)**(-3))/3
 
     S3 = SymmetricGroup(3)
     assert S3.molien() == (2*(1 - t**3)**(-1) + 3/((1 - t)*(1 - t**2)) + (1 - t)**(-3))/6

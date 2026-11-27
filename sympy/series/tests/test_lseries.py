@@ -54,7 +54,7 @@ def test_issue_5183():
     # following case that would mean that all the terms would have
     # to be known since, for example, every term has a constant in it.
     s = ((1 + x)**7).series(x, 1, n=None)
-    assert [next(s) for i in range(2)] == [128, -448 + 448*x]
+    assert [next(s) for i in range(2)] == [128, 448*(x - 1)]
 
 
 def test_issue_6999():

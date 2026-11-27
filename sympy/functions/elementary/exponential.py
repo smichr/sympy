@@ -1296,7 +1296,7 @@ class LambertW(DefinedFunction):
             if ceiling(n/lte) >= 1:
                 s = Add(*[(-S.One)**(k - 1)*Integer(k)**(k - 2)/
                           factorial(k - 1)*arg**k for k in range(1, ceiling(n/lte))])
-                s = expand_multinomial(s)
+                s = expand_multinomial(s).ec
             else:
                 s = S.Zero
 

@@ -124,8 +124,7 @@ def test_mellin_transform():
         (gamma(s)*gamma(rho - s)/gamma(rho), (0, re(rho)), True)
 
     assert MT(abs(1 - x)**(-rho), x, s) == (
-        2*sin(pi*rho/2)*gamma(1 - rho)*
-        cos(pi*(s - rho/2))*gamma(s)*gamma(rho-s)/pi,
+        (sin(pi*s) - sin(pi*(s - rho)))*gamma(s)*gamma(1 - rho)*gamma(rho - s)/pi,
         (0, re(rho)), re(rho) < 1)
     mt = MT((1 - x)**(beta - 1)*Heaviside(1 - x)
             + a*(x - 1)**(beta - 1)*Heaviside(x - 1), x, s)
@@ -580,8 +579,8 @@ def test_cosine_transform():
     assert cosine_transform(exp(-a*sqrt(t))*cos(a*sqrt(
         t)), t, w) == a*exp(-a**2/(2*w))/(2*w**Rational(3, 2))
 
-    assert cosine_transform(1/(a + t), t, w) == sqrt(2)*(
-        (-2*Si(a*w) + pi)*sin(a*w)/2 - cos(a*w)*Ci(a*w))/sqrt(pi)
+    assert cosine_transform(1/(a + t), t, w) == -sqrt(2)*(
+        (2*Si(a*w) - pi)*sin(a*w) + 2*cos(a*w)*Ci(a*w))/(2*sqrt(pi))
     assert inverse_cosine_transform(sqrt(2)*meijerg(((S.Half, 0), ()), (
         (S.Half, 0, 0), (S.Half,)), a**2*w**2/4)/(2*pi), w, t) == 1/(a + t)
 
@@ -610,9 +609,9 @@ def test_hankel_transform():
     assert inverse_hankel_transform(2**(-m + 1)*k**(
         m - 2)*gamma(-m/2 + nu/2 + 1)/gamma(m/2 + nu/2), k, r, nu) == r**(-m)
 
-    assert hankel_transform(r**nu*exp(-a*r), r, k, nu) == \
-        2**(nu + 1)*a*k**(-nu - 3)*(a**2/k**2 + 1)**(-nu - S(
-                                                     3)/2)*gamma(nu + Rational(3, 2))/sqrt(pi)
+    assert hankel_transform(r**nu*exp(-a*r), r, k, nu) == (
+        2*2**nu*a*gamma(nu + S(3)/2)*k**(-1*(nu + 3)) *
+        (a**2/k**2 + 1)**(-1*(nu + S(3)/2))/sqrt(pi))
     assert inverse_hankel_transform(
         2**(nu + 1)*a*k**(-nu - 3)*(a**2/k**2 + 1)**(-nu - Rational(3, 2))*gamma(
         nu + Rational(3, 2))/sqrt(pi), k, r, nu) == r**nu*exp(-a*r)

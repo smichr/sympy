@@ -27,7 +27,7 @@ def test_singularities():
     assert singularities(x/(x**2 + 3*x + 2), x) == FiniteSet(-2, -1)
     assert singularities(1/(x**2 + 1), x) == FiniteSet(I, -I)
     assert singularities(x/(x**3 + 1), x) == \
-        FiniteSet(-1, (1 - sqrt(3) * I) / 2, (1 + sqrt(3) * I) / 2)
+        FiniteSet(-1, S.Half - sqrt(3)*I/2, S.Half + sqrt(3)*I/2)
     assert singularities(1/(y**2 + 2*I*y + 1), y) == \
         FiniteSet(-I + sqrt(2)*I, -I - sqrt(2)*I)
     _n = Dummy('n')

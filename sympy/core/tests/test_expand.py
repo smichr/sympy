@@ -138,8 +138,8 @@ def test_expand_frac():
         y*(x + y)/(x**2 + x)
     eq = (x + 1)**2/y
     assert expand_numer(eq, multinomial=False) == eq
-    # issue 26329
-    eq = (exp(x*z) - exp(y*z))/exp(z*(x + y))
+    # issue 26329: keep the negative coefficient visible to fraction
+    eq = (exp(x*z) - exp(y*z))*exp(-z*(x + y))
     ans = exp(-y*z) - exp(-x*z)
     assert eq.expand(numer=True) != ans
     assert eq.expand(numer=True, exact=True) == ans

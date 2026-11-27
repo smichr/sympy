@@ -291,7 +291,7 @@ def test_issue_3463():
     r = log(5)/log(3)
     p = w**(-1 + r)
     e = 1/x*(-log(w**(1 + r)) + log(w + w**r))
-    e_ser = -r*log(w)/x + p/x - p**2/(2*x) + O(w)
+    e_ser = -r*log(w)/x + p/x - w**(2*r - 2)/(2*x) + O(w)
     assert e.nseries(w, n=1) == e_ser
 
 
@@ -514,15 +514,15 @@ def test_issue_4441():
     assert f.series(x, 0, 5) == 1 - a*x + a**2*x**2 - a**3*x**3 + \
         a**4*x**4 + O(x**5)
     f = 1/(1 + (a + b)*x)
-    assert f.series(x, 0, 3) == 1 + x*(-a - b)\
+    assert f.series(x, 0, 3) == 1 - x*(a + b)\
         + x**2*(a + b)**2 + O(x**3)
 
 
 def test_issue_4329():
     assert tan(x).series(x, pi/2, n=3).removeO() == \
-        -pi/6 + x/3 - 1/(x - pi/2)
+        (x - pi/2)/3 - 1/(x - pi/2)
     assert cot(x).series(x, pi, n=3).removeO() == \
-        -x/3 + pi/3 + 1/(x - pi)
+        1/(x - pi) - (x - pi)/3
     assert limit(tan(x)**tan(2*x), x, pi/4) == exp(-1)
 
 

@@ -285,7 +285,7 @@ def test_lcim():
     assert lcim([pi/2, pi/4, pi]) == pi
     assert lcim([2*pi, pi/2]) == 2*pi
     assert lcim([S.One, 2*pi]) is None
-    assert lcim([S(2) + 2*E, E/3 + Rational(1, 3), S.One + E]) == S(2) + 2*E
+    assert lcim([S(2) + 2*E, E/3 + Rational(1, 3), S.One + E]) == 2*(1 + E)
 
 
 def test_is_convex():
@@ -344,7 +344,7 @@ def test_maximum():
     assert maximum((x+3)*(x-2), x, Interval(-5, 0)) == S(14)
     assert maximum((x+3)/(x-2), x, Interval(-5, 0)) == Rational(2, 7)
     assert simplify(maximum(-x**4-x**3+x**2+10, x)
-        ) == 41*sqrt(41)/512 + Rational(5419, 512)
+        ) == (41*sqrt(41) + 5419)/512
     assert maximum(exp(x), x, Interval(-oo, 2)) == exp(2)
     assert maximum(log(x) - x, x, S.Reals) is S.NegativeOne
     assert maximum(cos(x), x, Union(Interval(0, 5), Interval(-6, -3))

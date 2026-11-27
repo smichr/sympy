@@ -2591,9 +2591,9 @@ def test_Mul():
     e = Mul(-y, x + 1, evaluate=False)
     assert latex(e) == r'- y \left(x + 1\right)'
     e = Mul(-2, x + 1)
-    assert latex(e) == r'- 2 x - 2'
+    assert latex(e) == r'- 2 \left(x + 1\right)'
     e = Mul(2, x + 1)
-    assert latex(e) == r'2 x + 2'
+    assert latex(e) == r'2 \left(x + 1\right)'
 
 
 def test_Pow():
