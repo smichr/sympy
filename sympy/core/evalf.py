@@ -690,12 +690,17 @@ def evalf_mul(v: 'Mul', prec: int, options: OPT_DICT) -> TMP_RES:
 
         flat_factors.append(arg)
 
+    # XXX: big overestimate
+    working_prec = prec + len(flat_factors) + int(have_exact) + 5
+    results: list[TMP_RES] = []
+
     # see if any argument is NaN or oo and thus warrants a special return
     has_zero = False
     special = []
     from .numbers import Float
     for arg in flat_factors:
-        result = evalf(arg, prec, options)
+        result = evalf(arg, working_prec, options)
+        results.append(result)
         if result is S.ComplexInfinity:
             special.append(result)
             continue
@@ -722,9 +727,6 @@ def evalf_mul(v: 'Mul', prec: int, options: OPT_DICT) -> TMP_RES:
     # separately may be lower.
     acc = prec
 
-    # XXX: big overestimate
-    working_prec = prec + len(flat_factors) + int(have_exact) + 5
-
     # Empty product is 1
     start = man, exp, bc = MPZ(1), 0, 1
 
@@ -736,18 +738,13 @@ def evalf_mul(v: 'Mul', prec: int, options: OPT_DICT) -> TMP_RES:
     # are handled after all others.
     direction = 0
     complex_factors = []
-    LAST = len(flat_factors)
-    for i in range(LAST + 1):
-        if i != LAST:
-            re, im, re_acc, im_acc = evalf(
-                flat_factors[i], working_prec, options)
-        elif have_exact:
-            real, imag = coeff.as_rationals()
-            re, _, re_acc, _ = evalf(real, working_prec, options)
-            im, _, im_acc, _ = evalf(imag, working_prec, options)
-        else:
-            break
+    if have_exact:
+        real, imag = coeff.as_rationals()
+        re, _, re_acc, _ = evalf(real, working_prec, options)
+        im, _, im_acc, _ = evalf(imag, working_prec, options)
+        results.append((re, im, re_acc, im_acc))
 
+    for re, im, re_acc, im_acc in results:
         if re and im:
             complex_factors.append((re, im, re_acc, im_acc))
             continue

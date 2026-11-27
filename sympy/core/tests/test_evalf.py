@@ -537,6 +537,23 @@ def test_evalf_mul():
     assert NS(product(1 + sqrt(n)*I, (n, 1, 500)), 1) == '5.e+567 + 2.e+568*I'
 
 
+def test_evalf_mul_factored_float():
+    c = Float('0.1')
+    n = 10**20
+    e = Mul(c, n + sqrt(2) - sqrt(n**2 + 1), evaluate=False)
+    # Distributing c rounds c*n before cancellation in the sum.
+    expected = Rational(c)*(sqrt(2) - 1/(sqrt(n**2 + 1) + n))
+    assert e.evalf() == expected.evalf()
+    assert e.evalf(40) == expected.evalf(40)
+
+
+def test_evalf_mul_chop():
+    e = Mul(10**20, Add(sqrt(2)/10**17, sqrt(3)/10**17, evaluate=False),
+            evaluate=False)
+    expected = (1000*(sqrt(2) + sqrt(3))).evalf()
+    assert e.evalf(chop=True) == expected
+
+
 def test_evalf_manage_exact_gcd_30874():
     # don't let numer and denom accumulate to 25**500
     assert Mul(*[(3 + 4*I)/5*(3 - 4*I)/5 for i in range(500)
