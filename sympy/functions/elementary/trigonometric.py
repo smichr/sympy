@@ -2162,7 +2162,7 @@ class InverseTrigonometricFunction(DefinedFunction):
     def _asin_table():
         # Only keys with could_extract_minus_sign() == False
         # are actually needed.
-        return {
+        table = {
             sqrt(3)/2: pi/3,
             sqrt(2)/2: pi/4,
             1/sqrt(2): pi/4,
@@ -2185,6 +2185,9 @@ class InverseTrigonometricFunction(DefinedFunction):
             sqrt(6)/4 + sqrt(2)/4: pi*Rational(5, 12),
             (1 + sqrt(3))/sqrt(8): pi*Rational(5, 12)
         }
+        # Include the exact forms returned by forward evaluation.
+        table.update({sin(a): a for a in set(table.values())})
+        return table
 
 
     @staticmethod

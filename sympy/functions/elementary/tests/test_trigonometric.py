@@ -112,8 +112,8 @@ def test_sin():
     assert sin(pi*Rational(7, 6)) == Rational(-1, 2)
     assert sin(pi*Rational(-5, 6)) == Rational(-1, 2)
 
-    assert sin(pi*Rational(1, 5)) == sqrt((5 - sqrt(5)) / 8)
-    assert sin(pi*Rational(2, 5)) == sqrt((5 + sqrt(5)) / 8)
+    assert sin(pi*Rational(1, 5)).equals(sqrt((5 - sqrt(5)) / 8))
+    assert sin(pi*Rational(2, 5)).equals(sqrt((5 + sqrt(5)) / 8))
     assert sin(pi*Rational(3, 5)) == sin(pi*Rational(2, 5))
     assert sin(pi*Rational(4, 5)) == sin(pi*Rational(1, 5))
     assert sin(pi*Rational(6, 5)) == -sin(pi*Rational(1, 5))
@@ -121,7 +121,7 @@ def test_sin():
 
     assert sin(pi*Rational(-1273, 5)) == -sin(pi*Rational(2, 5))
 
-    assert sin(pi/8) == sqrt((2 - sqrt(2))/4)
+    assert sin(pi/8).equals(sqrt((2 - sqrt(2))/4))
 
     assert sin(pi/10) == Rational(-1, 4) + sqrt(5)/4
 
@@ -223,7 +223,7 @@ def _test_extrig(f, i, e):
     assert expand_trig(f(i)) == f(i)
     # testing directly instead of with .expand(trig=True)
     # because the other expansions undo the unevaluated Mul
-    assert expand_trig(f(Mul(i, 1, evaluate=False))) == e
+    assert expand_trig(f(Mul(i, 1, evaluate=False))).exx == e.exx
     assert abs(f(i) - e).n() < 1e-10
 
 
@@ -358,8 +358,8 @@ def test_cos():
     assert cos(pi*Rational(7, 6)) == Rational(-1, 2)*sqrt(3)
     assert cos(pi*Rational(-5, 6)) == Rational(-1, 2)*sqrt(3)
 
-    assert cos(pi*Rational(1, 5)) == (sqrt(5) + 1)/4
-    assert cos(pi*Rational(2, 5)) == (sqrt(5) - 1)/4
+    assert cos(pi*Rational(1, 5)) == sqrt(5)/4 + S.One/4
+    assert cos(pi*Rational(2, 5)) == sqrt(5)/4 - S.One/4
     assert cos(pi*Rational(3, 5)) == -cos(pi*Rational(2, 5))
     assert cos(pi*Rational(4, 5)) == -cos(pi*Rational(1, 5))
     assert cos(pi*Rational(6, 5)) == -cos(pi*Rational(1, 5))
@@ -367,7 +367,7 @@ def test_cos():
 
     assert cos(pi*Rational(-1273, 5)) == -cos(pi*Rational(2, 5))
 
-    assert cos(pi/8) == sqrt((2 + sqrt(2))/4)
+    assert cos(pi/8).equals(sqrt((2 + sqrt(2))/4))
 
     assert cos(pi/12) == sqrt(2)/4 + sqrt(6)/4
     assert cos(pi*Rational(5, 12)) == -sqrt(2)/4 + sqrt(6)/4
@@ -420,7 +420,7 @@ def test_cos_series():
 
 
 def test_cos_rewrite():
-    assert cos(x).rewrite(exp) == exp(I*x)/2 + exp(-I*x)/2
+    assert cos(x).rewrite(exp) == (exp(I*x) + exp(-I*x))/2
     assert cos(x).rewrite(tan) == (1 - tan(x/2)**2)/(1 + tan(x/2)**2)
     assert cos(x).rewrite(cot) == \
         Piecewise((1, Eq(im(x), 0) & Eq(Mod(x, 2*pi), 0)),
@@ -554,14 +554,14 @@ def test_tan():
     assert tan(pi*Rational(7, 12)) == -sqrt(3) - 2
     assert tan(pi*Rational(11, 12)) == sqrt(3) - 2
 
-    assert tan(pi/24).radsimp() == -2 - sqrt(3) + sqrt(2) + sqrt(6)
-    assert tan(pi*Rational(5, 24)).radsimp() == -2 + sqrt(3) - sqrt(2) + sqrt(6)
-    assert tan(pi*Rational(7, 24)).radsimp() == 2 - sqrt(3) - sqrt(2) + sqrt(6)
-    assert tan(pi*Rational(11, 24)).radsimp() == 2 + sqrt(3) + sqrt(2) + sqrt(6)
-    assert tan(pi*Rational(13, 24)).radsimp() == -2 - sqrt(3) - sqrt(2) - sqrt(6)
-    assert tan(pi*Rational(17, 24)).radsimp() == -2 + sqrt(3) + sqrt(2) - sqrt(6)
-    assert tan(pi*Rational(19, 24)).radsimp() == 2 - sqrt(3) + sqrt(2) - sqrt(6)
-    assert tan(pi*Rational(23, 24)).radsimp() == 2 + sqrt(3) - sqrt(2) - sqrt(6)
+    assert tan(pi/24).radsimp().expand() == -2 - sqrt(3) + sqrt(2) + sqrt(6)
+    assert tan(pi*Rational(5, 24)).radsimp().expand() == -2 + sqrt(3) - sqrt(2) + sqrt(6)
+    assert tan(pi*Rational(7, 24)).radsimp().expand() == 2 - sqrt(3) - sqrt(2) + sqrt(6)
+    assert tan(pi*Rational(11, 24)).radsimp().expand() == 2 + sqrt(3) + sqrt(2) + sqrt(6)
+    assert tan(pi*Rational(13, 24)).radsimp().expand() == -2 - sqrt(3) - sqrt(2) - sqrt(6)
+    assert tan(pi*Rational(17, 24)).radsimp().expand() == -2 + sqrt(3) + sqrt(2) - sqrt(6)
+    assert tan(pi*Rational(19, 24)).radsimp().expand() == 2 - sqrt(3) + sqrt(2) - sqrt(6)
+    assert tan(pi*Rational(23, 24)).radsimp().expand() == 2 + sqrt(3) - sqrt(2) - sqrt(6)
 
     assert tan(x*I) == tanh(x)*I
 
@@ -615,20 +615,20 @@ def test_tan_rewrite():
     assert tan(x).rewrite(sec) == sec(x)/sec(x - pi/2, evaluate=False)
     assert tan(x).rewrite(csc) == csc(-x + pi/2, evaluate=False)/csc(x)
     assert tan(sin(x)).rewrite(Pow) == tan(sin(x))
-    assert tan(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == sqrt(sqrt(5)/8 +
-               Rational(5, 8))/(Rational(-1, 4) + sqrt(5)/4)
+    assert tan(pi*Rational(2, 5), evaluate=False).rewrite(sqrt).equals(
+        sqrt(sqrt(5)/8 + Rational(5, 8))/(Rational(-1, 4) + sqrt(5)/4))
     assert tan(x).rewrite(besselj) == besselj(S.Half, x)/besselj(-S.Half, x)
     assert tan(x).rewrite(besselj).subs(x, 0) == tan(0)
 
 
 @slow
 def test_tan_rewrite_slow():
-    assert 0 == (cos(pi/34)*tan(pi/34) - sin(pi/34)).rewrite(pow)
+    assert 0 == (cos(pi/34)*tan(pi/34) - sin(pi/34)).rewrite(pow).exx
     assert 0 == (cos(pi/17)*tan(pi/17) - sin(pi/17)).rewrite(pow)
     assert tan(pi/19).rewrite(pow) == tan(pi/19)
     assert tan(pi*Rational(8, 19)).rewrite(sqrt) == tan(pi*Rational(8, 19))
-    assert tan(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == sqrt(sqrt(5)/8 +
-               Rational(5, 8))/(Rational(-1, 4) + sqrt(5)/4)
+    assert tan(pi*Rational(2, 5), evaluate=False).rewrite(sqrt).equals(
+        sqrt(sqrt(5)/8 + Rational(5, 8))/(Rational(-1, 4) + sqrt(5)/4))
 
 
 def test_tan_subs():
@@ -716,14 +716,14 @@ def test_cot():
     assert cot(pi*Rational(7, 12)) == sqrt(3) - 2
     assert cot(pi*Rational(11, 12)) == -sqrt(3) - 2
 
-    assert cot(pi/24).radsimp() == sqrt(2) + sqrt(3) + 2 + sqrt(6)
-    assert cot(pi*Rational(5, 24)).radsimp() == -sqrt(2) - sqrt(3) + 2 + sqrt(6)
-    assert cot(pi*Rational(7, 24)).radsimp() == -sqrt(2) + sqrt(3) - 2 + sqrt(6)
-    assert cot(pi*Rational(11, 24)).radsimp() == sqrt(2) - sqrt(3) - 2 + sqrt(6)
-    assert cot(pi*Rational(13, 24)).radsimp() == -sqrt(2) + sqrt(3) + 2 - sqrt(6)
-    assert cot(pi*Rational(17, 24)).radsimp() == sqrt(2) - sqrt(3) + 2 - sqrt(6)
-    assert cot(pi*Rational(19, 24)).radsimp() == sqrt(2) + sqrt(3) - 2 - sqrt(6)
-    assert cot(pi*Rational(23, 24)).radsimp() == -sqrt(2) - sqrt(3) - 2 - sqrt(6)
+    assert cot(pi/24).radsimp().expand() == sqrt(2) + sqrt(3) + 2 + sqrt(6)
+    assert cot(pi*Rational(5, 24)).radsimp().expand() == -sqrt(2) - sqrt(3) + 2 + sqrt(6)
+    assert cot(pi*Rational(7, 24)).radsimp().expand() == -sqrt(2) + sqrt(3) - 2 + sqrt(6)
+    assert cot(pi*Rational(11, 24)).radsimp().expand() == sqrt(2) - sqrt(3) - 2 + sqrt(6)
+    assert cot(pi*Rational(13, 24)).radsimp().expand() == -sqrt(2) + sqrt(3) + 2 - sqrt(6)
+    assert cot(pi*Rational(17, 24)).radsimp().expand() == sqrt(2) - sqrt(3) + 2 - sqrt(6)
+    assert cot(pi*Rational(19, 24)).radsimp().expand() == sqrt(2) + sqrt(3) - 2 - sqrt(6)
+    assert cot(pi*Rational(23, 24)).radsimp().expand() == -sqrt(2) - sqrt(3) - 2 - sqrt(6)
 
     assert cot(x*I) == -coth(x)*I
     assert cot(k*pi*I) == -coth(k*pi)*I
@@ -795,8 +795,8 @@ def test_cot_rewrite():
     assert cot(x).rewrite(sec) == sec(x - pi / 2, evaluate=False) / sec(x)
     assert cot(x).rewrite(csc) == csc(x) / csc(- x + pi / 2, evaluate=False)
     assert cot(sin(x)).rewrite(Pow) == cot(sin(x))
-    assert cot(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == (Rational(-1, 4) + sqrt(5)/4)/\
-                                                        sqrt(sqrt(5)/8 + Rational(5, 8))
+    assert cot(pi*Rational(2, 5), evaluate=False).rewrite(sqrt).equals(
+        (Rational(-1, 4) + sqrt(5)/4)/sqrt(sqrt(5)/8 + Rational(5, 8)))
     assert cot(x).rewrite(besselj) == besselj(-S.Half, x)/besselj(S.Half, x)
     assert cot(x).rewrite(besselj).subs(x, 0) == cot(0)
 
@@ -809,8 +809,8 @@ def test_cot_rewrite_slow():
         (cos(pi*Rational(4, 17))/sin(pi*Rational(4, 17))).rewrite(pow)
     assert cot(pi/19).rewrite(pow) == cot(pi/19)
     assert cot(pi/19).rewrite(sqrt) == cot(pi/19)
-    assert cot(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == \
-        (Rational(-1, 4) + sqrt(5)/4) / sqrt(sqrt(5)/8 + Rational(5, 8))
+    assert cot(pi*Rational(2, 5), evaluate=False).rewrite(sqrt).equals(
+        (Rational(-1, 4) + sqrt(5)/4)/sqrt(sqrt(5)/8 + Rational(5, 8)))
 
 
 def test_cot_subs():
@@ -972,10 +972,10 @@ def test_asin_leading_term():
     assert asin(I*x + 2).as_leading_term(x, cdir=1) == pi - asin(2)
     assert asin(-I*x + 2).as_leading_term(x, cdir=1) == asin(2)
     assert asin(I*x - 2).as_leading_term(x, cdir=1) == -asin(2)
-    assert asin(-I*x - 2).as_leading_term(x, cdir=1) == -pi + asin(2)
+    assert asin(-I*x - 2).as_leading_term(x, cdir=1).ec == -pi + asin(2)
     # Tests concerning im(ndir) == 0
-    assert asin(-I*x**2 + x - 2).as_leading_term(x, cdir=1) == -pi/2 + I*log(2 - sqrt(3))
-    assert asin(-I*x**2 + x - 2).as_leading_term(x, cdir=-1) == -pi/2 + I*log(2 - sqrt(3))
+    assert asin(-I*x**2 + x - 2).as_leading_term(x, cdir=1).ec == -pi/2 + I*log(2 - sqrt(3))
+    assert asin(-I*x**2 + x - 2).as_leading_term(x, cdir=-1).ec == -pi/2 + I*log(2 - sqrt(3))
 
 
 def test_asin_rewrite():
@@ -1170,8 +1170,8 @@ def test_atan_leading_term():
     assert atan(x - 2*I).as_leading_term(x, cdir=1) == pi - I*atanh(2)
     assert atan(x - 2*I).as_leading_term(x, cdir=-1) == -I*atanh(2)
     # Tests concerning re(ndir) == 0
-    assert atan(2*I - I*x - x**2).as_leading_term(x, cdir=1) == -pi/2 + I*log(3)/2
-    assert atan(2*I - I*x - x**2).as_leading_term(x, cdir=-1) == -pi/2 + I*log(3)/2
+    assert atan(2*I - I*x - x**2).as_leading_term(x, cdir=1).ec == -pi/2 + I*log(3)/2
+    assert atan(2*I - I*x - x**2).as_leading_term(x, cdir=-1).ec == -pi/2 + I*log(3)/2
 
 
 def test_atan2():
@@ -1215,7 +1215,7 @@ def test_atan2():
     assert ex.subs({x:2, y:3}).rewrite(arg) == 0
     assert ex.subs({x:2, y:3*I}).rewrite(arg) == -pi - I*log(sqrt(5)*I/5)
     assert ex.subs({x:2*I, y:3}).rewrite(arg) == -pi/2 - I*log(sqrt(5)*I)
-    assert ex.subs({x:2*I, y:3*I}).rewrite(arg) == -pi + atan(Rational(2, 3)) + atan(Rational(3, 2))
+    assert ex.subs({x:2*I, y:3*I}).rewrite(arg).ec == -pi + atan(Rational(2, 3)) + atan(Rational(3, 2))
     i = symbols('i', imaginary=True)
     r = symbols('r', real=True)
     e = atan2(i, r)
@@ -1753,7 +1753,7 @@ def test_sec():
 
 
 def test_sec_rewrite():
-    assert sec(x).rewrite(exp) == 1/(exp(I*x)/2 + exp(-I*x)/2)
+    assert sec(x).rewrite(exp) == 2/(exp(I*x) + exp(-I*x))
     assert sec(x).rewrite(cos) == 1/cos(x)
     assert sec(x).rewrite(tan) == (tan(x/2)**2 + 1)/(-tan(x/2)**2 + 1)
     assert sec(x).rewrite(pow) == sec(x)
@@ -1989,12 +1989,12 @@ def test_acsc_leading_term():
     assert acsc(x).as_leading_term(x, cdir=1) == I*log(x) + pi/2 - I*log(2)
     assert acsc(x).as_leading_term(x, cdir=-1) == -I*log(x) - 3*pi/2 + I*log(2)
     assert acsc(I*x + 1/2).as_leading_term(x, cdir=1) == acsc(1/2)
-    assert acsc(-I*x + 1/2).as_leading_term(x, cdir=1) == pi - acsc(1/2)
+    assert acsc(-I*x + 1/2).as_leading_term(x, cdir=1).ec == pi - acsc(1/2)
     assert acsc(I*x - 1/2).as_leading_term(x, cdir=1) == -pi - acsc(-1/2)
-    assert acsc(-I*x - 1/2).as_leading_term(x, cdir=1) == -acsc(1/2)
+    assert acsc(-I*x - 1/2).as_leading_term(x, cdir=1).ec == -acsc(1/2)
     # Tests concerning im(ndir) == 0
-    assert acsc(-I*x**2 + x - S(1)/2).as_leading_term(x, cdir=1) == -pi/2 + I*log(sqrt(3) + 2)
-    assert acsc(-I*x**2 + x - S(1)/2).as_leading_term(x, cdir=-1) == -pi/2 + I*log(sqrt(3) + 2)
+    assert acsc(-I*x**2 + x - S(1)/2).as_leading_term(x, cdir=1).ec == -pi/2 + I*log(sqrt(3) + 2)
+    assert acsc(-I*x**2 + x - S(1)/2).as_leading_term(x, cdir=-1).ec == -pi/2 + I*log(sqrt(3) + 2)
 
 
 def test_acsc_series():

@@ -94,11 +94,11 @@ def test_erf():
     assert limit(x**(-4) - sqrt(pi)*erf(x**2) / (2*x**6), x, 0) == S(1)/3
 
     assert erf(x).as_real_imag() == \
-        (erf(re(x) - I*im(x))/2 + erf(re(x) + I*im(x))/2,
+        ((erf(re(x) - I*im(x)) + erf(re(x) + I*im(x)))/2,
          -I*(-erf(re(x) - I*im(x)) + erf(re(x) + I*im(x)))/2)
 
     assert erf(x).as_real_imag(deep=False) == \
-        (erf(re(x) - I*im(x))/2 + erf(re(x) + I*im(x))/2,
+        ((erf(re(x) - I*im(x)) + erf(re(x) + I*im(x)))/2,
          -I*(-erf(re(x) - I*im(x)) + erf(re(x) + I*im(x)))/2)
 
     assert erf(w).as_real_imag() == (erf(w), 0)
@@ -179,14 +179,15 @@ def test_erfc():
     assert erfc(z).rewrite('uppergamma') == 1 - sqrt(z**2)*(1 - erfc(sqrt(z**2)))/z
     assert erfc(z).rewrite('expint') == S.One - sqrt(z**2)/z + z*expint(S.Half, z**2)/sqrt(S.Pi)
     assert erfc(z).rewrite('tractable') == _erfs(z)*exp(-z**2)
+    assert erfc(-z).rewrite('tractable', limitvar=z) == 2 - _erfs(z)*exp(-z**2)
     assert expand_func(erf(x) + erfc(x)) is S.One
 
     assert erfc(x).as_real_imag() == \
-        (erfc(re(x) - I*im(x))/2 + erfc(re(x) + I*im(x))/2,
+        ((erfc(re(x) - I*im(x)) + erfc(re(x) + I*im(x)))/2,
          -I*(-erfc(re(x) - I*im(x)) + erfc(re(x) + I*im(x)))/2)
 
     assert erfc(x).as_real_imag(deep=False) == \
-        (erfc(re(x) - I*im(x))/2 + erfc(re(x) + I*im(x))/2,
+        ((erfc(re(x) - I*im(x)) + erfc(re(x) + I*im(x)))/2,
          -I*(-erfc(re(x) - I*im(x)) + erfc(re(x) + I*im(x)))/2)
 
     assert erfc(w).as_real_imag() == (erfc(w), 0)
@@ -255,10 +256,10 @@ def test_erfi():
     assert expand_func(erfi(I*z)) == I*erf(z)
 
     assert erfi(x).as_real_imag() == \
-        (erfi(re(x) - I*im(x))/2 + erfi(re(x) + I*im(x))/2,
+        ((erfi(re(x) - I*im(x)) + erfi(re(x) + I*im(x)))/2,
          -I*(-erfi(re(x) - I*im(x)) + erfi(re(x) + I*im(x)))/2)
     assert erfi(x).as_real_imag(deep=False) == \
-        (erfi(re(x) - I*im(x))/2 + erfi(re(x) + I*im(x))/2,
+        ((erfi(re(x) - I*im(x)) + erfi(re(x) + I*im(x)))/2,
          -I*(-erfi(re(x) - I*im(x)) + erfi(re(x) + I*im(x)))/2)
 
     assert erfi(w).as_real_imag() == (erfi(w), 0)
@@ -389,7 +390,7 @@ def mytn(expr1, expr2, expr3, x, d=0):
     for a in expr1.free_symbols:
         if a != x:
             subs[a] = random_complex_number()
-    return expr2 == expr3 and verify_numerically(expr1.subs(subs),
+    return expr2.exx == expr3.exx and verify_numerically(expr1.subs(subs),
                                                expr2.subs(subs), x, d=d)
 
 
@@ -428,7 +429,7 @@ def test_ei():
                 -uppergamma(0, x*polar_lift(-1)) - I*pi, x)
     assert mytn(Ei(x), Ei(x).rewrite(expint),
                 -expint(1, x*polar_lift(-1)) - I*pi, x)
-    assert Ei(x).rewrite(expint).rewrite(Ei) == Ei(x)
+    assert Ei(x).rewrite(expint).rewrite(Ei).ec == Ei(x)
     assert Ei(x*exp_polar(2*I*pi)) == Ei(x) + 2*I*pi
     assert Ei(x*exp_polar(-2*I*pi)) == Ei(x) - 2*I*pi
 
@@ -481,7 +482,7 @@ def test_expint():
         x**(y - 1)*(exp(-2*I*pi*y) - 1)*gamma(-y + 1) + expint(y, x)
     assert expint(2, x*exp_polar(2*I*pi)) == 2*I*pi*x + expint(2, x)
     assert expint(2, x*exp_polar(-2*I*pi)) == -2*I*pi*x + expint(2, x)
-    assert expint(1, x).rewrite(Ei).rewrite(expint) == expint(1, x)
+    assert expint(1, x).rewrite(Ei).rewrite(expint).ec == expint(1, x)
     assert expint(x, y).rewrite(Ei) == expint(x, y)
     assert expint(x, y).rewrite(Ci) == expint(x, y)
 
@@ -575,15 +576,15 @@ def test_li():
 
     assert li(z).rewrite(Li) == Li(z) + li(2)
     assert li(z).rewrite(Ei) == Ei(log(z))
-    assert li(z).rewrite(uppergamma) == (-log(1/log(z))/2 - log(-log(z)) +
-                                         log(log(z))/2 - expint(1, -log(z)))
-    assert li(z).rewrite(Si) == (-log(I*log(z)) - log(1/log(z))/2 +
-                                 log(log(z))/2 + Ci(I*log(z)) + Shi(log(z)))
-    assert li(z).rewrite(Ci) == (-log(I*log(z)) - log(1/log(z))/2 +
-                                 log(log(z))/2 + Ci(I*log(z)) + Shi(log(z)))
-    assert li(z).rewrite(Shi) == (-log(1/log(z))/2 - log(log(z))/2 +
+    assert li(z).rewrite(uppergamma) == ((log(log(z)) - log(1/log(z)))/2 -
+                                         log(-log(z)) - expint(1, -log(z)))
+    assert li(z).rewrite(Si) == (-log(I*log(z)) - (log(1/log(z)) - log(log(z)))/2 +
+                                 Ci(I*log(z)) + Shi(log(z)))
+    assert li(z).rewrite(Ci) == (-log(I*log(z)) - (log(1/log(z)) - log(log(z)))/2 +
+                                 Ci(I*log(z)) + Shi(log(z)))
+    assert li(z).rewrite(Shi) == (-S.Half*(log(1/log(z)) + log(log(z))) +
                                   Chi(log(z)) + Shi(log(z)))
-    assert li(z).rewrite(Chi) == (-log(1/log(z))/2 - log(log(z))/2 +
+    assert li(z).rewrite(Chi) == (-S.Half*(log(1/log(z)) + log(log(z))) +
                                   Chi(log(z)) + Shi(log(z)))
     # the rewrites must agree with li numerically for 0 < z < 1, z > 1
     # and complex z in all quadrants
@@ -592,9 +593,9 @@ def test_li():
         for target in (Si, Ci, Shi, Chi):
             r = li(z).rewrite(target).subs(z, zval)
             assert abs(r.evalf(15) - li(zval).evalf(15)) < 1e-13
-    assert li(z).rewrite(hyper) ==(log(z)*hyper((1, 1), (2, 2), log(z)) -
-                                   log(1/log(z))/2 + log(log(z))/2 + EulerGamma)
-    assert li(z).rewrite(meijerg) == (-log(1/log(z))/2 - log(-log(z)) + log(log(z))/2 -
+    assert li(z).rewrite(hyper) == (log(z)*hyper((1, 1), (2, 2), log(z)) +
+                                   (log(log(z)) - log(1/log(z)))/2 + EulerGamma)
+    assert li(z).rewrite(meijerg) == (-S.Half*(log(1/log(z)) - log(log(z))) - log(-log(z)) -
                                       meijerg(((), (1,)), ((0, 0), ()), -log(z)))
 
     assert gruntz(1/li(z), z, oo) is S.Zero
@@ -730,10 +731,10 @@ def test_ci():
         sin(x)*(24/x**5 - 2/x**3 + 1/x + O(x**(-6), (x, -oo))) + I*pi
 
     assert limit(log(x) - Ci(2*x), x, 0) == -log(2) - EulerGamma
-    assert Ci(x).rewrite(uppergamma) == -expint(1, x*exp_polar(-I*pi/2))/2 -\
-                                        expint(1, x*exp_polar(I*pi/2))/2
-    assert Ci(x).rewrite(expint) == -expint(1, x*exp_polar(-I*pi/2))/2 -\
-                                        expint(1, x*exp_polar(I*pi/2))/2
+    assert Ci(x).rewrite(uppergamma) == -(expint(1, x*exp_polar(-I*pi/2)) +
+                                         expint(1, x*exp_polar(I*pi/2)))/2
+    assert Ci(x).rewrite(expint) == -(expint(1, x*exp_polar(-I*pi/2)) +
+                                         expint(1, x*exp_polar(I*pi/2)))/2
     raises(ArgumentIndexError, lambda: Ci(x).fdiff(2))
 
 
@@ -767,19 +768,19 @@ def test_fresnel():
     assert fresnels(z).is_extended_real is None
     assert fresnels(z).is_finite is None
 
-    assert fresnels(z).as_real_imag() == (fresnels(re(z) - I*im(z))/2 +
-                    fresnels(re(z) + I*im(z))/2,
+    assert fresnels(z).as_real_imag() == ((fresnels(re(z) - I*im(z)) +
+                    fresnels(re(z) + I*im(z)))/2,
                     -I*(-fresnels(re(z) - I*im(z)) + fresnels(re(z) + I*im(z)))/2)
 
-    assert fresnels(z).as_real_imag(deep=False) == (fresnels(re(z) - I*im(z))/2 +
-                    fresnels(re(z) + I*im(z))/2,
+    assert fresnels(z).as_real_imag(deep=False) == ((fresnels(re(z) - I*im(z)) +
+                    fresnels(re(z) + I*im(z)))/2,
                     -I*(-fresnels(re(z) - I*im(z)) + fresnels(re(z) + I*im(z)))/2)
 
     assert fresnels(w).as_real_imag() == (fresnels(w), 0)
     assert fresnels(w).as_real_imag(deep=True) == (fresnels(w), 0)
 
     assert fresnels(2 + 3*I).as_real_imag() == (
-            fresnels(2 + 3*I)/2 + fresnels(2 - 3*I)/2,
+            (fresnels(2 + 3*I) + fresnels(2 - 3*I))/2,
             -I*(fresnels(2 + 3*I) - fresnels(2 - 3*I))/2
             )
 
@@ -813,15 +814,15 @@ def test_fresnel():
     assert fresnelc(w).is_extended_real is True
 
     assert fresnelc(z).as_real_imag() == \
-        (fresnelc(re(z) - I*im(z))/2 + fresnelc(re(z) + I*im(z))/2,
+        ((fresnelc(re(z) - I*im(z)) + fresnelc(re(z) + I*im(z)))/2,
          -I*(-fresnelc(re(z) - I*im(z)) + fresnelc(re(z) + I*im(z)))/2)
 
     assert fresnelc(z).as_real_imag(deep=False) == \
-        (fresnelc(re(z) - I*im(z))/2 + fresnelc(re(z) + I*im(z))/2,
+        ((fresnelc(re(z) - I*im(z)) + fresnelc(re(z) + I*im(z)))/2,
          -I*(-fresnelc(re(z) - I*im(z)) + fresnelc(re(z) + I*im(z)))/2)
 
     assert fresnelc(2 + 3*I).as_real_imag() == (
-        fresnelc(2 - 3*I)/2 + fresnelc(2 + 3*I)/2,
+        (fresnelc(2 - 3*I) + fresnelc(2 + 3*I))/2,
          -I*(fresnelc(2 + 3*I) - fresnelc(2 - 3*I))/2
     )
 

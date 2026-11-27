@@ -433,7 +433,7 @@ class erfc(DefinedFunction):
             return False
 
     def _eval_rewrite_as_tractable(self, z, limitvar=None, **kwargs):
-        return self.rewrite(erf).rewrite("tractable", deep=True, limitvar=limitvar)
+        return self.rewrite(erf).rewrite("tractable", deep=True, limitvar=limitvar).ec
 
     def _eval_rewrite_as_erf(self, z, **kwargs):
         return S.One - erf(z)
