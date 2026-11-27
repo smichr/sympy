@@ -406,9 +406,9 @@ def TR7(rv):
     >>> from sympy.abc import x
     >>> from sympy import cos
     >>> TR7(cos(x)**2)
-    cos(2*x)/2 + 1/2
+    (cos(2*x) + 1)/2
     >>> TR7(cos(x)**2 + 1)
-    cos(2*x)/2 + 3/2
+    (cos(2*x) + 1)/2 + 1
 
     """
 
@@ -430,11 +430,11 @@ def TR8(rv, first=True):
     >>> from sympy.simplify.fu import TR8
     >>> from sympy import cos, sin
     >>> TR8(cos(2)*cos(3))
-    cos(1)/2 + cos(5)/2
+    (cos(1) + cos(5))/2
     >>> TR8(cos(2)*sin(3))
-    sin(1)/2 + sin(5)/2
+    (sin(1) + sin(5))/2
     >>> TR8(sin(2)*sin(3))
-    cos(1)/2 - cos(5)/2
+    (cos(1) - cos(5))/2
     """
 
     def f(rv):
@@ -825,7 +825,7 @@ def TR11(rv, base=None):
                 c = cos(base)
                 s = sin(base)
                 if f is cos:
-                    return (c**2 - s**2)/co
+                    return -(c**2 - s**2) if co is S.NegativeOne else (c**2 - s**2)/co
                 else:
                     return 2*c*s/co
             return rv
@@ -1383,7 +1383,11 @@ def TR15(rv, max=4, pow=False):
             rv = a
         return rv
 
-    return bottom_up(rv, f)
+    result = bottom_up(rv, f)
+    if result != rv and result.is_Add:
+        previous = set(Add.make_args(rv))
+        result = Add(*(t.ex if t not in previous else t for t in result.args))
+    return result
 
 
 def TR16(rv, max=4, pow=False):
@@ -1416,7 +1420,11 @@ def TR16(rv, max=4, pow=False):
             rv = a
         return rv
 
-    return bottom_up(rv, f)
+    result = bottom_up(rv, f)
+    if result != rv and result.is_Add:
+        previous = set(Add.make_args(rv))
+        result = Add(*(t.ex if t not in previous else t for t in result.args))
+    return result
 
 
 def TR111(rv):
@@ -1490,9 +1498,10 @@ def TRpower(rv):
     >>> from sympy.abc import x
     >>> from sympy import cos, sin
     >>> TRpower(sin(x)**6)
-    -15*cos(2*x)/32 + 3*cos(4*x)/16 - cos(6*x)/32 + 5/16
+    5/16 - (15*cos(2*x) - 6*cos(4*x) + cos(6*x))/32
     >>> TRpower(sin(x)**3*cos(2*x)**4)
-    (3*sin(x)/4 - sin(3*x)/4)*(cos(4*x)/2 + cos(8*x)/8 + 3/8)
+    -((4*cos(4*x) + cos(8*x))/8 + 3/8)*(sin(3*x) - 3*sin(x))/4
+
 
     References
     ==========

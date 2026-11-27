@@ -711,6 +711,13 @@ def evalf_mul(v: 'Mul', prec: int, options: OPT_DICT) -> TMP_RES:
     if special:
         if has_zero:
             return fnan, None, prec, None
+        if len(v.args) == 2:
+            c, a = v.args
+            if ((c.is_Rational or c.is_Float) and a.is_Add and
+                    (a.args[0] is S.Infinity or a.args[0] is S.NegativeInfinity)):
+                # Scale the explicit infinite sum without dropping a finite
+                # imaginary component in the special-value shortcut.
+                return evalf(v.ex, prec, options)
         from .mul import Mul
         return evalf(Mul(*special), prec + 4, {})
     if has_zero:

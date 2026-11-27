@@ -68,15 +68,15 @@ def test_rational_parametrization():
     assert parabola.rational_parametrization(t) == (-6 + 4/t**2, 3 + 4/t)
 
     rect_hyperbola = ImplicitRegion((x, y), x*y - 1)
-    assert rect_hyperbola.rational_parametrization(t) == (-1 + (t + 1)/t, t)
+    assert tuple(e.cancel() for e in rect_hyperbola.rational_parametrization(t)) == (1/t, t)
 
     cubic_curve = ImplicitRegion((x, y), x**3 + x**2 - y**2)
-    assert cubic_curve.rational_parametrization(parameters=(t)) == (t**2 - 1, t*(t**2 - 1))
+    assert cubic_curve.rational_parametrization(parameters=(t)) == (-1*(1 - t**2), -t*(1 - t**2))
     cuspidal = ImplicitRegion((x, y), (x**3 - y**2))
     assert cuspidal.rational_parametrization(t) == (t**2, t**3)
 
     I = ImplicitRegion((x, y), x**3 + x**2 - y**2)
-    assert I.rational_parametrization(t) == (t**2 - 1, t*(t**2 - 1))
+    assert I.rational_parametrization(t) == (-1*(1 - t**2), -t*(1 - t**2))
 
     sphere = ImplicitRegion((x, y, z), Eq(x**2 + y**2 + z**2, 2*x))
     assert sphere.rational_parametrization(parameters=(s, t)) == (2/(s**2 + t**2 + 1), 2*t/(s**2 + t**2 + 1), 2*s/(s**2 + t**2 + 1))

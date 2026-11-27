@@ -137,7 +137,7 @@ def test_subtraction_opt():
     substs, reduced = cse(
         [e], optimizations=[(cse_opts.sub_pre, cse_opts.sub_post)])
     assert substs == [(x0, (x - y)*(y - z))]
-    assert reduced == [-x0 + exp(-x0)]
+    assert reduced == [-1*(x0 - exp(-x0))]
     e = -(x - y)*(z - y) + exp(-(x - y)*(z - y))
     substs, reduced = cse(
         [e], optimizations=[(cse_opts.sub_pre, cse_opts.sub_post)])
@@ -149,7 +149,7 @@ def test_subtraction_opt():
     assert cse(e, optimizations=[(cse_opts.sub_pre, cse_opts.sub_post)]) == \
         ([], [0])
     assert cse(((w + x + y + z)*(w - y - z))/(w + x)**3) == \
-        ([(x0, w + x), (x1, y + z)], [(w - x1)*(x0 + x1)/x0**3])
+        ([(x0, w + x), (x1, y + z)], [-1*(x1 - w)*(x0 + x1)/x0**3])
 
 
 def test_multiple_expressions():
@@ -417,7 +417,7 @@ def test_issue_6169():
     assert cse(r) == ([], [r])
     # and a check that the right thing is done with the new
     # mechanism
-    assert sub_post(sub_pre((-x - y)*z - x - y)) == -z*(x + y) - x - y
+    assert sub_post(sub_pre((-x - y)*z - x - y)).ec == -z*(x + y) - x - y
 
 
 def test_cse_Indexed():
@@ -465,7 +465,7 @@ def test_Piecewise():
     f = Piecewise((-z + x*y, Eq(y, 0)), (-z - x*y, True))
     ans = cse(f)
     actual_ans = ([(x0, x*y)],
-        [Piecewise((x0 - z, Eq(y, 0)), (-z - x0, True))])
+        [Piecewise((x0 - z, Eq(y, 0)), (-1*(z + x0), True))])
     assert ans == actual_ans
 
 
@@ -633,7 +633,7 @@ def test_cse_unevaluated():
     # This used to cause RecursionError
     [(x0, ue)], [red] = cse([(-1 - xp1) / (1 - xp1)])
     if ue == xp1:
-        assert red == (-1 - x0) / (1 - x0)
+        assert red == (x0 + 1)/(x0 - 1)
     elif ue == -xp1:
         assert red == (-1 + x0) / (1 + x0)
     else:
@@ -668,7 +668,7 @@ def test_issue_12070():
 def test_issue_13000():
     eq = x/(-4*x**2 + y**2)
     cse_eq = cse(eq)[1][0]
-    assert cse_eq == eq
+    assert cse_eq == -x/(4*x**2 - y**2)
 
 
 def test_issue_18203():

@@ -146,7 +146,11 @@ def test_vector():
     assert v3.dot(k) == c**2 + c
 
     assert v1 + v2 == v2 + v1
-    assert v1 - v2 == -1 * (v2 - v1)
+    assert v1 - v2 == -(v2 - v1)
+    v = (a + b)*i
+    assert v - v == Vector.zero
+    assert (-v).components == {i: -a - b}
+    assert (-1*v).components == {i: -1*(a + b)}
     assert a * v1 == v1 * a
 
     assert isinstance(v5, VectorMul)

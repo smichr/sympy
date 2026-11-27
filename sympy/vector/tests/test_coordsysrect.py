@@ -67,12 +67,12 @@ def test_orienters():
         [sin(a)*sin(c) + sin(b)*cos(a)*cos(c), -sin(a)*cos(c) +
          sin(b)*sin(c)*cos(a), cos(a)*cos(b)]])
     assert q_orienter.rotation_matrix() == Matrix([
-        [q1**2 + q2**2 - q3**2 - q4**2, 2*q1*q4 + 2*q2*q3,
-         -2*q1*q3 + 2*q2*q4],
-        [-2*q1*q4 + 2*q2*q3, q1**2 - q2**2 + q3**2 - q4**2,
-         2*q1*q2 + 2*q3*q4],
-        [2*q1*q3 + 2*q2*q4,
-         -2*q1*q2 + 2*q3*q4, q1**2 - q2**2 - q3**2 + q4**2]])
+        [q1**2 + q2**2 - q3**2 - q4**2, 2*(q1*q4 + q2*q3),
+         2*(q2*q4 - q1*q3)],
+        [2*(q2*q3 - q1*q4), q1**2 - q2**2 + q3**2 - q4**2,
+         2*(q1*q2 + q3*q4)],
+        [2*(q1*q3 + q2*q4),
+         2*(q3*q4 - q1*q2), q1**2 - q2**2 - q3**2 + q4**2]])
 
 
 def test_coordinate_vars():
@@ -179,10 +179,10 @@ def test_rotation_matrix():
           sin(q1)*cos(q3) + sin(q2)*sin(q3)*cos(q1), cos(q1)*cos(q2)]])
     assert F.rotation_matrix(N) == Matrix([[
         q1**2 + q2**2 - q3**2 - q4**2,
-        2*q1*q4 + 2*q2*q3, -2*q1*q3 + 2*q2*q4],[ -2*q1*q4 + 2*q2*q3,
-            q1**2 - q2**2 + q3**2 - q4**2, 2*q1*q2 + 2*q3*q4],
-                                           [2*q1*q3 + 2*q2*q4,
-                                            -2*q1*q2 + 2*q3*q4,
+        2*(q1*q4 + q2*q3), 2*(q2*q4 - q1*q3)],[ 2*(q2*q3 - q1*q4),
+            q1**2 - q2**2 + q3**2 - q4**2, 2*(q1*q2 + q3*q4)],
+                                           [2*(q1*q3 + q2*q4),
+                                            2*(q3*q4 - q1*q2),
                                 q1**2 - q2**2 - q3**2 + q4**2]])
     assert G.rotation_matrix(N) == Matrix([[
         cos(q2)*cos(q3),  sin(q1)*sin(q2)*cos(q3) + sin(q3)*cos(q1),
@@ -757,7 +757,7 @@ def test_scalar_map_for_sequence_of_systems():
     assert C.scalar_map(D) == {
         C.x: 2 * xd, C.y: zd, C.z: yd}
     assert D.scalar_map(A) == {
-        xd: (A.x - a) * cos(alpha) / 2 + (A.y - b) * sin(alpha) / 2,
+        xd: ((A.x - a)*cos(alpha) + (A.y - b)*sin(alpha))/2,
         yd: A.z - c,
         zd: (A.x - a) * sin(alpha) * -1 + (A.y - b) * cos(alpha)}
     assert A.scalar_map(D) == {

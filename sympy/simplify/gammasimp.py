@@ -255,7 +255,8 @@ def _gammasimp(expr, as_comb):
                 while True:
                     for x in ng:
                         for y in dg:
-                            n = x - 2*y
+                            twoy = (2*y).ex
+                            n = x - twoy
                             if n.is_Integer:
                                 break
                         else:
@@ -266,11 +267,11 @@ def _gammasimp(expr, as_comb):
                     ng.remove(x)
                     dg.remove(y)
                     if n > 0:
-                        no.extend(2*y + k for k in range(n))
+                        no.extend(twoy + k for k in range(n))
                     elif n < 0:
-                        do.extend(2*y - 1 - k for k in range(-n))
+                        do.extend(twoy - 1 - k for k in range(-n))
                     ng.append(y + S.Half)
-                    no.append(2**(2*y - 1))
+                    no.append(2**(twoy - 1))
                     do.append(sqrt(S.Pi))
 
             # Try to reduce the number of gamma factors by applying the
@@ -349,7 +350,7 @@ def _gammasimp(expr, as_comb):
                             for k in range(int(u - ui)):
                                 numer.append(con - k)
 
-                        con = n*(resid + ui)  # for (2) and (3)
+                        con = (n*(resid + ui)).ex  # for (2) and (3)
 
                         # (2)
                         numer.append((2*S.Pi)**(S(n - 1)/2)*

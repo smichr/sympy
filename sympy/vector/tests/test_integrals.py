@@ -85,7 +85,7 @@ def test_vector_integrate():
     assert vector_integrate(5*C.z, curve) == 10*C.z
 
     c1 = Circle(Point(2, 3), 6)
-    assert vector_integrate(C.x*C.y, c1) == 72*pi
+    assert vector_integrate(C.x*C.y, c1).ec == 72*pi
     c2 = Circle(Point(0, 0), Point(1, 1), Point(1, 0))
     assert vector_integrate(1, c2) == c2.circumference
 

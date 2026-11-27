@@ -51,7 +51,7 @@ class BasisDependent(Expr):
         return self._mul_func(other, self)
 
     def __neg__(self):
-        return self._mul_func(S.NegativeOne, self)
+        return self._add_func(*[(-v)*k for k, v in self.components.items()])
 
     @_sympifyit('other', NotImplemented)
     @call_highest_priority('__rtruediv__')

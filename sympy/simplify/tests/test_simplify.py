@@ -256,8 +256,8 @@ def test_nthroot():
     q = 1 + sqrt(2) + 7*sqrt(6) + 2*sqrt(10)
     assert nthroot(expand_multinomial(q**5), 5, 8) == q
     q = 1 + sqrt(2) - 2*sqrt(3) + 1171*sqrt(6)
-    assert nthroot(expand_multinomial(q**3), 3) == q
-    assert nthroot(expand_multinomial(q**6), 6) == q
+    assert nthroot(expand_multinomial(q**3), 3).ec == q
+    assert nthroot(expand_multinomial(q**6), 6).ec == q
 
 
 def test_nthroot1():
@@ -364,7 +364,7 @@ def test_hypersimp():
     assert hypersimp(term, k) == (4*k + 5)/(16*k**2 + 28*k + 6)
 
     term = 1/((2*k - 1)*factorial(2*k + 1))
-    assert hypersimp(term, k) == (k - S.Half)/((k + 1)*(2*k + 1)*(2*k + 3))
+    assert hypersimp(term, k) == (2*k - 1)/(8*k**3 + 24*k**2 + 22*k + 6)
 
     term = binomial(n, k)*(-1)**k/factorial(k)
     assert hypersimp(term, k) == (k - n)/(k + 1)**2
@@ -719,9 +719,8 @@ def test_issue_from_PR1599():
 def test_issue_6811():
     eq = (x + 2*y)*(2*x + 2)
     assert simplify(eq) == (x + 1)*(x + 2*y)*2
-    # reject the 2-arg Mul -- these are a headache for test writing
-    assert simplify(eq.expand()) == \
-        2*x**2 + 4*x*y + 2*x + 4*y
+    # Preserve the common numeric factor.
+    assert simplify(eq.expand()) == 2*(x**2 + 2*x*y + x + 2*y)
 
 
 def test_issue_6920():
@@ -836,13 +835,13 @@ def test_clear_coefficients():
     from sympy.simplify.simplify import clear_coefficients
     assert clear_coefficients(4*y*(6*x + 3)) == (y*(2*x + 1), 0)
     assert clear_coefficients(4*y*(6*x + 3) - 2) == (y*(2*x + 1), Rational(1, 6))
-    assert clear_coefficients(4*y*(6*x + 3) - 2, x) == (y*(2*x + 1), x/12 + Rational(1, 6))
+    assert clear_coefficients(4*y*(6*x + 3) - 2, x) == (y*(2*x + 1), (x/2 + 1)/6)
     assert clear_coefficients(sqrt(2) - 2) == (sqrt(2), 2)
     assert clear_coefficients(4*sqrt(2) - 2) == (sqrt(2), S.Half)
     assert clear_coefficients(S(3), x) == (0, x - 3)
     assert clear_coefficients(S.Infinity, x) == (S.Infinity, x)
     assert clear_coefficients(-S.Pi, x) == (S.Pi, -x)
-    assert clear_coefficients(2 - S.Pi/3, x) == (pi, -3*x + 6)
+    assert clear_coefficients(2 - S.Pi/3, x) == (pi, -3*(x - 2))
 
 def test_nc_simplify():
     from sympy.simplify.simplify import nc_simplify
@@ -960,7 +959,7 @@ def test_issue_7971_21740():
 def test_issue_17141():
     # Check that there is no RecursionError
     assert simplify(x**(1 / acos(I))) == x**(2/(pi - 2*I*log(sqrt(2) + 1)))
-    assert simplify(acos(-I)**2*acos(I)**2) == \
+    assert simplify(acos(-I)**2*acos(I)**2).expand() == \
            log(1 + sqrt(2))**4 + pi**2*log(1 + sqrt(2))**2/2 + pi**4/16
     assert simplify(2**acos(I)**2) == 2**((pi - 2*I*log(sqrt(2) + 1))**2/4)
     p = 2**acos(I+1)**2
@@ -1043,7 +1042,10 @@ def test_issue_7950():
 
 def test_issue_22020():
     expr = I*pi/2 -oo
-    assert simplify(expr) == expr
+    result = simplify(expr)
+    assert result.ex == expr
+    assert result.as_real_imag() == (-oo, pi/2)
+    assert result.evalf() == expr.evalf()
     # Used to throw an error
 
 
@@ -1175,7 +1177,7 @@ def test_simplify_ratsimp_noncommutative():
 def test_logcombine_affine_rational_log():
     for multiplier in [1, -1]:
         expr = Mul(Rational(multiplier, 3), 1 + 2*log(2), evaluate=False)
-        expected = multiplier*(Rational(1, 3) + log(2**Rational(2, 3)))
+        expected = multiplier*Rational(1, 3) + multiplier*log(2**Rational(2, 3))
         assert logcombine(expr) == expected
     expr = Mul(Rational(1, 3), 1 - 2*log(2), evaluate=False)
     assert logcombine(expr) == Rational(1, 3) - log(2**Rational(2, 3))

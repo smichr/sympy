@@ -112,21 +112,20 @@ def test_TR6():
 
 
 def test_TR7():
-    assert TR7(cos(x)**2) == cos(2*x)/2 + S.Half
-    assert TR7(cos(x)**2 + 1) == cos(2*x)/2 + Rational(3, 2)
+    assert TR7(cos(x)**2) == (cos(2*x) + 1)/2
+    assert TR7(cos(x)**2 + 1) == (cos(2*x) + 1)/2 + 1
 
 
 def test_TR8():
-    assert TR8(cos(2)*cos(3)) == cos(5)/2 + cos(1)/2
-    assert TR8(cos(2)*sin(3)) == sin(5)/2 + sin(1)/2
-    assert TR8(sin(2)*sin(3)) == -cos(5)/2 + cos(1)/2
-    assert TR8(sin(1)*sin(2)*sin(3)) == sin(4)/4 - sin(6)/4 + sin(2)/4
+    assert TR8(cos(2)*cos(3)) == (cos(5) + cos(1))/2
+    assert TR8(cos(2)*sin(3)) == (sin(5) + sin(1))/2
+    assert TR8(sin(2)*sin(3)) == (cos(1) - cos(5))/2
+    assert TR8(sin(1)*sin(2)*sin(3)) == (sin(4) - sin(6) + sin(2))/4
     assert TR8(cos(2)*cos(3)*cos(4)*cos(5)) == \
-        cos(4)/4 + cos(10)/8 + cos(2)/8 + cos(8)/8 + cos(14)/8 + \
-        cos(6)/8 + Rational(1, 8)
+        (2*cos(4) + cos(10) + cos(2) + cos(8) + cos(14) + cos(6) + 1)/8
     assert TR8(cos(2)*cos(3)*cos(4)*cos(5)*cos(6)) == \
-        cos(10)/8 + cos(4)/8 + 3*cos(2)/16 + cos(16)/16 + cos(8)/8 + \
-        cos(14)/16 + cos(20)/16 + cos(12)/16 + Rational(1, 16) + cos(6)/8
+        (2*cos(10) + 2*cos(4) + 3*cos(2) + cos(16) + 2*cos(8) +
+        cos(14) + cos(20) + cos(12) + 1 + 2*cos(6))/16
     assert TR8(sin(pi*Rational(3, 7))**2*cos(pi*Rational(3, 7))**2/(16*sin(pi/7)**2)) == Rational(1, 64)
 
 def test_TR9():
@@ -143,8 +142,8 @@ def test_TR9():
     assert TR9(cos(3) + cos(4) + cos(5) + cos(6)) == \
         4*cos(S.Half)*cos(1)*cos(Rational(9, 2))
     assert TR9(cos(3) + cos(3)*cos(2)) == cos(3) + cos(2)*cos(3)
-    assert TR9(-cos(y) + cos(x*y)) == -2*sin(x*y/2 - y/2)*sin(x*y/2 + y/2)
-    assert TR9(-sin(y) + sin(x*y)) == 2*sin(x*y/2 - y/2)*cos(x*y/2 + y/2)
+    assert TR9(-cos(y) + cos(x*y)) == -2*sin((x*y - y)/2)*sin((x*y + y)/2)
+    assert TR9(-sin(y) + sin(x*y)) == 2*sin((x*y - y)/2)*cos((x*y + y)/2)
     c = cos(x)
     s = sin(x)
     for si in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
@@ -382,7 +381,7 @@ def test_TRmorrie():
 def test_TRpower():
     assert TRpower(1/sin(x)**2) == 1/sin(x)**2
     assert TRpower(cos(x)**3*sin(x/2)**4) == \
-        (3*cos(x)/4 + cos(3*x)/4)*(-cos(x)/2 + cos(2*x)/8 + Rational(3, 8))
+        (3*cos(x) + cos(3*x))/4*((cos(2*x) - 4*cos(x))/8 + Rational(3, 8))
     for k in range(2, 8):
         assert verify_numerically(sin(x)**k, TRpower(sin(x)**k))
         assert verify_numerically(cos(x)**k, TRpower(cos(x)**k))
@@ -469,6 +468,8 @@ def test_TR15_16_17():
     assert TR15(1 - 1/sin(x)**2) == -cot(x)**2
     assert TR16(1 - 1/cos(x)**2) == -tan(x)**2
     assert TR111(1 - 1/tan(x)**2) == 1 - cot(x)**2
+    assert TR15(2*(x + y) + 1 - 1/sin(x)**2) == 2*(x + y) - cot(x)**2
+    assert TR16(2*(x + y) + 1 - 1/cos(x)**2) == 2*(x + y) - tan(x)**2
 
 
 def test_as_f_sign_1():
@@ -490,7 +491,7 @@ def test_issue_25590():
 
     # XXX The result may not be optimal than
     # sin(2*x)*B*A + cos(x)**2 and may change in the future
-    assert (2*cos(x)*sin(x)*B*A + cos(x)**2).simplify() == sin(2*x)*B*A + cos(2*x)/2 + S.One/2
+    assert (2*cos(x)*sin(x)*B*A + cos(x)**2).simplify() == sin(2*x)*B*A + (cos(2*x) + 1)/2
 
 
 def test_hyper_as_trig_odd():

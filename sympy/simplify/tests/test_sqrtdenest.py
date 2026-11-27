@@ -79,7 +79,7 @@ def test_sqrtdenest_rec():
     assert sqrtdenest(sqrt(8*r2 + 2*r5 - 18)) == \
         sqrt(-1)*(-r10 + 1 + r2 + r5)
     assert sqrtdenest(sqrt(8*r2/3 + 14*r5/3 + Rational(154, 9))) == \
-        -r10/3 + r2 + r5 + 3
+        (-r10 + 3*r2 + 3*r5 + 9)/3
     assert sqrtdenest(sqrt(sqrt(2*r6 + 5) + sqrt(2*r7 + 8))) == \
         sqrt(1 + r2 + r3 + r7)
     assert sqrtdenest(sqrt(4*r15 + 8*r5 + 12*r3 + 24)) == 1 + r3 + r5 + r15
@@ -192,7 +192,7 @@ def test_sqrt_ratcomb():
 
 def test_issue_18041():
     e = -sqrt(-2 + 2*sqrt(3)*I)
-    assert sqrtdenest(e) == -1 - sqrt(3)*I
+    assert sqrtdenest(e).ex == -1 - sqrt(3)*I
 
 def test_issue_19914():
     a = Integer(-8)

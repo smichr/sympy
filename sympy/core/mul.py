@@ -886,6 +886,10 @@ class Mul(Expr, AssocOp):
             return (-imco*i, imco*r)
         from .function import expand_mul
         addre, addim = expand_mul(addterms, deep=False).as_real_imag()
+        if m is S.One and imco is S.Zero:
+            # A real factor scales each component independently. Avoid 0*oo
+            # cross terms when the additive factor has an infinite component.
+            return reco*addre, reco*addim
         if imco is S.Zero:
             return (r*addre - i*addim, i*addre + r*addim)
         else:

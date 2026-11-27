@@ -94,6 +94,16 @@ def test_evalf_complex():
     assert NS('I*(2+I)', 15) == '-1.00000000000000 + 2.00000000000000*I'
 
 
+def test_evalf_factored_infinite_complex():
+    for c in (S.Half, Rational(-2, 3), Float('0.5')):
+        for r in (oo, -oo):
+            e = c*(r + I*pi)
+            assert e.is_Mul
+            expected = c*r + c*I*pi
+            assert e.as_real_imag() == expected.as_real_imag()
+            assert e.evalf() == expected.evalf()
+
+
 def test_evalf_abs_evaluate_false():
     for z, expected in (
         (1 + I, sqrt(2)),

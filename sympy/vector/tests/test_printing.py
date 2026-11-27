@@ -81,7 +81,7 @@ pretty_s = """\
 # This is the pretty form for ((a**2 + b)*N.i + 3*(C.y - c)*N.k) | N.k
 upretty_d_7 = """\
 ⎛ 2    ⎞                                     \n\
-⎝a  + b⎠ (i_N|k_N)  + (3⋅y_C - 3⋅c) (k_N|k_N)\
+⎝a  + b⎠ (i_N|k_N)  + (3⋅(y_C - c)) (k_N|k_N)\
 """
 pretty_d_7 = """\
 / 2    \\ (i_N|k_N) + (3*y_C - 3*c) (k_N|k_N)\n\
