@@ -15,6 +15,7 @@ from sympy.core.relational import Eq
 from sympy.core.singleton import S
 from sympy.core.symbol import (Symbol, Wild, symbols)
 from sympy.core.sympify import SympifyError
+from sympy.functions.elementary.complexes import Abs
 from sympy.functions.elementary.exponential import (exp, log)
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.functions.elementary.piecewise import Piecewise
@@ -26,7 +27,7 @@ from sympy.polys.rootoftools import RootOf
 from sympy.simplify.cse_main import cse
 from sympy.simplify.simplify import nsimplify
 from sympy.core.basic import _aresame
-from sympy.testing.pytest import XFAIL, raises
+from sympy.testing.pytest import raises
 from sympy.abc import a, x, y, z, t
 
 
@@ -735,21 +736,22 @@ def test_issue_6923():
     assert (-2*x*sqrt(2)).subs(2*x, y) == -sqrt(2)*y
 
 
-def test_2arg_hack():
+def test_subs_retains_coefficient():
     N = Symbol('N', commutative=False)
-    ans = Mul(2, y + 1, evaluate=False)
-    assert (2*x*(y + 1)).subs(x, 1, hack2=True) == ans
-    assert (2*(y + 1 + N)).subs(N, 0, hack2=True) == ans
+    ans = 2*(y + 1)
+    assert ans.is_Mul
+    assert (2*x*(y + 1)).subs(x, 1) == ans
+    assert (2*(y + 1 + N)).subs(N, 0) == ans
+    assert (2*x*(y + 1)).subs({x: 1, y: z}, simultaneous=True) == 2*(z + 1)
 
 
-@XFAIL
-def test_mul2():
-    """When this fails, remove things labelled "2-arg hack"
-    1) remove special handling in the fallback of subs that
-    was added in the same commit as this test
-    2) remove the special handling in Mul.flatten
-    """
-    assert (2*(x + 1)).is_Mul
+def test_simultaneous_subs_unevaluated_product():
+    e = Mul(0, x + y, evaluate=False)
+    assert e.subs([(x, 0), (y, oo)], simultaneous=True) is S.NaN
+    assert e.subs([(x, oo), (y, 0)], simultaneous=True) is S.NaN
+    p = Symbol('p', positive=True)
+    e = Mul(oo, Abs(x) + p, p, evaluate=False)
+    assert e.subs([(x, 1), (p, 0)], simultaneous=True) is S.NaN
 
 
 def test_noncommutative_subs():

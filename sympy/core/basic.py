@@ -1229,7 +1229,7 @@ class Basic(Printable):
         if simultaneous:  # XXX should this be the default for dict subs?
             reps = {}
             rv = self
-            kwargs['hack2'] = True
+            kwargs['simultaneous'] = True
             m = Dummy('subs_m')
             for old, new in sequence:
                 com = new.is_commutative
@@ -1338,8 +1338,8 @@ class Basic(Printable):
                     args[i] = arg
             if hit:
                 rv = self.func(*args)
-                hack2 = hints.get('hack2', False)
-                if hack2 and self.is_Mul and not rv.is_Mul:  # 2-arg hack
+                if self.is_Mul and not rv.is_Mul and hints.get('simultaneous', False):
+                    # Preserve the coefficient until all substitutions are resolved.
                     coeff = S.One
                     nonnumber = []
                     for i in args:

@@ -16,7 +16,6 @@ from sympy.core.function import (expand_log, count_ops, _mexpand,
 from sympy.core.mul import _unevaluated_Mul, _keep_coeff
 from sympy.core.numbers import Float, I, Integer, pi, Rational, equal_valued
 from sympy.core.relational import Relational
-from sympy.core.rules import Transform
 from sympy.core.sorting import default_sort_key, ordered
 from sympy.core.sympify import _sympify
 from sympy.core.traversal import bottom_up as _bottom_up, walk as _walk
@@ -780,16 +779,7 @@ def simplify(expr, ratio=1.7, measure=count_ops, rational=False, inverse=False, 
     if short.has(TrigonometricFunction, HyperbolicFunction, ExpBase, exp):
         short = exptrigsimp(short)
 
-    # get rid of hollow 2-arg Mul factorization
-    hollow_mul = Transform(
-        lambda x: Mul(*x.args),
-        lambda x:
-        x.is_Mul and
-        len(x.args) == 2 and
-        x.args[0].is_Number and
-        x.args[1].is_Add and
-        x.is_commutative)
-    expr = short.xreplace(hollow_mul)
+    expr = short
 
     numer, denom = expr.as_numer_denom()
     if denom.is_Add:
