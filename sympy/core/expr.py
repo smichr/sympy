@@ -909,6 +909,10 @@ class Expr(Basic, EvalfMixin):
 
             # try to prove with minimal_polynomial but know when
             # *not* to use this or else it can take a long time. e.g. issue 8354
+            from sympy.polys.numberfields._algebraic_zero import _is_algebraic_zero
+            algebraic_zero = _is_algebraic_zero(diff)
+            if algebraic_zero is not None:
+                return algebraic_zero
             if True:  # change True to condition that assures non-hang
                 try:
                     mp = minimal_polynomial(diff)
@@ -961,6 +965,10 @@ class Expr(Basic, EvalfMixin):
                 return bool(not i and ((r > 0) if positive else (r < 0)))
             elif r._prec == 1 and (not i or i._prec == 1) and \
                     self._eval_is_algebraic() and not self.has(Function):
+                from sympy.polys.numberfields._algebraic_zero import _is_algebraic_zero
+                algebraic_zero = _is_algebraic_zero(self)
+                if algebraic_zero is not None:
+                    return False if algebraic_zero else None
                 try:
                     if minimal_polynomial(self).is_Symbol:
                         return False
